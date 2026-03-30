@@ -1,4 +1,4 @@
-import { Chunk, ChunkStats } from "../../types";
+import type { Chunk, ChunkStats } from "../../types";
 
 interface ChunkViewerProps {
   chunks: Chunk[];

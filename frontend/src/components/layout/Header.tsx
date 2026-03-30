@@ -1,5 +1,5 @@
 import { Brain } from "lucide-react";
-import { SessionMetrics } from "../../types";
+import type { SessionMetrics } from "../../types";
 
 interface HeaderProps {
   metrics: SessionMetrics | null;

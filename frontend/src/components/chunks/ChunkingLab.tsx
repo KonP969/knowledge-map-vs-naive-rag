@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DocumentMeta, ChunkRequest, ChunkResponse } from "../../types";
+import type { DocumentMeta, ChunkRequest, ChunkResponse } from "../../types";
 import { api } from "../../api/client";
 import { StrategySelector } from "./StrategySelector";
 import { ChunkViewer } from "./ChunkViewer";

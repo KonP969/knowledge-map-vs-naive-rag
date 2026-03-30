@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
-import { RetrievedChunk, PromptData } from "../../types";
+import type { RetrievedChunk, PromptData } from "../../types";
 import { streamChat, api } from "../../api/client";
 import { RetrievalPanel } from "./RetrievalPanel";
 import { PromptBuilderPanel } from "./PromptBuilderPanel";

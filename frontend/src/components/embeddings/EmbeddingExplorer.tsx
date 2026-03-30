@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DocumentMeta, EmbeddingPoint } from "../../types";
+import type { DocumentMeta, EmbeddingPoint } from "../../types";
 import { api } from "../../api/client";
 import { ScatterPlot } from "./ScatterPlot";
 

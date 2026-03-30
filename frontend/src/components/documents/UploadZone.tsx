@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Upload } from "lucide-react";
 import { api } from "../../api/client";
-import { DocumentMeta } from "../../types";
+import type { DocumentMeta } from "../../types";
 
 interface UploadZoneProps {
   onUploaded: (doc: DocumentMeta) => void;

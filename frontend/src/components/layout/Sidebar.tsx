@@ -1,5 +1,5 @@
 import { FileText, Layers, ScatterChart, MessageSquare, BarChart2 } from "lucide-react";
-import { Panel } from "../../types";
+import type { Panel } from "../../types";
 
 const NAV = [
   { id: "documents" as Panel, label: "Documents", icon: FileText },

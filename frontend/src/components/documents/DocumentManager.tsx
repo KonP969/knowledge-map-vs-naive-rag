@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DocumentMeta, DocumentDetail } from "../../types";
+import type { DocumentMeta, DocumentDetail } from "../../types";
 import { api } from "../../api/client";
 import { UploadZone } from "./UploadZone";
 import { DocumentList } from "./DocumentList";

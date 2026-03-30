@@ -2,16 +2,13 @@ import { useState, useEffect } from "react";
 import { Header } from "./components/layout/Header";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Footer } from "./components/layout/Footer";
-import { Panel, SessionMetrics } from "./types";
+import { DocumentManager } from "./components/documents/DocumentManager";
+import { ChunkingLab } from "./components/chunks/ChunkingLab";
+import { EmbeddingExplorer } from "./components/embeddings/EmbeddingExplorer";
+import { ChatInterface } from "./components/chat/ChatInterface";
+import { MetricsPanel } from "./components/metrics/MetricsPanel";
+import type { Panel, SessionMetrics } from "./types";
 import { api } from "./api/client";
-
-function PanelContent({ panel }: { panel: Panel }) {
-  return (
-    <div className="flex-1 p-6 text-sm text-muted-foreground">
-      Panel: <strong>{panel}</strong> — coming soon
-    </div>
-  );
-}
 
 export default function App() {
   const [activePanel, setActivePanel] = useState<Panel>("documents");
@@ -31,7 +28,11 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar active={activePanel} onChange={setActivePanel} />
         <main className="flex-1 overflow-auto bg-[#F9FAFB]">
-          <PanelContent panel={activePanel} />
+          {activePanel === "documents" && <DocumentManager />}
+          {activePanel === "chunks" && <ChunkingLab />}
+          {activePanel === "embeddings" && <EmbeddingExplorer />}
+          {activePanel === "chat" && <ChatInterface />}
+          {activePanel === "metrics" && <MetricsPanel />}
         </main>
       </div>
       <Footer />

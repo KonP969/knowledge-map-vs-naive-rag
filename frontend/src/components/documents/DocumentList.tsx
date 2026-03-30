@@ -1,5 +1,5 @@
 import { Trash2, FileText } from "lucide-react";
-import { DocumentMeta } from "../../types";
+import type { DocumentMeta } from "../../types";
 
 interface DocumentListProps {
   documents: DocumentMeta[];

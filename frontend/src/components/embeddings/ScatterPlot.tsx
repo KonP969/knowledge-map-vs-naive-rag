@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { EmbeddingPoint } from "../../types";
+import type { EmbeddingPoint } from "../../types";
 
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
@@ -46,7 +46,7 @@ export function ScatterPlot({ points, selectedA, selectedB, onSelect }: ScatterP
           <YAxis dataKey="y" type="number" domain={["auto", "auto"]} tick={{ fontSize: 10 }} />
           <Tooltip
             content={({ payload }) => {
-              const item = (payload as TooltipPayloadItem[] | undefined)?.[0];
+              const item = (payload as unknown as TooltipPayloadItem[] | undefined)?.[0];
               if (!item) return null;
               const p = item.payload;
               return (
