@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PromptData } from "../../types";
+import type { PromptData } from "../../types";
 import { api } from "../../api/client";
 
 interface PromptBuilderPanelProps {

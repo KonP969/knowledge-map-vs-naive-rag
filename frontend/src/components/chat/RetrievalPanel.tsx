@@ -1,4 +1,4 @@
-import { RetrievedChunk } from "../../types";
+import type { RetrievedChunk } from "../../types";
 
 interface RetrievalPanelProps {
   chunks: RetrievedChunk[];

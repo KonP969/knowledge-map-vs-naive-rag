@@ -1,4 +1,4 @@
-import { ChunkRequest } from "../../types";
+import type { ChunkRequest } from "../../types";
 
 interface StrategySelectorProps {
   value: ChunkRequest;
