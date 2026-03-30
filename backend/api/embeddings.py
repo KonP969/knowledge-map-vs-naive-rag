@@ -104,5 +104,9 @@ def get_similarity(chunk_id_a: str, chunk_id_b: str):
     if emb_a is None or emb_b is None:
         raise HTTPException(404, "One or both chunk IDs not found in vector store")
 
-    cosine = float(np.dot(emb_a, emb_b) / (np.linalg.norm(emb_a) * np.linalg.norm(emb_b)))
+    norm_a = np.linalg.norm(emb_a)
+    norm_b = np.linalg.norm(emb_b)
+    if norm_a == 0 or norm_b == 0:
+        raise HTTPException(400, "Cannot compute similarity with zero vectors")
+    cosine = float(np.dot(emb_a, emb_b) / (norm_a * norm_b))
     return {"chunk_id_a": chunk_id_a, "chunk_id_b": chunk_id_b, "cosine_similarity": cosine}
