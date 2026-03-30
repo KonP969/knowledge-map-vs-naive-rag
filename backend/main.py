@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from api.documents import router as documents_router
 from api.chunks import router as chunks_router
 from api.embeddings import router as embeddings_router
+from api.chat import router as chat_router
+from api.metrics import router as metrics_router
 
 load_dotenv()
 
@@ -20,6 +22,8 @@ app.add_middleware(
 app.include_router(documents_router)
 app.include_router(chunks_router)
 app.include_router(embeddings_router)
+app.include_router(chat_router)
+app.include_router(metrics_router)
 
 @app.get("/health")
 def health():
