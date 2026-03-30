@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/chunks", tags=["chunks"])
 _chunks_store: Dict[str, ChunkResponse] = {}
 
 
-def _build_chunk_response(raw_chunks: List[dict], doc_id: str, overlap: int = 0) -> ChunkResponse:
+def _build_chunk_response(raw_chunks: List[dict], doc_id: str, overlap: int = 0, chunk_size: int = 0) -> ChunkResponse:
     chunks = []
     for raw in raw_chunks:
         chunks.append(Chunk(
@@ -29,12 +29,13 @@ def _build_chunk_response(raw_chunks: List[dict], doc_id: str, overlap: int = 0)
         ))
 
     lengths = [c.char_count for c in chunks]
+    overlap_pct = round(overlap / chunk_size * 100, 1) if chunk_size > 0 else 0.0
     stats = ChunkStats(
         count=len(chunks),
         avg_length=sum(lengths) / len(lengths) if lengths else 0.0,
         min_length=min(lengths) if lengths else 0,
         max_length=max(lengths) if lengths else 0,
-        overlap_pct=float(overlap),
+        overlap_pct=overlap_pct,
     )
     return ChunkResponse(chunks=chunks, stats=stats)
 
@@ -53,7 +54,7 @@ def generate_chunks(req: ChunkRequest):
     else:
         raise HTTPException(400, f"Unknown strategy: {req.strategy}")
 
-    response = _build_chunk_response(raw, req.document_id, overlap=req.overlap)
+    response = _build_chunk_response(raw, req.document_id, overlap=req.overlap, chunk_size=req.chunk_size)
     _chunks_store[req.document_id] = response
     return response
 
