@@ -39,3 +39,20 @@ def test_recursive_single_chunk():
     chunks = chunk_recursive(text, separators=["\n\n"], chunk_size=500)
     assert len(chunks) == 1
     assert chunks[0]["content"] == "Short text."
+
+
+from services.chunkers.semantic import chunk_semantic
+
+
+def test_semantic_basic():
+    text = "This is sentence one. This is sentence two. And sentence three! What about four?"
+    chunks = chunk_semantic(text)
+    assert len(chunks) >= 1
+    for c in chunks:
+        assert c["content"].strip()
+        assert c["start_char"] >= 0
+
+
+def test_semantic_empty():
+    chunks = chunk_semantic("")
+    assert chunks == []
