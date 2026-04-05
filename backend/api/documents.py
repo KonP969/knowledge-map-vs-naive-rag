@@ -1,9 +1,12 @@
 import os
 import uuid
+import json
 import tempfile
 from datetime import datetime
 from typing import Dict, List
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from models.document import DocumentMeta, DocumentDetail
 from services.document_parser import parse_document
 
@@ -64,6 +67,47 @@ def delete_document(doc_id: str):
         raise HTTPException(404, "Document not found")
     del _documents[doc_id]
     return {"deleted": doc_id}
+
+
+class CrawlRequest(BaseModel):
+    url: str
+    max_articles: int = 50
+
+
+@router.post("/crawl-url")
+async def crawl_url(req: CrawlRequest):
+    from services.web_crawler import crawl_blog
+
+    if req.max_articles < 1 or req.max_articles > 200:
+        raise HTTPException(400, "max_articles must be between 1 and 200")
+
+    async def event_stream():
+        added = 0
+        failed = 0
+        async for event in crawl_blog(req.url, req.max_articles):
+            if event["type"] == "article":
+                doc_id = str(uuid.uuid4())
+                meta = DocumentMeta(
+                    id=doc_id,
+                    name=event["title"],
+                    size_bytes=len(event["text"].encode()),
+                    upload_date=datetime.utcnow().isoformat(),
+                    char_count=len(event["text"]),
+                )
+                _documents[doc_id] = {"meta": meta, "text": event["text"]}
+                added += 1
+                yield f"data: {json.dumps({**event, 'doc_id': doc_id})}\n\n"
+            elif event["type"] == "error":
+                failed += 1
+                yield f"data: {json.dumps(event)}\n\n"
+            elif event["type"] == "start":
+                yield f"data: {json.dumps(event)}\n\n"
+            elif event["type"] == "error_fatal":
+                yield f"data: {json.dumps(event)}\n\n"
+                return
+        yield f"data: {json.dumps({'type': 'done', 'added': added, 'failed': failed})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 def get_document_text(doc_id: str) -> str:

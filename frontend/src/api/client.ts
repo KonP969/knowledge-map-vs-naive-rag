@@ -60,6 +60,63 @@ export const api = {
   resetAll: () => request<{ reset: boolean }>("/data/reset", { method: "DELETE" }),
 };
 
+export interface CrawlEvent {
+  type: "start" | "article" | "error" | "error_fatal" | "done";
+  total?: number;
+  current?: number;
+  title?: string;
+  url?: string;
+  doc_id?: string;
+  added?: number;
+  failed?: number;
+  message?: string;
+}
+
+export function crawlUrl(
+  url: string,
+  maxArticles: number,
+  onEvent: (e: CrawlEvent) => void,
+  onDone: () => void,
+): () => void {
+  const ctrl = new AbortController();
+  fetch(`${BASE}/documents/crawl-url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url, max_articles: maxArticles }),
+    signal: ctrl.signal,
+  }).then(async (res) => {
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      onEvent({ type: "error_fatal", message: err.detail || `HTTP ${res.status}` });
+      onDone();
+      return;
+    }
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value).split("\n");
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const event: CrawlEvent = JSON.parse(line.slice(6));
+            onEvent(event);
+            if (event.type === "done" || event.type === "error_fatal") {
+              onDone();
+              return;
+            }
+          } catch { /* ignore malformed */ }
+        }
+      }
+    }
+    onDone();
+  }).catch((e) => {
+    if (e.name !== "AbortError") onDone();
+  });
+  return () => ctrl.abort();
+}
+
 export function streamChat(
   query: string,
   topK: number,
