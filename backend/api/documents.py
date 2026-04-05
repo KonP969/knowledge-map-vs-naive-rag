@@ -115,3 +115,10 @@ def get_document_text(doc_id: str) -> str:
     if doc_id not in _documents:
         raise HTTPException(404, "Document not found")
     return _documents[doc_id]["text"]
+
+
+def get_document_name(doc_id: str) -> str:
+    """Helper for other services to fetch document name."""
+    if doc_id not in _documents:
+        return doc_id[:12]
+    return _documents[doc_id]["meta"].name

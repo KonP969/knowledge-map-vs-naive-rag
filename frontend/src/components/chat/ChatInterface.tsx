@@ -10,6 +10,21 @@ interface Message {
   content: string;
 }
 
+function renderAssistantContent(content: string) {
+  // Split on [Źródło N] or [Źródło N: name] references and render as chips
+  const parts = content.split(/(\[Źródło\s+\d+(?::[^\]]+)?\])/g);
+  return parts.map((part, i) => {
+    if (/^\[Źródło\s+\d+/.test(part)) {
+      return (
+        <span key={i} className="inline-block bg-blue-100 text-blue-700 text-xs font-medium px-1.5 py-0.5 rounded mx-0.5">
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -73,7 +88,9 @@ export function ChatInterface() {
                   msg.role === "user" ? "bg-primary text-white" : "bg-muted text-foreground"
                 }`}
               >
-                {msg.content || (loading && i === messages.length - 1 ? "▋" : "")}
+                {msg.role === "assistant"
+                  ? renderAssistantContent(msg.content || (loading && i === messages.length - 1 ? "▋" : ""))
+                  : msg.content}
               </div>
             </div>
           ))}

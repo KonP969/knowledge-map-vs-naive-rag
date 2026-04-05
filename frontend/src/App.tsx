@@ -7,6 +7,7 @@ import { ChunkingLab } from "./components/chunks/ChunkingLab";
 import { EmbeddingExplorer } from "./components/embeddings/EmbeddingExplorer";
 import { ChatInterface } from "./components/chat/ChatInterface";
 import { MetricsPanel } from "./components/metrics/MetricsPanel";
+import { TutorialPanel } from "./components/tutorial/TutorialPanel";
 import type { Panel, SessionMetrics } from "./types";
 import { api } from "./api/client";
 
@@ -33,6 +34,7 @@ export default function App() {
           {activePanel === "embeddings" && <EmbeddingExplorer />}
           {activePanel === "chat" && <ChatInterface />}
           {activePanel === "metrics" && <MetricsPanel />}
+          {activePanel === "tutorial" && <TutorialPanel />}
         </main>
       </div>
       <Footer />

@@ -29,6 +29,7 @@ interface TooltipPayloadItem {
 
 export function ScatterPlot({ points, selectedA, selectedB, onSelect }: ScatterPlotProps) {
   const docIds = [...new Set(points.map((p) => p.document_id))];
+  const docNames = Object.fromEntries(points.map((p) => [p.document_id, p.document_name]));
 
   if (points.length === 0) {
     return (
@@ -77,7 +78,7 @@ export function ScatterPlot({ points, selectedA, selectedB, onSelect }: ScatterP
         {docIds.map((id, i) => (
           <div key={id} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-            <span className="text-xs text-muted-foreground">{id.slice(0, 8)}...</span>
+            <span className="text-xs text-muted-foreground truncate max-w-[160px]" title={docNames[id]}>{docNames[id]}</span>
           </div>
         ))}
       </div>

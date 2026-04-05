@@ -7,6 +7,7 @@ from models.chunk import Chunk
 from services.embeddings_service import embed_texts, embed_query
 from services.vector_store import add_chunks, get_all_embeddings, query_chunks
 from api.chunks import get_chunks_for_document
+from api.documents import get_document_name
 
 router = APIRouter(prefix="/api/embeddings", tags=["embeddings"])
 
@@ -39,8 +40,9 @@ def generate_embeddings(req: EmbedRequest):
     embeddings, elapsed_ms = embed_texts(texts)
 
     chunk_ids = [c.id for c in chunks]
+    doc_name = get_document_name(req.document_id)
     metadatas = [
-        {"document_id": c.document_id, "index": c.index, "char_count": c.char_count}
+        {"document_id": c.document_id, "document_name": doc_name, "index": c.index, "char_count": c.char_count}
         for c in chunks
     ]
 
