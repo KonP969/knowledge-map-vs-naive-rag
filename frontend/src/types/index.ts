@@ -95,4 +95,4 @@ export interface SessionMetrics {
   queries: QueryMetrics[];
 }
 
-export type Panel = "documents" | "chunks" | "embeddings" | "chat" | "metrics";
+export type Panel = "documents" | "chunks" | "embeddings" | "chat" | "metrics" | "tutorial";

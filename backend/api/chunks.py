@@ -13,6 +13,31 @@ router = APIRouter(prefix="/api/chunks", tags=["chunks"])
 # In-memory: document_id -> ChunkResponse
 _chunks_store: Dict[str, ChunkResponse] = {}
 
+# Parent-child: child_chunk_id -> parent content (larger context window)
+_parent_store: Dict[str, str] = {}
+
+PARENT_SIZE_MULTIPLIER = 3
+
+
+def _build_parent_map(text: str, child_chunks: List[Chunk], child_chunk_size: int) -> Dict[str, str]:
+    """For each child chunk, find/create a larger parent chunk and return mapping."""
+    parent_size = max(800, child_chunk_size * PARENT_SIZE_MULTIPLIER)
+    raw_parents = chunk_fixed_size(text, chunk_size=parent_size, overlap=0)
+    mapping: Dict[str, str] = {}
+    for child in child_chunks:
+        parent_content = None
+        for p in raw_parents:
+            if p["start_char"] <= child.start_char < p["end_char"]:
+                parent_content = p["content"]
+                break
+        if parent_content is None and raw_parents:
+            # fallback: nearest parent
+            nearest = min(raw_parents, key=lambda p: abs(p["start_char"] - child.start_char))
+            parent_content = nearest["content"]
+        if parent_content:
+            mapping[child.id] = parent_content
+    return mapping
+
 
 def _build_chunk_response(raw_chunks: List[dict], doc_id: str, overlap: int = 0, chunk_size: int = 0) -> ChunkResponse:
     chunks = []
@@ -56,6 +81,11 @@ def generate_chunks(req: ChunkRequest):
 
     response = _build_chunk_response(raw, req.document_id, overlap=req.overlap, chunk_size=req.chunk_size)
     _chunks_store[req.document_id] = response
+
+    # Build parent-child mapping for richer context during retrieval
+    parent_map = _build_parent_map(text, response.chunks, req.chunk_size or 500)
+    _parent_store.update(parent_map)
+
     return response
 
 
@@ -71,3 +101,8 @@ def get_chunks_for_document(document_id: str) -> List[Chunk]:
     if document_id not in _chunks_store:
         return []
     return _chunks_store[document_id].chunks
+
+
+def get_parent_content(child_id: str) -> str | None:
+    """Returns parent (larger context) chunk content for a given child chunk ID."""
+    return _parent_store.get(child_id)
