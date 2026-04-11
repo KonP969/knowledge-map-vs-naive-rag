@@ -65,10 +65,11 @@ def get_all_embeddings() -> Dict[str, Any]:
 
 def reset_collection() -> None:
     global _client, _collection
-    if _client is not None:
-        try:
-            _client.delete_collection(COLLECTION_NAME)
-        except Exception:
-            pass
-        _collection = None
-    _get_collection()
+    _collection = None
+    _get_collection()  # initialise _client from disk so we can delete
+    try:
+        _client.delete_collection(COLLECTION_NAME)
+    except Exception:
+        pass
+    _collection = None
+    _get_collection()  # recreate empty collection
