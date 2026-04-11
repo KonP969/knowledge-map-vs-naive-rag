@@ -20,8 +20,9 @@ _current_system_prompt: str = DEFAULT_SYSTEM_PROMPT
 
 class ChatRequest(BaseModel):
     query: str
-    top_k: int = 5
+    top_k: int = 8
     system_prompt: Optional[str] = None
+    temperature: float = 0.0
 
 
 class SystemPromptRequest(BaseModel):
@@ -109,6 +110,7 @@ async def chat(req: ChatRequest):
             req.query,
             embedding_ms=embedding_ms,
             retrieval_ms=retrieval_ms,
+            temperature=req.temperature,
         ):
             yield f"data: {token}\n\n"
         yield "data: [DONE]\n\n"

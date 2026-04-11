@@ -82,7 +82,7 @@ def visualize_embeddings():
         points.append(EmbeddingPoint(
             chunk_id=chunk_id,
             document_id=meta.get("document_id", ""),
-            document_name=meta.get("document_id", "")[:8],
+            document_name=meta.get("document_name") or meta.get("document_id", "")[:12],
             x=float(coords[i, 0]),
             y=float(coords[i, 1]),
             content_preview=data["documents"][i][:100],

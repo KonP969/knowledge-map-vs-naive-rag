@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Globe, CheckCircle, XCircle, Loader2, StopCircle } from "lucide-react";
+import { Globe, CheckCircle, XCircle, Loader2, StopCircle, AlertCircle } from "lucide-react";
 import { crawlUrl } from "../../api/client";
 import type { CrawlEvent } from "../../api/client";
 import type { DocumentMeta } from "../../types";
@@ -8,38 +8,47 @@ interface Props {
   onDocumentsAdded: (docs: DocumentMeta[]) => void;
 }
 
-interface LogEntry {
-  type: "ok" | "error" | "info";
-  label: string;
-  url?: string;
+interface ArticleEntry {
+  title: string;
+  url: string;
+  docId: string;
+}
+
+interface ErrorEntry {
+  url: string;
 }
 
 export function CrawlPanel({ onDocumentsAdded }: Props) {
   const [url, setUrl] = useState("");
   const [maxArticles, setMaxArticles] = useState(50);
   const [running, setRunning] = useState(false);
-  const [log, setLog] = useState<LogEntry[]>([]);
+  const [status, setStatus] = useState<"idle" | "connecting" | "running" | "done" | "error">("idle");
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
+  const [articles, setArticles] = useState<ArticleEntry[]>([]);
+  const [errors, setErrors] = useState<ErrorEntry[]>([]);
+  const [fatalMessage, setFatalMessage] = useState<string | null>(null);
   const abortRef = useRef<(() => void) | null>(null);
   const addedDocsRef = useRef<DocumentMeta[]>([]);
 
   function start() {
     if (!url.trim()) return;
-    setLog([{ type: "info", label: `Szukam artykułów na ${url}…` }]);
-    setProgress(null);
+    setStatus("connecting");
     setRunning(true);
+    setProgress(null);
+    setArticles([]);
+    setErrors([]);
+    setFatalMessage(null);
     addedDocsRef.current = [];
 
     abortRef.current = crawlUrl(
       url.trim(),
       maxArticles,
       (event: CrawlEvent) => {
-        if (event.type === "start") {
+        if (event.type === "connecting") {
+          setStatus("connecting");
+        } else if (event.type === "start") {
+          setStatus("running");
           setProgress({ current: 0, total: event.total! });
-          setLog((prev) => [
-            ...prev,
-            { type: "info", label: `Znaleziono ${event.total} artykułów. Pobieranie…` },
-          ]);
         } else if (event.type === "article") {
           setProgress({ current: event.current!, total: event.total! });
           const meta: DocumentMeta = {
@@ -51,29 +60,15 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
             char_count: 0,
           };
           addedDocsRef.current = [...addedDocsRef.current, meta];
-          setLog((prev) => [
-            ...prev,
-            { type: "ok", label: event.title!, url: event.url },
-          ]);
+          setArticles((prev) => [...prev, { title: event.title!, url: event.url!, docId: event.doc_id! }]);
         } else if (event.type === "error") {
           setProgress((p) => p ? { ...p, current: event.current! } : null);
-          setLog((prev) => [
-            ...prev,
-            { type: "error", label: event.url ?? "unknown", url: event.url },
-          ]);
+          setErrors((prev) => [...prev, { url: event.url ?? "unknown" }]);
         } else if (event.type === "error_fatal") {
-          setLog((prev) => [
-            ...prev,
-            { type: "error", label: event.message ?? "Błąd krytyczny" },
-          ]);
+          setFatalMessage(event.message ?? "Błąd krytyczny");
+          setStatus("error");
         } else if (event.type === "done") {
-          setLog((prev) => [
-            ...prev,
-            {
-              type: "info",
-              label: `Gotowe — dodano ${event.added} artykułów, błędy: ${event.failed}`,
-            },
-          ]);
+          setStatus("done");
           onDocumentsAdded(addedDocsRef.current);
         }
       },
@@ -84,7 +79,7 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
   function stop() {
     abortRef.current?.();
     setRunning(false);
-    setLog((prev) => [...prev, { type: "info", label: "Przerwano przez użytkownika." }]);
+    setStatus("done");
     onDocumentsAdded(addedDocsRef.current);
   }
 
@@ -92,32 +87,26 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* URL + controls */}
       <div className="space-y-2">
         <label className="text-xs font-medium text-muted-foreground">URL bloga</label>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Globe className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
-            <input
-              type="url"
-              placeholder="https://twoj-blog.pl"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={running}
-              className="w-full pl-8 pr-3 py-2 text-sm border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
-            />
-          </div>
+        <div className="relative">
+          <Globe className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            type="url"
+            placeholder="https://twoj-blog.pl"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            disabled={running}
+            className="w-full pl-8 pr-3 py-2 text-sm border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+          />
         </div>
-
         <div className="flex items-center gap-3">
           <label className="text-xs text-muted-foreground whitespace-nowrap">
             Max artykułów: <span className="font-medium text-foreground">{maxArticles}</span>
           </label>
           <input
-            type="range"
-            min={5}
-            max={200}
-            step={5}
-            value={maxArticles}
+            type="range" min={5} max={200} step={5} value={maxArticles}
             onChange={(e) => setMaxArticles(Number(e.target.value))}
             disabled={running}
             className="flex-1"
@@ -125,6 +114,7 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
         </div>
       </div>
 
+      {/* Action button */}
       <div className="flex gap-2">
         {!running ? (
           <button
@@ -146,11 +136,41 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
         )}
       </div>
 
+      {/* Connecting state */}
+      {status === "connecting" && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Szukam artykułów na stronie…
+        </div>
+      )}
+
+      {/* Fatal error */}
+      {status === "error" && fatalMessage && (
+        <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-2">
+          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          {fatalMessage}
+        </div>
+      )}
+
+      {/* Progress bar + counters */}
       {progress && (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{progress.current} / {progress.total}</span>
-            <span>{pct}%</span>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 text-green-600 font-medium">
+                <CheckCircle className="w-3 h-3" />
+                {articles.length} dodano
+              </span>
+              {errors.length > 0 && (
+                <span className="flex items-center gap-1 text-red-500">
+                  <XCircle className="w-3 h-3" />
+                  {errors.length} błędów
+                </span>
+              )}
+            </div>
+            <span className="text-muted-foreground">
+              {progress.current} / {progress.total} · {pct}%
+            </span>
           </div>
           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <div
@@ -161,22 +181,44 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
         </div>
       )}
 
-      {log.length > 0 && (
-        <div className="border rounded-md bg-zinc-950 p-3 max-h-56 overflow-y-auto space-y-1">
-          {log.map((entry, i) => (
-            <div key={i} className="flex items-start gap-1.5 text-xs">
-              {entry.type === "ok" && <CheckCircle className="w-3 h-3 text-green-400 mt-0.5 shrink-0" />}
-              {entry.type === "error" && <XCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />}
-              {entry.type === "info" && <Loader2 className={`w-3 h-3 text-zinc-400 mt-0.5 shrink-0 ${running && i === log.length - 1 ? "animate-spin" : ""}`} />}
-              <span className={
-                entry.type === "ok" ? "text-green-300" :
-                entry.type === "error" ? "text-red-300" :
-                "text-zinc-400"
-              }>
-                {entry.label}
-              </span>
-            </div>
-          ))}
+      {/* Done summary */}
+      {status === "done" && articles.length > 0 && (
+        <div className="text-xs text-muted-foreground">
+          Zakończono — <span className="text-green-600 font-medium">{articles.length} artykułów</span> dodano
+          {errors.length > 0 && <>, <span className="text-red-500">{errors.length} nie udało się</span></>}.
+        </div>
+      )}
+
+      {/* Article list */}
+      {articles.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Pobrane artykuły</p>
+          <div className="border rounded-md divide-y max-h-52 overflow-y-auto">
+            {articles.map((a) => (
+              <div key={a.docId} className="flex items-start gap-2 px-2.5 py-1.5">
+                <CheckCircle className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium truncate">{a.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{a.url}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Error list */}
+      {errors.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-red-500">Nieudane ({errors.length})</p>
+          <div className="border border-red-200 rounded-md divide-y divide-red-100 max-h-28 overflow-y-auto">
+            {errors.map((e, i) => (
+              <div key={i} className="flex items-start gap-2 px-2.5 py-1.5">
+                <XCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground truncate">{e.url}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -33,6 +33,7 @@ def stream_chat(
     query: str,
     embedding_ms: float = 0.0,
     retrieval_ms: float = 0.0,
+    temperature: float = 0.0,
 ) -> Generator[str, None, None]:
     model = os.getenv("CHAT_MODEL", "gpt-4o-mini")
     client = _get_client()
@@ -47,6 +48,7 @@ def stream_chat(
         messages=[{"role": "user", "content": full_prompt}],
         stream=True,
         stream_options={"include_usage": True},
+        temperature=temperature,
     )
 
     for chunk in stream:

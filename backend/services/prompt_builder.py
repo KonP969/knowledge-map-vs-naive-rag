@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from models.chunk import Chunk
 from services.token_counter import count_tokens
 
@@ -12,15 +12,28 @@ Zasady:
 5. Jeśli pytanie wymaga policzenia lub zebrania wszystkich elementów z listy — wymień je wszystkie z kontekstu."""
 
 
+MAX_CONTEXT_TOKENS = 6000
+
+
 def build_prompt(
     query: str,
     chunks: List[Chunk],
     system_message: str = DEFAULT_SYSTEM_PROMPT,
-    document_names: Dict[str, str] | None = None,
+    document_names: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     if chunks:
+        # Trim chunks so context stays within token budget
+        budget = MAX_CONTEXT_TOKENS
+        kept: List[Chunk] = []
+        for chunk in chunks:
+            tokens = count_tokens(chunk.content)
+            if tokens <= budget:
+                kept.append(chunk)
+                budget -= tokens
+            if budget <= 0:
+                break
         context_parts = []
-        for i, chunk in enumerate(chunks, 1):
+        for i, chunk in enumerate(kept, 1):
             doc_name = (document_names or {}).get(chunk.document_id, chunk.document_id[:12])
             context_parts.append(f"[Źródło {i}: {doc_name}]\n{chunk.content}")
         context_block = "\n\n".join(context_parts)

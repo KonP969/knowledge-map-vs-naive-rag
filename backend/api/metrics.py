@@ -15,7 +15,8 @@ def reset_all():
     reset_collection()
     reset_session_metrics()
     from api.documents import _documents
-    from api.chunks import _chunks_store
+    from api.chunks import _chunks_store, _parent_store
     _documents.clear()
     _chunks_store.clear()
+    _parent_store.clear()
     return {"reset": True}
