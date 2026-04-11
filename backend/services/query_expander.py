@@ -1,6 +1,6 @@
 """Query expansion — generates alternative phrasings for better semantic retrieval."""
 import os
-from typing import Optional
+from typing import Optional, List
 from openai import OpenAI
 
 _client: Optional[OpenAI] = None
@@ -13,7 +13,7 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def expand_query(query: str, n: int = 3) -> list[str]:
+def expand_query(query: str, n: int = 3) -> List[str]:
     """Returns [original_query] + n alternative phrasings."""
     try:
         client = _get_client()

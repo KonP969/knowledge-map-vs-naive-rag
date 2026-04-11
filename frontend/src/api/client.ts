@@ -1,4 +1,4 @@
-const BASE = "http://localhost:8000/api";
+const BASE = "http://127.0.0.1:8000/api";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, options);
@@ -123,12 +123,13 @@ export function streamChat(
   onToken: (token: string) => void,
   onDone: () => void,
   systemPrompt?: string,
+  temperature?: number,
 ): () => void {
   const ctrl = new AbortController();
   fetch(`${BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, top_k: topK, system_prompt: systemPrompt }),
+    body: JSON.stringify({ query, top_k: topK, system_prompt: systemPrompt, temperature: temperature ?? 0.0 }),
     signal: ctrl.signal,
   }).then(async (res) => {
     const reader = res.body!.getReader();

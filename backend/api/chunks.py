@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from typing import List, Dict
+from typing import List, Dict, Optional
 from models.chunk import Chunk, ChunkRequest, ChunkResponse, ChunkStats
 from services.chunkers.fixed_size import chunk_fixed_size
 from services.chunkers.recursive import chunk_recursive
@@ -103,6 +103,6 @@ def get_chunks_for_document(document_id: str) -> List[Chunk]:
     return _chunks_store[document_id].chunks
 
 
-def get_parent_content(child_id: str) -> str | None:
+def get_parent_content(child_id: str) -> Optional[str]:
     """Returns parent (larger context) chunk content for a given child chunk ID."""
     return _parent_store.get(child_id)

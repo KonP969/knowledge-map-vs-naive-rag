@@ -16,8 +16,8 @@ class Chunk(BaseModel):
 class ChunkRequest(BaseModel):
     document_id: str
     strategy: str = "fixed"  # "fixed" | "recursive" | "semantic"
-    chunk_size: int = 500
-    overlap: int = 50
+    chunk_size: int = 1000
+    overlap: int = 100
     separators: Optional[List[str]] = None
 
 
