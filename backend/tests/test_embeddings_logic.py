@@ -24,3 +24,30 @@ def test_reset_collection_works_when_called_before_any_add():
     reset_collection()  # called with _client potentially None
     data = get_all_embeddings()
     assert data["ids"] == []
+
+
+def test_get_status_returns_doc_counts():
+    """Status should list each document_id with its chunk count."""
+    reset_collection()
+    add_chunks(
+        chunk_ids=["c1", "c2", "c3"],
+        embeddings=[[0.1] * 3, [0.2] * 3, [0.3] * 3],
+        documents=["chunk one", "chunk two", "chunk three"],
+        metadatas=[
+            {"document_id": "doc-A", "document_name": "a.txt", "index": 0, "char_count": 9},
+            {"document_id": "doc-A", "document_name": "a.txt", "index": 1, "char_count": 9},
+            {"document_id": "doc-B", "document_name": "b.txt", "index": 0, "char_count": 11},
+        ],
+    )
+
+    from api.embeddings import _compute_status
+    status = _compute_status()
+    by_doc = {s["document_id"]: s["chunk_count"] for s in status}
+    assert by_doc["doc-A"] == 2
+    assert by_doc["doc-B"] == 1
+
+
+def test_get_status_empty():
+    reset_collection()
+    from api.embeddings import _compute_status
+    assert _compute_status() == []

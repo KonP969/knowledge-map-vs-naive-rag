@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict
 import numpy as np
 from sklearn.decomposition import PCA
 from models.chunk import Chunk
@@ -28,6 +28,25 @@ class EmbeddingPoint(BaseModel):
 class SimilarityRequest(BaseModel):
     chunk_id_a: str
     chunk_id_b: str
+
+
+class EmbeddingStatus(BaseModel):
+    document_id: str
+    chunk_count: int
+
+
+def _compute_status() -> List[Dict]:
+    data = get_all_embeddings()
+    counts: Dict[str, int] = {}
+    for meta in data["metadatas"]:
+        doc_id = meta.get("document_id", "")
+        counts[doc_id] = counts.get(doc_id, 0) + 1
+    return [{"document_id": doc_id, "chunk_count": count} for doc_id, count in counts.items()]
+
+
+@router.get("/status", response_model=List[EmbeddingStatus])
+def get_embedding_status():
+    return _compute_status()
 
 
 @router.post("/generate")
