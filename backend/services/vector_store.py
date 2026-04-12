@@ -65,11 +65,11 @@ def get_all_embeddings() -> Dict[str, Any]:
 
 def reset_collection() -> None:
     global _client, _collection
-    _collection = None
-    _get_collection()  # initialise _client from disk so we can delete
+    _collection = None          # force _get_collection to re-open _client from disk
+    _get_collection()
     try:
         _client.delete_collection(COLLECTION_NAME)
-    except Exception:
-        pass
-    _collection = None
-    _get_collection()  # recreate empty collection
+    except ValueError:
+        pass  # collection did not exist yet — that is fine
+    _collection = None          # force _get_collection to recreate the collection
+    _get_collection()
