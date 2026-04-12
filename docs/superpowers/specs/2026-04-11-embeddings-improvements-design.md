@@ -59,7 +59,9 @@ def reset_collection() -> None:
 
 `EmbeddingExplorer` renders stale `points` state after a reset because its `useEffect` only runs on mount.
 
-Fix: `App.tsx` passes a `refreshKey: number` prop to `EmbeddingExplorer`. `MetricsPanel` receives an `onReset` callback that increments `refreshKey`. `EmbeddingExplorer`'s `useEffect` depends on `[refreshKey]` — re-fetches documents and visualization on each reset.
+~~Fix: `App.tsx` passes a `refreshKey: number` prop to `EmbeddingExplorer`. `MetricsPanel` receives an `onReset` callback that increments `refreshKey`. `EmbeddingExplorer`'s `useEffect` depends on `[refreshKey]` — re-fetches documents and visualization on each reset.~~
+
+**Not implemented — superseded:** `MetricsPanel.handleReset()` already calls `window.location.reload()` after reset, which fully reinitialises all component state. The `refreshKey` mechanism was unnecessary.
 
 ---
 
