@@ -42,12 +42,13 @@ def test_get_status_returns_doc_counts():
 
     from api.embeddings import _compute_status
     status = _compute_status()
-    by_doc = {s["document_id"]: s["chunk_count"] for s in status}
+    by_doc = {s.document_id: s.chunk_count for s in status}
     assert by_doc["doc-A"] == 2
     assert by_doc["doc-B"] == 1
 
 
 def test_get_status_empty():
+    """Status must return an empty list when no embeddings exist."""
     reset_collection()
     from api.embeddings import _compute_status
     assert _compute_status() == []
