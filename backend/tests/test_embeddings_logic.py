@@ -1,4 +1,5 @@
-from services.vector_store import reset_collection, add_chunks, get_all_embeddings
+from services.vector_store import reset_collection, add_chunks, get_all_embeddings, delete_by_document
+from api.embeddings import _compute_status
 import pytest
 
 
@@ -40,7 +41,6 @@ def test_get_status_returns_doc_counts():
         ],
     )
 
-    from api.embeddings import _compute_status
     status = _compute_status()
     by_doc = {s.document_id: s.chunk_count for s in status}
     assert by_doc["doc-A"] == 2
@@ -50,5 +50,25 @@ def test_get_status_returns_doc_counts():
 def test_get_status_empty():
     """Status must return an empty list when no embeddings exist."""
     reset_collection()
-    from api.embeddings import _compute_status
     assert _compute_status() == []
+
+
+def test_delete_by_document_removes_only_target():
+    """Deleting doc-A embeddings must not touch doc-B embeddings."""
+    reset_collection()
+    add_chunks(
+        chunk_ids=["d1", "d2", "d3"],
+        embeddings=[[0.1] * 3, [0.2] * 3, [0.3] * 3],
+        documents=["a1", "a2", "b1"],
+        metadatas=[
+            {"document_id": "doc-A", "document_name": "a.txt", "index": 0, "char_count": 2},
+            {"document_id": "doc-A", "document_name": "a.txt", "index": 1, "char_count": 2},
+            {"document_id": "doc-B", "document_name": "b.txt", "index": 0, "char_count": 2},
+        ],
+    )
+    delete_by_document("doc-A")
+
+    status = _compute_status()
+    ids = [s.document_id for s in status]
+    assert "doc-A" not in ids
+    assert "doc-B" in ids

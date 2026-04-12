@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 from models.chunk import Chunk
 from services.embeddings_service import embed_texts, embed_query
-from services.vector_store import add_chunks, get_all_embeddings, query_chunks
+from services.vector_store import add_chunks, get_all_embeddings, query_chunks, delete_by_document
 from api.chunks import get_chunks_for_document
 from api.documents import get_document_name
 
@@ -49,6 +49,12 @@ def _compute_status() -> List[EmbeddingStatus]:
 @router.get("/status", response_model=List[EmbeddingStatus])
 def get_embedding_status():
     return _compute_status()
+
+
+@router.delete("/by-document/{document_id}")
+def delete_embeddings_by_document(document_id: str):
+    delete_by_document(document_id)
+    return {"deleted": document_id}
 
 
 @router.post("/generate")
