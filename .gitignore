@@ -1,1 +1,12 @@
 .worktrees/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.env
+backend/chroma_data/
+*.pyc
+.DS_Store
+frontend/node_modules/
+frontend/dist/
+backend/chroma_data_test/
+backend/test_results.txt
