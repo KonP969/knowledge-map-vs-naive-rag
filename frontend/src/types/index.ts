@@ -52,6 +52,11 @@ export interface EmbeddingPoint {
   content_preview: string;
 }
 
+export interface EmbeddingStatus {
+  document_id: string;
+  chunk_count: number;
+}
+
 export interface RetrievedChunk {
   chunk_id: string;
   document_id: string;

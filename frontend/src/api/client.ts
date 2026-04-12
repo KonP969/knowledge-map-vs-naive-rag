@@ -44,6 +44,12 @@ export const api = {
     request<import("../types").EmbeddingPoint[]>("/embeddings/visualize"),
   getSimilarity: (a: string, b: string) =>
     request<{ cosine_similarity: number }>(`/embeddings/similarity?chunk_id_a=${a}&chunk_id_b=${b}`),
+  getEmbeddingStatus: () =>
+    request<import("../types").EmbeddingStatus[]>("/embeddings/status"),
+  deleteEmbeddingsByDocument: (documentId: string) =>
+    request<{ deleted: string }>(`/embeddings/by-document/${documentId}`, {
+      method: "DELETE",
+    }),
 
   // Chat
   getRetrieval: () => request<import("../types").RetrievedChunk[]>("/chat/retrieval"),
