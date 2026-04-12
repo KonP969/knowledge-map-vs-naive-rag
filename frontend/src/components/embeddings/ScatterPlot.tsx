@@ -74,13 +74,18 @@ export function ScatterPlot({ points, selectedA, selectedB, onSelect }: ScatterP
           </Scatter>
         </ScatterChart>
       </ResponsiveContainer>
-      <div className="flex gap-4 mt-2 flex-wrap">
-        {docIds.map((id, i) => (
-          <div key={id} className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-            <span className="text-xs text-muted-foreground truncate max-w-[160px]" title={docNames[id]}>{docNames[id]}</span>
-          </div>
-        ))}
+      <div className="mt-3">
+        <p className="text-xs text-muted-foreground font-medium mb-1.5">Źródła:</p>
+        <div className="flex gap-4 flex-wrap">
+          {docIds.map((id, i) => (
+            <div key={id} className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+              <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={docNames[id]}>
+                {docNames[id]}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
