@@ -28,7 +28,7 @@ export default function App() {
       <Header metrics={metrics} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar active={activePanel} onChange={setActivePanel} />
-        <main className="flex-1 overflow-auto bg-[#F9FAFB]">
+        <main className="flex-1 overflow-auto bg-background">
           {activePanel === "documents" && <DocumentManager />}
           {activePanel === "chunks" && <ChunkingLab />}
           {activePanel === "embeddings" && <EmbeddingExplorer />}

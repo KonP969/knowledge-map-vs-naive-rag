@@ -17,14 +17,14 @@ interface SidebarProps {
 
 export function Sidebar({ active, onChange }: SidebarProps) {
   return (
-    <nav className="w-48 border-r border-border bg-white flex flex-col pt-4 shrink-0">
+    <nav className="w-48 border-r border-border bg-card flex flex-col pt-4 shrink-0">
       {NAV.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
           onClick={() => onChange(id)}
           className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
             active === id
-              ? "bg-primary/10 text-primary font-medium"
+              ? "bg-primary/15 text-primary font-medium"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
