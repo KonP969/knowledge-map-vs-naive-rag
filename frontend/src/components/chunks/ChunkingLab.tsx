@@ -95,7 +95,7 @@ export function ChunkingLab() {
         <div>
           <label className="text-xs font-medium text-muted-foreground">Document</label>
           <select
-            className="w-full mt-1 text-sm border border-border rounded-md px-2 py-1.5 bg-white"
+            className="w-full mt-1 text-sm border border-border rounded-md px-2 py-1.5 bg-muted text-foreground"
             value={selectedDocId}
             onChange={(e) => {
               setSelectedDocId(e.target.value);
@@ -118,7 +118,7 @@ export function ChunkingLab() {
         <button
           onClick={generate}
           disabled={loading || bulkRunning || !selectedDocId}
-          className="w-full py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          className="w-full py-2 bg-primary text-primary-foreground text-sm rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {loading ? "Generating..." : "Generate Chunks"}
         </button>
@@ -134,7 +134,7 @@ export function ChunkingLab() {
             : `Generate All (${documents.length})`}
         </button>
 
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        {error && <p className="text-xs text-error">{error}</p>}
 
         {/* Bulk progress bar */}
         {bulkProgress && (
@@ -146,8 +146,8 @@ export function ChunkingLab() {
               />
             </div>
             <div className="flex gap-3 text-xs">
-              {bulkOk > 0 && <span className="text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" />{bulkOk} ok</span>}
-              {bulkErr > 0 && <span className="text-red-500 flex items-center gap-1"><XCircle className="w-3 h-3" />{bulkErr} błędy</span>}
+              {bulkOk > 0 && <span className="text-success flex items-center gap-1"><CheckCircle className="w-3 h-3" />{bulkOk} ok</span>}
+              {bulkErr > 0 && <span className="text-error flex items-center gap-1"><XCircle className="w-3 h-3" />{bulkErr} błędy</span>}
               {bulkRunning && <span className="text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />w toku</span>}
             </div>
           </div>
@@ -155,12 +155,12 @@ export function ChunkingLab() {
 
         {/* Bulk results list */}
         {bulkResults.length > 0 && (
-          <div className="border rounded-md divide-y max-h-48 overflow-y-auto">
+          <div className="border border-border rounded-md divide-y divide-border max-h-48 overflow-y-auto bg-card">
             {bulkResults.map((r) => (
               <div key={r.docId} className="flex items-start gap-2 px-2.5 py-1.5">
                 {r.status === "ok"
-                  ? <CheckCircle className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />
-                  : <XCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />}
+                  ? <CheckCircle className="w-3 h-3 text-success mt-0.5 shrink-0" />
+                  : <XCircle className="w-3 h-3 text-error mt-0.5 shrink-0" />}
                 <div className="min-w-0">
                   <p className="text-xs truncate">{r.name}</p>
                   <p className="text-xs text-muted-foreground">
