@@ -10,7 +10,13 @@ export function ChunkViewer({ chunks, stats }: ChunkViewerProps) {
     return <p className="text-sm text-muted-foreground">No chunks generated yet.</p>;
   }
 
-  const COLORS = ["bg-blue-100", "bg-green-100", "bg-yellow-100", "bg-purple-100", "bg-pink-100"];
+  const COLORS = [
+    "bg-primary/20 border border-primary/30",
+    "bg-success/15 border border-success/25",
+    "bg-warning/15 border border-warning/25",
+    "bg-purple-500/15 border border-purple-500/25",
+    "bg-pink-500/15 border border-pink-500/25",
+  ];
 
   return (
     <div className="space-y-4">
@@ -22,9 +28,9 @@ export function ChunkViewer({ chunks, stats }: ChunkViewerProps) {
             { label: "Min / Max", value: `${stats.min_length} / ${stats.max_length}` },
             { label: "Overlap", value: `${stats.overlap_pct}%` },
           ].map(({ label, value }) => (
-            <div key={label} className="border rounded-lg p-3 bg-white text-center">
+            <div key={label} className="border border-border rounded-lg p-3 bg-card text-center">
               <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="text-sm font-semibold mt-0.5">{value}</p>
+              <p className="text-sm font-semibold mt-0.5 text-foreground">{value}</p>
             </div>
           ))}
         </div>
@@ -40,7 +46,7 @@ export function ChunkViewer({ chunks, stats }: ChunkViewerProps) {
                 {chunk.char_count} chars · {chunk.token_count} tokens
               </span>
             </div>
-            <p className="text-xs leading-relaxed">{chunk.content}</p>
+            <p className="text-xs leading-relaxed text-foreground">{chunk.content}</p>
           </div>
         ))}
       </div>
