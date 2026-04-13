@@ -25,11 +25,11 @@ export function MetricsPanel() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-sm">Metrics & Logs</h2>
+        <h2 className="font-semibold text-sm text-foreground">Metrics & Logs</h2>
         <button
           onClick={handleReset}
           disabled={resetting}
-          className="text-xs px-3 py-1.5 border border-red-300 text-red-500 rounded-md hover:bg-red-50 disabled:opacity-50 transition-colors"
+          className="text-xs px-3 py-1.5 border border-error/50 text-error rounded-md hover:bg-error/10 disabled:opacity-50 transition-colors"
         >
           {resetting ? "Resetting..." : "Clear All Data"}
         </button>
@@ -43,16 +43,16 @@ export function MetricsPanel() {
               { label: "Total Tokens", value: metrics.total_tokens.toLocaleString() },
               { label: "Total Cost", value: `$${metrics.total_cost_usd.toFixed(4)}` },
             ].map(({ label, value }) => (
-              <div key={label} className="border rounded-lg p-4 bg-white text-center">
+              <div key={label} className="border border-border rounded-lg p-4 bg-card text-center">
                 <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-xl font-semibold mt-1">{value}</p>
+                <p className="text-xl font-semibold mt-1 text-foreground">{value}</p>
               </div>
             ))}
           </div>
 
-          <div className="border rounded-lg bg-white overflow-hidden">
+          <div className="border border-border rounded-lg bg-card overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-muted/50">
+              <thead className="bg-muted/60">
                 <tr>
                   {["Query", "Embed ms", "Retrieval ms", "LLM ms", "Tokens", "Cost"].map((h) => (
                     <th key={h} className="text-left px-3 py-2 text-muted-foreground font-medium">
@@ -63,13 +63,13 @@ export function MetricsPanel() {
               </thead>
               <tbody>
                 {metrics.queries.map((q) => (
-                  <tr key={q.query_id} className="border-t border-border">
-                    <td className="px-3 py-2 max-w-[180px] truncate">{q.query}</td>
-                    <td className="px-3 py-2">{q.embedding_ms.toFixed(0)}</td>
-                    <td className="px-3 py-2">{q.retrieval_ms.toFixed(0)}</td>
-                    <td className="px-3 py-2">{q.llm_ms.toFixed(0)}</td>
-                    <td className="px-3 py-2">{q.total_tokens}</td>
-                    <td className="px-3 py-2">${q.estimated_cost_usd.toFixed(4)}</td>
+                  <tr key={q.query_id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                    <td className="px-3 py-2 max-w-[180px] truncate text-foreground">{q.query}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{q.embedding_ms.toFixed(0)}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{q.retrieval_ms.toFixed(0)}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{q.llm_ms.toFixed(0)}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{q.total_tokens}</td>
+                    <td className="px-3 py-2 text-muted-foreground">${q.estimated_cost_usd.toFixed(4)}</td>
                   </tr>
                 ))}
               </tbody>
