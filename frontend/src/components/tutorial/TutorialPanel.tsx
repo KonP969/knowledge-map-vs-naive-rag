@@ -21,7 +21,7 @@ CHROMA_PERSIST_DIR=./chroma_data`}</Pre>
         <Step number={2} title="Uruchom backend (FastAPI)">
           <p>Otwórz PowerShell w katalogu backendu:</p>
           <Pre>{`cd .worktrees/feature/scaffolding/backend`}</Pre>
-          <p className="mt-2">Aktywuj środowisko wirtualne <span className="text-amber-600 font-medium">(PowerShell — nie używaj <Code>source</Code>)</span>:</p>
+          <p className="mt-2">Aktywuj środowisko wirtualne <span className="text-warning font-medium">(PowerShell — nie używaj <Code>source</Code>)</span>:</p>
           <Pre>{`.\\venv\\Scripts\\Activate.ps1`}</Pre>
           <Note>Jeśli pojawi się błąd "cannot be loaded because running scripts is disabled", uruchom raz:<br />
             <code className="text-xs">Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code>
@@ -137,7 +137,7 @@ npm run dev`}</Pre>
         <Pre>{`cd backend
 .\\.venv\\Scripts\\Activate.ps1
 pytest tests/ -v`}</Pre>
-        <p className="text-sm text-muted-foreground">Oczekiwany wynik: <strong className="text-green-600">15 passed</strong></p>
+        <p className="text-sm text-muted-foreground">Oczekiwany wynik: <strong className="text-success">15 passed</strong></p>
       </section>
     </div>
   );
