@@ -174,7 +174,7 @@ function PipelineStep({ icon, panel, title, children }: { icon: string; panel: s
 
 function Pre({ children }: { children: React.ReactNode }) {
   return (
-    <pre className="bg-zinc-900 text-zinc-100 text-xs rounded p-3 overflow-x-auto font-mono leading-relaxed">
+    <pre className="bg-muted text-foreground text-xs rounded p-3 overflow-x-auto font-mono leading-relaxed">
       {children}
     </pre>
   );
