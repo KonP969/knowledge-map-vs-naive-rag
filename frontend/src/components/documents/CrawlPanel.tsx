@@ -98,7 +98,7 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             disabled={running}
-            className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-md bg-muted text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+            className="w-full pl-8 pr-3 py-2 text-sm border rounded-md bg-muted text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
           />
         </div>
         <div className="flex items-center gap-3">
@@ -193,7 +193,7 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
       {articles.length > 0 && (
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground">Pobrane artykuły</p>
-          <div className="border border-border rounded-md divide-y divide-border max-h-52 overflow-y-auto bg-card">
+          <div className="border rounded-md divide-y max-h-52 overflow-y-auto bg-card">
             {articles.map((a) => (
               <div key={a.docId} className="flex items-start gap-2 px-2.5 py-1.5">
                 <CheckCircle className="w-3 h-3 text-success mt-0.5 shrink-0" />
@@ -211,7 +211,7 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
       {errors.length > 0 && (
         <div className="space-y-1">
           <p className="text-xs font-medium text-error">Nieudane ({errors.length})</p>
-          <div className="border border-error/30 rounded-md divide-y divide-error/20 max-h-28 overflow-y-auto bg-card">
+          <div className="border border-error/30 rounded-md divide-y divide-error/20 max-h-28 overflow-y-auto">
             {errors.map((e, i) => (
               <div key={i} className="flex items-start gap-2 px-2.5 py-1.5">
                 <XCircle className="w-3 h-3 text-error mt-0.5 shrink-0" />
