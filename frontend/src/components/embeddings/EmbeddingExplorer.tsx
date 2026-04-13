@@ -128,7 +128,7 @@ export function EmbeddingExplorer() {
   return (
     <div className="p-6 space-y-4">
       {/* Document source list */}
-      <div className="border rounded-lg bg-white overflow-hidden">
+      <div className="border border-border rounded-lg bg-card overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between gap-4">
           <h2 className="font-semibold text-sm shrink-0">Źródła embeddingów</h2>
           <div className="flex items-center gap-3 min-w-0">
@@ -140,7 +140,7 @@ export function EmbeddingExplorer() {
             <button
               onClick={handleGenerateSelected}
               disabled={selectedCount === 0 || !!embedProgress}
-              className="shrink-0 px-3 py-1.5 bg-primary text-white text-sm rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="shrink-0 px-3 py-1.5 bg-primary text-primary-foreground text-sm rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               Generate Selected ({selectedCount})
             </button>
@@ -148,7 +148,7 @@ export function EmbeddingExplorer() {
         </div>
 
         {error && (
-          <div className="px-4 py-2 text-xs text-red-500 bg-red-50 border-b">{error}</div>
+          <div className="px-4 py-2 text-xs text-error bg-error/10 border-b border-error/20">{error}</div>
         )}
 
         {documents.length === 0 ? (
@@ -180,7 +180,7 @@ export function EmbeddingExplorer() {
                     </td>
                     <td className="px-4 py-2.5 w-44">
                       {embedded ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                        <span className="inline-flex items-center gap-1 text-success font-medium">
                           <span>✓</span>
                           <span>{count} chunków</span>
                         </span>
@@ -193,7 +193,7 @@ export function EmbeddingExplorer() {
                         <button
                           onClick={() => handleDelete(doc.id)}
                           disabled={!!embedProgress}
-                          className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+                          className="text-error/70 hover:text-error disabled:opacity-40 transition-colors"
                           title="Usuń embeddingi dla tego dokumentu"
                         >
                           Usuń
