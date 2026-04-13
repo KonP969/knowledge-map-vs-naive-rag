@@ -17,7 +17,7 @@ function renderAssistantContent(content: string) {
   return parts.map((part, i) => {
     if (/^\[Źródło\s+\d+/.test(part)) {
       return (
-        <span key={i} className="inline-block bg-blue-100 text-blue-700 text-xs font-medium px-1.5 py-0.5 rounded mx-0.5">
+        <span key={i} className="inline-block bg-primary/20 text-primary text-xs font-medium px-1.5 py-0.5 rounded mx-0.5">
           {part}
         </span>
       );
@@ -88,7 +88,7 @@ export function ChatInterface() {
   return (
     <div className="h-full flex gap-4 p-6">
       {/* Chat column */}
-      <div className="flex-1 flex flex-col border rounded-lg bg-white overflow-hidden">
+      <div className="flex-1 flex flex-col border border-border rounded-lg bg-card overflow-hidden">
         <div className="flex-1 overflow-auto p-4 space-y-3">
           {messages.length === 0 && (
             <p className="text-sm text-muted-foreground text-center mt-8">
@@ -99,7 +99,7 @@ export function ChatInterface() {
             <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
               <div
                 className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                  msg.role === "user" ? "bg-primary text-white" : "bg-muted text-foreground"
+                  msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                 }`}
               >
                 {msg.role === "assistant"
@@ -110,7 +110,7 @@ export function ChatInterface() {
                 <div className="max-w-[80%] mt-1 space-y-1">
                   <p className="text-xs text-muted-foreground font-medium px-1">Źródła:</p>
                   {msg.sources.map((chunk) => (
-                    <div key={chunk.chunk_id} className="bg-white border border-border rounded-md px-2 py-1.5 text-xs">
+                    <div key={chunk.chunk_id} className="bg-muted border border-border rounded-md px-2 py-1.5 text-xs">
                       <div className="flex items-center justify-between gap-2 mb-0.5">
                         <span className="font-medium text-primary truncate">{chunk.document_name || chunk.document_id.slice(0, 12)}</span>
                         <span className="text-muted-foreground shrink-0">#{chunk.rank} · {chunk.score.toFixed(3)}</span>
@@ -140,13 +140,13 @@ export function ChatInterface() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             placeholder="Ask a question..."
-            className="flex-1 text-sm border border-border rounded-md px-3 py-1.5 outline-none focus:border-primary"
+            className="flex-1 text-sm border border-border rounded-md px-3 py-1.5 bg-muted text-foreground outline-none focus:border-primary"
             disabled={loading}
           />
           <button
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="p-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            className="p-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>
