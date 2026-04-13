@@ -98,7 +98,7 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             disabled={running}
-            className="w-full pl-8 pr-3 py-2 text-sm border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-md bg-muted text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
           />
         </div>
         <div className="flex items-center gap-3">
@@ -146,7 +146,7 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
 
       {/* Fatal error */}
       {status === "error" && fatalMessage && (
-        <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-2">
+        <div className="flex items-start gap-2 text-xs text-error bg-error/10 border border-error/20 rounded-md p-2">
           <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           {fatalMessage}
         </div>
@@ -157,12 +157,12 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1 text-green-600 font-medium">
+              <span className="flex items-center gap-1 text-success font-medium">
                 <CheckCircle className="w-3 h-3" />
                 {articles.length} dodano
               </span>
               {errors.length > 0 && (
-                <span className="flex items-center gap-1 text-red-500">
+                <span className="flex items-center gap-1 text-error">
                   <XCircle className="w-3 h-3" />
                   {errors.length} błędów
                 </span>
@@ -184,8 +184,8 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
       {/* Done summary */}
       {status === "done" && articles.length > 0 && (
         <div className="text-xs text-muted-foreground">
-          Zakończono — <span className="text-green-600 font-medium">{articles.length} artykułów</span> dodano
-          {errors.length > 0 && <>, <span className="text-red-500">{errors.length} nie udało się</span></>}.
+          Zakończono — <span className="text-success font-medium">{articles.length} artykułów</span> dodano
+          {errors.length > 0 && <>, <span className="text-error">{errors.length} nie udało się</span></>}.
         </div>
       )}
 
@@ -193,10 +193,10 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
       {articles.length > 0 && (
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground">Pobrane artykuły</p>
-          <div className="border rounded-md divide-y max-h-52 overflow-y-auto">
+          <div className="border border-border rounded-md divide-y divide-border max-h-52 overflow-y-auto bg-card">
             {articles.map((a) => (
               <div key={a.docId} className="flex items-start gap-2 px-2.5 py-1.5">
-                <CheckCircle className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />
+                <CheckCircle className="w-3 h-3 text-success mt-0.5 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs font-medium truncate">{a.title}</p>
                   <p className="text-xs text-muted-foreground truncate">{a.url}</p>
@@ -210,11 +210,11 @@ export function CrawlPanel({ onDocumentsAdded }: Props) {
       {/* Error list */}
       {errors.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-red-500">Nieudane ({errors.length})</p>
-          <div className="border border-red-200 rounded-md divide-y divide-red-100 max-h-28 overflow-y-auto">
+          <p className="text-xs font-medium text-error">Nieudane ({errors.length})</p>
+          <div className="border border-error/30 rounded-md divide-y divide-error/20 max-h-28 overflow-y-auto bg-card">
             {errors.map((e, i) => (
               <div key={i} className="flex items-start gap-2 px-2.5 py-1.5">
-                <XCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                <XCircle className="w-3 h-3 text-error mt-0.5 shrink-0" />
                 <p className="text-xs text-muted-foreground truncate">{e.url}</p>
               </div>
             ))}

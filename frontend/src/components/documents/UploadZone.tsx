@@ -38,7 +38,9 @@ export function UploadZone({ onUploaded }: UploadZoneProps) {
         if (f) handleFile(f);
       }}
       className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-        dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+        dragging
+          ? "border-primary bg-primary/10"
+          : "border-border bg-card hover:border-primary/50 hover:bg-muted/30"
       }`}
     >
       <input
@@ -53,11 +55,11 @@ export function UploadZone({ onUploaded }: UploadZoneProps) {
         <p className="text-sm text-muted-foreground">Uploading...</p>
       ) : (
         <>
-          <p className="text-sm font-medium">Drop file here or click to upload</p>
+          <p className="text-sm font-medium text-foreground">Drop file here or click to upload</p>
           <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT</p>
         </>
       )}
-      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+      {error && <p className="text-xs text-error mt-2">{error}</p>}
     </div>
   );
 }

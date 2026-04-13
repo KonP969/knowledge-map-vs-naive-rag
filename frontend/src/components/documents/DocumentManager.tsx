@@ -1,20 +1,23 @@
 import { useState, useEffect } from "react";
-import type { DocumentMeta, DocumentDetail } from "../../types";
+import type { DocumentMeta, DocumentDetail, EmbeddingStatus } from "../../types";
 import { api } from "../../api/client";
 import { UploadZone } from "./UploadZone";
 import { DocumentList } from "./DocumentList";
 import { CrawlPanel } from "./CrawlPanel";
+import { KnowledgeBaseHealth } from "./KnowledgeBaseHealth";
 
 type Tab = "upload" | "crawl";
 
 export function DocumentManager() {
   const [tab, setTab] = useState<Tab>("upload");
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
+  const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus[]>([]);
   const [selected, setSelected] = useState<DocumentDetail | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
     api.listDocuments().then(setDocuments).catch(console.error);
+    api.getEmbeddingStatus().then(setEmbeddingStatus).catch(() => {});
   }, []);
 
   async function handleSelect(doc: DocumentMeta) {
@@ -39,11 +42,15 @@ export function DocumentManager() {
     }
   }
 
+  const embeddedDocs = embeddingStatus.length;
+  const totalChunks = embeddingStatus.reduce((sum, s) => sum + s.chunk_count, 0);
+  const totalChars = documents.reduce((sum, d) => sum + d.char_count, 0);
+
   return (
     <div className="p-6 h-full flex gap-6">
+      {/* Left — upload/crawl + list */}
       <div className="w-80 shrink-0 space-y-4">
-        {/* Tabs */}
-        <div className="flex border-b">
+        <div className="flex border-b border-border">
           {(["upload", "crawl"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -66,7 +73,7 @@ export function DocumentManager() {
           <CrawlPanel onDocumentsAdded={handleCrawled} />
         )}
 
-        <h2 className="font-semibold text-sm">Documents ({documents.length})</h2>
+        <h2 className="font-semibold text-sm text-foreground">Documents ({documents.length})</h2>
         <DocumentList
           documents={documents}
           selectedId={selected?.id ?? null}
@@ -75,11 +82,12 @@ export function DocumentManager() {
         />
       </div>
 
-      <div className="flex-1 border rounded-lg bg-white p-4 overflow-auto">
+      {/* Center — preview */}
+      <div className="flex-1 border border-border rounded-lg bg-card p-4 overflow-auto">
         {loadingPreview && <p className="text-sm text-muted-foreground">Loading...</p>}
         {!loadingPreview && selected && (
           <>
-            <h3 className="font-semibold text-sm mb-3">{selected.name} — Raw Text</h3>
+            <h3 className="font-semibold text-sm mb-3 text-foreground">{selected.name} — Raw Text</h3>
             <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground leading-relaxed">
               {selected.raw_text}
             </pre>
@@ -88,6 +96,16 @@ export function DocumentManager() {
         {!loadingPreview && !selected && (
           <p className="text-sm text-muted-foreground">Select a document to preview its extracted text.</p>
         )}
+      </div>
+
+      {/* Right — KB Health */}
+      <div className="w-52 shrink-0">
+        <KnowledgeBaseHealth
+          totalDocs={documents.length}
+          embeddedDocs={embeddedDocs}
+          totalChunks={totalChunks}
+          totalChars={totalChars}
+        />
       </div>
     </div>
   );
