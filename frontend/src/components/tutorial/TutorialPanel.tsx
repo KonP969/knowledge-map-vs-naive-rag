@@ -122,8 +122,8 @@ npm run dev`}</Pre>
               ["Chat nie odpowiada", "Muszą istnieć embeddingi w ChromaDB — retrieval potrzebuje wektorów"],
               ["Dane po restarcie nadal są", "ChromaDB persystuje w backend/chroma_data/ — użyj Clear All Data"],
             ].map(([problem, solution]) => (
-              <tr key={problem} className="border-b border-border odd:bg-white even:bg-muted/30">
-                <td className="px-3 py-2 border border-border font-medium text-amber-700">{problem}</td>
+              <tr key={problem} className="border-b border-border odd:bg-card even:bg-muted/20">
+                <td className="px-3 py-2 border border-border font-medium text-warning">{problem}</td>
                 <td className="px-3 py-2 border border-border text-foreground">{solution}</td>
               </tr>
             ))}
@@ -148,11 +148,11 @@ pytest tests/ -v`}</Pre>
 function Step({ number, title, done, children }: { number: number; title: string; done?: boolean; children: React.ReactNode }) {
   return (
     <div className="flex gap-4">
-      <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${done ? "bg-green-100 text-green-700" : "bg-primary/10 text-primary"}`}>
+      <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${done ? "bg-success/20 text-success" : "bg-primary/15 text-primary"}`}>
         {done ? "✓" : number}
       </div>
       <div className="flex-1 space-y-2">
-        <h3 className="font-medium text-sm">{title}</h3>
+        <h3 className="font-medium text-sm text-foreground">{title}</h3>
         <div className="text-sm text-muted-foreground space-y-2">{children}</div>
       </div>
     </div>
@@ -161,11 +161,11 @@ function Step({ number, title, done, children }: { number: number; title: string
 
 function PipelineStep({ icon, panel, title, children }: { icon: string; panel: string; title: string; children: React.ReactNode }) {
   return (
-    <div className="border border-border rounded-lg p-4 space-y-2 bg-white">
+    <div className="border border-border rounded-lg p-4 space-y-2 bg-card">
       <div className="flex items-center gap-2">
         <span className="text-lg">{icon}</span>
         <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground">{panel}</span>
-        <span className="font-medium text-sm">{title}</span>
+        <span className="font-medium text-sm text-foreground">{title}</span>
       </div>
       <div className="text-sm text-muted-foreground space-y-2">{children}</div>
     </div>
@@ -186,7 +186,7 @@ function Code({ children }: { children: React.ReactNode }) {
 
 function Note({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2 text-xs text-amber-800">
+    <div className="bg-warning/10 border border-warning/30 rounded px-3 py-2 text-xs text-warning">
       <span className="font-semibold">Wskazówka: </span>{children}
     </div>
   );
