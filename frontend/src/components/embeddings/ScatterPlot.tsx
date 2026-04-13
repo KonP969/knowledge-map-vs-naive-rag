@@ -33,14 +33,14 @@ export function ScatterPlot({ points, selectedA, selectedB, onSelect }: ScatterP
 
   if (points.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 border rounded-lg bg-white">
+      <div className="flex items-center justify-center h-64 border rounded-lg bg-background">
         <p className="text-sm text-muted-foreground">Generate embeddings to see the visualization.</p>
       </div>
     );
   }
 
   return (
-    <div className="border rounded-lg bg-white p-4">
+    <div className="border rounded-lg bg-background p-4">
       <ResponsiveContainer width="100%" height={350}>
         <ScatterChart>
           <XAxis dataKey="x" type="number" domain={["auto", "auto"]} tick={{ fontSize: 10 }} />
@@ -51,7 +51,7 @@ export function ScatterPlot({ points, selectedA, selectedB, onSelect }: ScatterP
               if (!item) return null;
               const p = item.payload;
               return (
-                <div className="bg-white border rounded shadow-sm p-2 max-w-xs">
+                <div className="bg-card border rounded shadow-sm p-2 max-w-xs">
                   <p className="text-xs font-medium truncate">{p.content_preview}</p>
                   <p className="text-xs text-muted-foreground">Doc: {p.document_name}</p>
                 </div>
