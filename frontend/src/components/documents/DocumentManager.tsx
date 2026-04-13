@@ -11,9 +11,9 @@ type Tab = "upload" | "crawl";
 export function DocumentManager() {
   const [tab, setTab] = useState<Tab>("upload");
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
-  const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus[]>([]);
   const [selected, setSelected] = useState<DocumentDetail | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus[]>([]);
 
   useEffect(() => {
     api.listDocuments().then(setDocuments).catch(console.error);
@@ -48,9 +48,9 @@ export function DocumentManager() {
 
   return (
     <div className="p-6 h-full flex gap-6">
-      {/* Left — upload/crawl + list */}
       <div className="w-80 shrink-0 space-y-4">
-        <div className="flex border-b border-border">
+        {/* Tabs */}
+        <div className="flex border-b">
           {(["upload", "crawl"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -73,7 +73,7 @@ export function DocumentManager() {
           <CrawlPanel onDocumentsAdded={handleCrawled} />
         )}
 
-        <h2 className="font-semibold text-sm text-foreground">Documents ({documents.length})</h2>
+        <h2 className="font-semibold text-sm">Documents ({documents.length})</h2>
         <DocumentList
           documents={documents}
           selectedId={selected?.id ?? null}
@@ -82,12 +82,11 @@ export function DocumentManager() {
         />
       </div>
 
-      {/* Center — preview */}
-      <div className="flex-1 border border-border rounded-lg bg-card p-4 overflow-auto">
+      <div className="flex-1 border rounded-lg bg-card border-border p-4 overflow-auto">
         {loadingPreview && <p className="text-sm text-muted-foreground">Loading...</p>}
         {!loadingPreview && selected && (
           <>
-            <h3 className="font-semibold text-sm mb-3 text-foreground">{selected.name} — Raw Text</h3>
+            <h3 className="font-semibold text-sm mb-3">{selected.name} — Raw Text</h3>
             <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground leading-relaxed">
               {selected.raw_text}
             </pre>
