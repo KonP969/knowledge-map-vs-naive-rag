@@ -75,7 +75,7 @@ export function KnowledgeBaseHealth({ totalDocs, embeddedDocs, totalChunks, tota
         />
         <CircularGauge
           value={totalChunks}
-          max={Math.max(totalChunks, 1)}
+          max={200}
           label={`${totalChunks}`}
           sublabel="chunks"
           color="hsl(270 70% 65%)"
