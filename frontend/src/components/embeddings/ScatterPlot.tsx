@@ -67,7 +67,7 @@ export function ScatterPlot({ points, selectedA, selectedB, onSelect }: ScatterP
                 key={p.chunk_id}
                 fill={getDocColor(p.document_id, docIds)}
                 opacity={selectedA === p.chunk_id || selectedB === p.chunk_id ? 1 : 0.7}
-                stroke={selectedA === p.chunk_id || selectedB === p.chunk_id ? "#1e40af" : "none"}
+                stroke={selectedA === p.chunk_id || selectedB === p.chunk_id ? "hsl(188 95% 52%)" : "none"}
                 strokeWidth={2}
               />
             ))}
