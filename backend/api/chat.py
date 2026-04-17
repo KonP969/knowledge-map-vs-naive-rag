@@ -1,4 +1,5 @@
 import time
+import re as _re
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -16,6 +17,30 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 _last_retrieval: List[Dict[str, Any]] = []
 _last_prompt_data: Dict[str, Any] = {}
 _current_system_prompt: str = DEFAULT_SYSTEM_PROMPT
+_last_response: str = ""
+
+
+def _find_citations(response_text: str, source_text: str) -> List[Dict[str, Any]]:
+    """Exact substring matching — finds response sentences in source_text.
+    Returns sorted, merged list of {start, end, text} ranges."""
+    cleaned = _re.sub(r'\[Źródło\s+\d+[^\]]*\]', '', response_text)
+    ranges: List[Dict[str, Any]] = []
+    for sentence in _re.split(r'(?<=[.!?])\s+', cleaned):
+        sentence = sentence.strip()
+        if len(sentence) < 10:
+            continue
+        idx = source_text.find(sentence)
+        if idx != -1:
+            ranges.append({"start": idx, "end": idx + len(sentence), "text": sentence})
+    ranges.sort(key=lambda r: r["start"])
+    merged: List[Dict[str, Any]] = []
+    for r in ranges:
+        if merged and r["start"] <= merged[-1]["end"]:
+            merged[-1]["end"] = max(merged[-1]["end"], r["end"])
+            merged[-1]["text"] = source_text[merged[-1]["start"]:merged[-1]["end"]]
+        else:
+            merged.append(dict(r))
+    return merged
 
 
 class ChatRequest(BaseModel):
@@ -104,7 +129,10 @@ async def chat(req: ChatRequest):
     _last_prompt_data = prompt_data
 
     # 6. Stream response
+    collected: List[str] = []
+
     def event_stream():
+        global _last_response
         for token in stream_chat(
             prompt_data["full_prompt"],
             req.query,
@@ -112,7 +140,9 @@ async def chat(req: ChatRequest):
             retrieval_ms=retrieval_ms,
             temperature=req.temperature,
         ):
+            collected.append(token)
             yield f"data: {token}\n\n"
+        _last_response = "".join(collected)
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
@@ -120,7 +150,12 @@ async def chat(req: ChatRequest):
 
 @router.get("/retrieval")
 def get_retrieval():
-    return _last_retrieval
+    global _last_retrieval, _last_response
+    enriched = []
+    for chunk in _last_retrieval:
+        highlights = _find_citations(_last_response, chunk["content"]) if _last_response else []
+        enriched.append({**chunk, "highlighted_ranges": highlights})
+    return enriched
 
 
 @router.get("/prompt")
