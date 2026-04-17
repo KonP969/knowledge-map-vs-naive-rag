@@ -57,6 +57,12 @@ export interface EmbeddingStatus {
   chunk_count: number;
 }
 
+export interface HighlightRange {
+  start: number;
+  end: number;
+  text: string;
+}
+
 export interface RetrievedChunk {
   chunk_id: string;
   document_id: string;
@@ -64,6 +70,7 @@ export interface RetrievedChunk {
   content: string;
   score: number;
   rank: number;
+  highlighted_ranges?: HighlightRange[];
 }
 
 export interface PromptData {
