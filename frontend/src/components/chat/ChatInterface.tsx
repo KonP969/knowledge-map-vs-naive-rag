@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
-import type { RetrievedChunk, PromptData } from "../../types";
+import type { RetrievedChunk, PromptData, HighlightRange } from "../../types";
 import { streamChat, api } from "../../api/client";
 import { RetrievalPanel } from "./RetrievalPanel";
 import { PromptBuilderPanel } from "./PromptBuilderPanel";
@@ -26,6 +26,30 @@ function renderAssistantContent(content: string) {
   });
 }
 
+function renderWithHighlights(content: string, ranges: HighlightRange[]) {
+  if (!ranges || ranges.length === 0) return <span>{content}</span>;
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  for (const range of ranges) {
+    if (cursor < range.start) {
+      parts.push(<span key={`t-${cursor}`}>{content.slice(cursor, range.start)}</span>);
+    }
+    parts.push(
+      <mark
+        key={`h-${range.start}`}
+        className="bg-primary/25 text-foreground font-medium rounded px-0.5"
+      >
+        {content.slice(range.start, range.end)}
+      </mark>
+    );
+    cursor = range.end;
+  }
+  if (cursor < content.length) {
+    parts.push(<span key="t-end">{content.slice(cursor)}</span>);
+  }
+  return <>{parts}</>;
+}
+
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -34,8 +58,18 @@ export function ChatInterface() {
   const [temperature, setTemperature] = useState(0.0);
   const [retrieval, setRetrieval] = useState<RetrievedChunk[]>([]);
   const [promptData, setPromptData] = useState<PromptData | null>(null);
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
+
+  function toggleSource(key: string) {
+    setExpandedSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -109,15 +143,45 @@ export function ChatInterface() {
               {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
                 <div className="max-w-[80%] mt-1 space-y-1">
                   <p className="text-xs text-muted-foreground font-medium px-1">Źródła:</p>
-                  {msg.sources.map((chunk) => (
-                    <div key={chunk.chunk_id} className="bg-muted border border-border rounded-md px-2 py-1.5 text-xs">
-                      <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <span className="font-medium text-primary truncate">{chunk.document_name || chunk.document_id.slice(0, 12)}</span>
-                        <span className="text-muted-foreground shrink-0">#{chunk.rank} · {chunk.score.toFixed(3)}</span>
+                  {msg.sources.map((chunk) => {
+                    const key = `${i}-${chunk.chunk_id}`;
+                    const isExpanded = expandedSources.has(key);
+                    return (
+                      <div key={chunk.chunk_id} className="bg-muted border border-border rounded-md px-2 py-1.5 text-xs">
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <span className="font-medium text-primary truncate">
+                            {chunk.document_name || chunk.document_id.slice(0, 12)}
+                          </span>
+                          <span className="text-muted-foreground shrink-0">#{chunk.rank} · {chunk.score.toFixed(3)}</span>
+                        </div>
+                        {!isExpanded ? (
+                          <>
+                            <p className="text-muted-foreground line-clamp-2 leading-relaxed">
+                              {chunk.content.slice(0, 120)}…
+                            </p>
+                            <button
+                              onClick={() => toggleSource(key)}
+                              className="mt-1 text-primary/70 hover:text-primary transition-colors"
+                            >
+                              Rozwiń ▼
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+                              {renderWithHighlights(chunk.content, chunk.highlighted_ranges ?? [])}
+                            </p>
+                            <button
+                              onClick={() => toggleSource(key)}
+                              className="mt-1 text-primary/70 hover:text-primary transition-colors"
+                            >
+                              Zwiń ▲
+                            </button>
+                          </>
+                        )}
                       </div>
-                      <p className="text-muted-foreground line-clamp-2 leading-relaxed">{chunk.content.slice(0, 120)}…</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
