@@ -56,7 +56,8 @@ class SystemPromptRequest(BaseModel):
 
 @router.post("")
 async def chat(req: ChatRequest):
-    global _last_retrieval, _last_prompt_data, _current_system_prompt
+    global _last_retrieval, _last_prompt_data, _current_system_prompt, _last_response
+    _last_response = ""
 
     system_prompt = req.system_prompt or _current_system_prompt
 
