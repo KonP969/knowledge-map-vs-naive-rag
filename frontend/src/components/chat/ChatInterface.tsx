@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { Send } from "lucide-react";
 import type { RetrievedChunk, PromptData, HighlightRange } from "../../types";
 import { streamChat, api } from "../../api/client";
@@ -28,7 +28,7 @@ function renderAssistantContent(content: string) {
 
 function renderWithHighlights(content: string, ranges: HighlightRange[]) {
   if (!ranges || ranges.length === 0) return <span>{content}</span>;
-  const parts: React.ReactNode[] = [];
+  const parts: ReactNode[] = [];
   let cursor = 0;
   for (const range of ranges) {
     if (cursor < range.start) {
@@ -147,7 +147,7 @@ export function ChatInterface() {
                     const key = `${i}-${chunk.chunk_id}`;
                     const isExpanded = expandedSources.has(key);
                     return (
-                      <div key={chunk.chunk_id} className="bg-muted border border-border rounded-md px-2 py-1.5 text-xs">
+                      <div key={key} className="bg-muted border border-border rounded-md px-2 py-1.5 text-xs">
                         <div className="flex items-center justify-between gap-2 mb-0.5">
                           <span className="font-medium text-primary truncate">
                             {chunk.document_name || chunk.document_id.slice(0, 12)}
