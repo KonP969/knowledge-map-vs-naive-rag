@@ -59,7 +59,10 @@ export function DocPicker({
   useEffect(() => {
     if (!isOpen) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        setSearch("");
+      }
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -195,7 +198,7 @@ function DocTile({
           e.stopPropagation();
           onDelete();
         }}
-        className="absolute top-1 right-1.5 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-error transition-opacity leading-none"
+        className="absolute top-1 right-1.5 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-error transition-opacity leading-none"
         title="Usuń dokument"
       >
         ✕
