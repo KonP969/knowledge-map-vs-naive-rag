@@ -32,6 +32,8 @@ export const api = {
     }),
   getChunks: (documentId: string) =>
     request<import("../types").ChunkResponse>(`/chunks/${documentId}`),
+  deleteChunks: (documentId: string) =>
+    request<{ deleted: string; count: number }>(`/chunks/${documentId}`, { method: "DELETE" }),
 
   // Embeddings
   generateEmbeddings: (documentId: string) =>
