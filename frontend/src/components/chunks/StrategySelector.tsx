@@ -51,7 +51,7 @@ export function StrategySelector({ value, onChange, documentId }: StrategySelect
                 </button>
 
                 {/* Tooltip */}
-                <div className="absolute bottom-full left-0 mb-2 z-50 w-52 p-2.5 bg-card border border-border rounded-lg shadow-xl invisible group-hover:visible pointer-events-none">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-52 p-2.5 bg-card border border-border rounded-lg shadow-xl invisible group-hover:visible pointer-events-none">
                   <p className="text-[11px] font-semibold text-foreground mb-1">
                     {info.label}
                   </p>
