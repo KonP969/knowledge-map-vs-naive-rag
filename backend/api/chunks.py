@@ -6,6 +6,7 @@ from services.chunkers.recursive import chunk_recursive
 from services.chunkers.semantic import chunk_semantic
 from services.token_counter import count_tokens
 from api.documents import get_document_text
+from persistence import save_json, load_json, CHUNKS_FILE
 import uuid
 
 router = APIRouter(prefix="/api/chunks", tags=["chunks"])
@@ -15,6 +16,22 @@ _chunks_store: Dict[str, ChunkResponse] = {}
 
 # Parent-child: child_chunk_id -> parent content (larger context window)
 _parent_store: Dict[str, str] = {}
+
+
+def _persist() -> None:
+    data = {}
+    for doc_id, resp in _chunks_store.items():
+        chunk_ids = {c.id for c in resp.chunks}
+        parents = {k: v for k, v in _parent_store.items() if k in chunk_ids}
+        data[doc_id] = {"response": resp.model_dump(), "parents": parents}
+    save_json(CHUNKS_FILE, data)
+
+
+def load_chunks() -> None:
+    data = load_json(CHUNKS_FILE)
+    for doc_id, entry in data.items():
+        _chunks_store[doc_id] = ChunkResponse(**entry["response"])
+        _parent_store.update(entry.get("parents", {}))
 
 PARENT_SIZE_MULTIPLIER = 3
 
@@ -79,12 +96,19 @@ def generate_chunks(req: ChunkRequest):
     else:
         raise HTTPException(400, f"Unknown strategy: {req.strategy}")
 
+    # Clear orphaned parent store entries from previous generation
+    if req.document_id in _chunks_store:
+        old_ids = {c.id for c in _chunks_store[req.document_id].chunks}
+        for old_id in old_ids:
+            _parent_store.pop(old_id, None)
+
     response = _build_chunk_response(raw, req.document_id, overlap=req.overlap, chunk_size=req.chunk_size)
     _chunks_store[req.document_id] = response
 
     # Build parent-child mapping for richer context during retrieval
     parent_map = _build_parent_map(text, response.chunks, req.chunk_size or 500)
     _parent_store.update(parent_map)
+    _persist()
 
     return response
 
@@ -94,6 +118,18 @@ def get_chunks(document_id: str):
     if document_id not in _chunks_store:
         raise HTTPException(404, "No chunks generated for this document yet")
     return _chunks_store[document_id]
+
+
+@router.delete("/{document_id}")
+def delete_chunks(document_id: str):
+    if document_id not in _chunks_store:
+        return {"deleted": document_id, "count": 0}
+    chunk_ids = {c.id for c in _chunks_store[document_id].chunks}
+    for cid in chunk_ids:
+        _parent_store.pop(cid, None)
+    del _chunks_store[document_id]
+    _persist()
+    return {"deleted": document_id, "count": len(chunk_ids)}
 
 
 def get_chunks_for_document(document_id: str) -> List[Chunk]:
