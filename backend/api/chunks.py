@@ -30,8 +30,11 @@ def _persist() -> None:
 def load_chunks() -> None:
     data = load_json(CHUNKS_FILE)
     for doc_id, entry in data.items():
-        _chunks_store[doc_id] = ChunkResponse(**entry["response"])
-        _parent_store.update(entry.get("parents", {}))
+        try:
+            _chunks_store[doc_id] = ChunkResponse(**entry["response"])
+            _parent_store.update(entry.get("parents", {}))
+        except Exception:
+            pass  # skip corrupted entries rather than crashing startup
 
 PARENT_SIZE_MULTIPLIER = 3
 

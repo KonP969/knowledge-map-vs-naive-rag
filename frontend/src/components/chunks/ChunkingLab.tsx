@@ -64,6 +64,11 @@ export function ChunkingLab() {
       const status = await api.getEmbeddingStatus();
       setEmbeddingStatus(status);
       initialLoadDone.current = true;
+
+      // Load chunks for the initially selected document
+      if (docs.length > 0 && counts[docs[0].id] !== undefined) {
+        api.getChunks(docs[0].id).then(setResponse).catch(() => setResponse(null));
+      }
     }
     load().catch(console.error);
   }, []);
@@ -128,11 +133,15 @@ export function ChunkingLab() {
     setDocToDelete(doc);
   }, []);
 
-  const handleDeleteCancel = useCallback(() => setDocToDelete(null), []);
+  const handleDeleteCancel = useCallback(() => {
+    setDocToDelete(null);
+    setError(null);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!docToDelete) return;
     setDeleteLoading(true);
+    setError(null);
     const id = docToDelete.id;
     try {
       await api.deleteChunks(id);
