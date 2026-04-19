@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import type { DocumentMeta, ChunkRequest, ChunkResponse, EmbeddingStatus } from "../../types";
 import { api } from "../../api/client";
@@ -41,6 +41,8 @@ export function ChunkingLab() {
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null);
   const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
 
+  const initialLoadDone = useRef(false);
+
   useEffect(() => {
     async function load() {
       const docs = await api.listDocuments();
@@ -61,14 +63,15 @@ export function ChunkingLab() {
       // Embedding status
       const status = await api.getEmbeddingStatus();
       setEmbeddingStatus(status);
+      initialLoadDone.current = true;
     }
     load().catch(console.error);
   }, []);
 
   // Load chunks for selected doc when selection changes
   useEffect(() => {
-    if (!selectedDocId) {
-      setResponse(null);
+    if (!selectedDocId || !initialLoadDone.current) {
+      if (!selectedDocId) setResponse(null);
       return;
     }
     api.getChunks(selectedDocId)
@@ -127,7 +130,7 @@ export function ChunkingLab() {
 
   const handleDeleteCancel = useCallback(() => setDocToDelete(null), []);
 
-  async function handleDeleteConfirm() {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!docToDelete) return;
     setDeleteLoading(true);
     const id = docToDelete.id;
@@ -151,11 +154,17 @@ export function ChunkingLab() {
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      // Chunks may have been deleted even if a later step failed — clear stale count
+      setChunkCounts((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } finally {
       setDeleteLoading(false);
       setDocToDelete(null);
     }
-  }
+  }, [docToDelete]);
 
   const bulkOk = bulkResults.filter((r) => r.status === "ok").length;
   const bulkErr = bulkResults.filter((r) => r.status === "error").length;
