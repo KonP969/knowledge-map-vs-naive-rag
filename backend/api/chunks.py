@@ -125,11 +125,12 @@ def delete_chunks(document_id: str):
     if document_id not in _chunks_store:
         return {"deleted": document_id, "count": 0}
     chunk_ids = {c.id for c in _chunks_store[document_id].chunks}
+    count = len(chunk_ids)
     for cid in chunk_ids:
         _parent_store.pop(cid, None)
     del _chunks_store[document_id]
     _persist()
-    return {"deleted": document_id, "count": len(chunk_ids)}
+    return {"deleted": document_id, "count": count}
 
 
 def get_chunks_for_document(document_id: str) -> List[Chunk]:
