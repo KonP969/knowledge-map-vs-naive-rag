@@ -4,6 +4,7 @@ import re
 import asyncio
 from typing import AsyncGenerator, Optional, List
 from urllib.parse import urljoin, urlparse
+from trafilatura import fetch_url
 
 _BLOCKED_SEGMENTS = frozenset({
     "tag", "category", "author", "wp-admin", "feed",
@@ -48,7 +49,6 @@ def _get_urls_from_listing_sync(start_url: str, max_articles: int) -> List[str]:
     Crawl a listing/category page and follow pagination to collect article URLs.
     Respects order as seen on the page (top to bottom, page 1 first).
     """
-    from trafilatura import fetch_url
     from lxml import html
 
     parsed_start = urlparse(start_url)
@@ -69,24 +69,19 @@ def _get_urls_from_listing_sync(start_url: str, max_articles: int) -> List[str]:
         tree.make_links_absolute(base_domain)
 
         # --- collect article links from this page ---
+        count_before = len(collected)
         for href in tree.xpath("//a/@href"):
-            parsed = urlparse(href)
-            # Must be same domain
-            if parsed.netloc != parsed_start.netloc:
+            clean = href.split("?")[0].split("#")[0].rstrip("/")
+            if not clean.startswith("http"):
                 continue
-            # Must be "deeper" than listing path
-            link_path = parsed.path.rstrip("/")
-            if not link_path.startswith(listing_path + "/"):
-                continue
-            # Must have at least one more path segment
-            suffix = link_path[len(listing_path):].strip("/")
-            if not suffix or "/" in suffix.lstrip("/"):
-                # skip sub-sub-paths and pagination paths
-                pass
-            clean = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-            if clean not in seen and clean != start_url:
-                seen.add(clean)
-                collected.append(clean)
+            if clean not in seen and clean != start_url.rstrip("/"):
+                if _is_article_url(clean, parsed_start.netloc):
+                    seen.add(clean)
+                    collected.append(clean)
+
+        # --- pagination guard: stop if no new URLs on this page ---
+        if page_num > 1 and len(collected) == count_before:
+            break
 
         # --- find next page ---
         # 1) <link rel="next"> (most reliable, used by WordPress etc.)
