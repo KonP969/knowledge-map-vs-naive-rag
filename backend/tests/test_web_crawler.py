@@ -35,6 +35,8 @@ def test_is_article_url_accepts_articles(url):
     ("https://example.com/sitemap.xml", "xml extension"),
     ("https://example.com/a/b/c/", "too deep — 3 segments"),
     ("https://example.com/ab/", "slug too short — under 5 chars"),
+    ("https://example.com/abcd/", "slug exactly 4 chars — under minimum 5"),
+    ("https://example.com/gtm-tutorial-/", "slug ends with hyphen"),
 ])
 def test_is_article_url_rejects_non_articles(url, reason):
     assert _is_article_url(url, NETLOC) is False, f"Should reject: {reason}"
