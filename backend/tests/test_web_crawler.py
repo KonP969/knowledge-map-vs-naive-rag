@@ -163,3 +163,50 @@ def test_probe_returns_false_and_raw_on_failure():
     assert success is False
     assert last_raw is not None
     assert "cloudflare" in last_raw.lower()
+
+
+import asyncio
+from services.web_crawler import crawl_blog
+
+
+def test_crawl_blog_aborts_on_probe_failure():
+    """crawl_blog yields error_fatal when all probe articles fail."""
+
+    async def run():
+        with patch("services.web_crawler._get_urls_sync", return_value=[
+            "https://example.com/a/",
+            "https://example.com/b/",
+            "https://example.com/c/",
+        ]):
+            with patch("services.web_crawler._probe_articles", return_value=(False, "cf-ray cloudflare")):
+                events = []
+                async for event in crawl_blog("https://example.com/blog/", 10):
+                    events.append(event)
+                return events
+
+    events = asyncio.run(run())
+    assert len(events) == 1
+    assert events[0]["type"] == "error_fatal"
+    assert "Cloudflare" in events[0]["message"]
+
+
+def test_crawl_blog_proceeds_when_probe_succeeds():
+    """crawl_blog yields start event and articles when probe succeeds."""
+
+    async def run():
+        with patch("services.web_crawler._get_urls_sync", return_value=[
+            "https://example.com/article-one/",
+        ]):
+            with patch("services.web_crawler._probe_articles", return_value=(True, None)):
+                with patch("services.web_crawler._fetch_and_extract_sync",
+                           return_value={"title": "Article One", "text": "# Article One\n" + "word " * 100}):
+                    events = []
+                    async for event in crawl_blog("https://example.com/blog/", 10):
+                        events.append(event)
+                    return events
+
+    events = asyncio.run(run())
+    types = [e["type"] for e in events]
+    assert "start" in types
+    assert "article" in types
+    assert "error_fatal" not in types
