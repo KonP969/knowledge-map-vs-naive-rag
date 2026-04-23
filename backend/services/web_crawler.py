@@ -229,6 +229,12 @@ async def crawl_blog(base_url: str, max_articles: int) -> AsyncGenerator[dict, N
         }
         return
 
+    any_success, last_raw = await asyncio.to_thread(_probe_articles, urls)
+    if not any_success:
+        cause = _detect_failure_cause(last_raw)
+        yield {"type": "error_fatal", "message": cause}
+        return
+
     yield {"type": "start", "total": len(urls)}
 
     for i, url in enumerate(urls):
