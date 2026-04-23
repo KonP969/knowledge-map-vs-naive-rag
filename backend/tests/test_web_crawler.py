@@ -55,13 +55,6 @@ LISTING_HTML_PAGE1 = b"""
 </body></html>
 """
 
-LISTING_HTML_PAGE2 = b"""
-<html><body>
-  <a href="https://measureschool.com/conversion-tracking/">Conversion</a>
-  <a href="https://measureschool.com/gtm-tutorial/">GTM Tutorial</a>
-</body></html>
-"""
-
 LISTING_HTML_DUPE = b"""
 <html><body>
   <a href="https://measureschool.com/gtm-tutorial/">GTM Tutorial</a>
