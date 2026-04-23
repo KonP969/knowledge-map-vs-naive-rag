@@ -13,7 +13,7 @@ _BLOCKED_EXTENSIONS = frozenset({
     ".pdf", ".jpg", ".jpeg", ".png", ".gif",
     ".zip", ".xml", ".svg", ".webp",
 })
-_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{3,}$")  # min 5 chars total
+_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{3,}[a-z0-9]$")  # min 5 chars, no trailing hyphen
 
 
 def _is_article_url(url: str, base_netloc: str) -> bool:
