@@ -1,8 +1,40 @@
 """Web crawler service — listing-page-first, sitemap fallback."""
+import os
 import re
 import asyncio
 from typing import AsyncGenerator, Optional, List
 from urllib.parse import urljoin, urlparse
+
+_BLOCKED_SEGMENTS = frozenset({
+    "tag", "category", "author", "wp-admin", "feed",
+    "search", "cart", "shop", "page",
+})
+_BLOCKED_EXTENSIONS = frozenset({
+    ".pdf", ".jpg", ".jpeg", ".png", ".gif",
+    ".zip", ".xml", ".svg", ".webp",
+})
+_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{3,}$")  # min 5 chars total
+
+
+def _is_article_url(url: str, base_netloc: str) -> bool:
+    """True if URL looks like a blog article (heuristic)."""
+    parsed = urlparse(url)
+    if parsed.netloc != base_netloc:
+        return False
+    path = parsed.path.rstrip("/")
+    if not path:
+        return False
+    segments = [s for s in path.split("/") if s]
+    if not segments or len(segments) > 2:
+        return False
+    if any(s in _BLOCKED_SEGMENTS for s in segments):
+        return False
+    _, ext = os.path.splitext(segments[-1])
+    if ext.lower() in _BLOCKED_EXTENSIONS:
+        return False
+    if not _SLUG_RE.match(segments[-1]):
+        return False
+    return True
 
 
 def _is_listing_url(url: str) -> bool:
