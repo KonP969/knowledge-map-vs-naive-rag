@@ -2,8 +2,9 @@
 import os
 import re
 import asyncio
-from typing import AsyncGenerator, Optional, List
+from typing import AsyncGenerator, Optional, List, Tuple
 from urllib.parse import urljoin, urlparse
+import trafilatura
 from trafilatura import fetch_url
 
 _BLOCKED_SEGMENTS = frozenset({
@@ -155,8 +156,46 @@ def _get_urls_sync(base_url: str, max_articles: int) -> List[str]:
     return _get_urls_from_sitemap_sync(base_url, max_articles)
 
 
+_CF_MARKERS = ("cf-ray", "cloudflare", "checking your browser", "just a moment")
+_JS_THRESHOLD = 500  # chars
+
+
+def _detect_failure_cause(raw: Optional[str]) -> str:
+    """Return a human-readable message explaining why content could not be fetched."""
+    if raw is None:
+        return "Nie udało się nawiązać połączenia ze stroną. Sprawdź URL lub spróbuj później."
+    lower = raw.lower()
+    if any(m in lower for m in _CF_MARKERS):
+        return "Strona używa ochrony Cloudflare — crawler nie obsługuje tej strony."
+    if len(raw.strip()) < _JS_THRESHOLD:
+        return "Strona wymaga JavaScript do renderowania treści."
+    return "Nie udało się pobrać treści artykułów. Sprawdź URL lub spróbuj później."
+
+
+def _probe_articles(urls: List[str], n: int = 3) -> Tuple[bool, Optional[str]]:
+    """
+    Fetch first n URLs and attempt extraction.
+    Returns (any_success: bool, last_raw: Optional[str]).
+    last_raw is None when any_success is True.
+    """
+    last_raw: Optional[str] = None
+    for url in urls[:n]:
+        raw = trafilatura.fetch_url(url)
+        last_raw = raw
+        if raw:
+            text = trafilatura.extract(
+                raw,
+                output_format="markdown",
+                include_comments=False,
+                include_tables=True,
+                with_metadata=False,
+            )
+            if text and len(text.strip()) >= 100:
+                return True, None
+    return False, last_raw
+
+
 def _fetch_and_extract_sync(url: str) -> Optional[dict]:
-    import trafilatura
     downloaded = trafilatura.fetch_url(url)
     if not downloaded:
         return None

@@ -106,3 +106,60 @@ def test_listing_stops_when_no_new_urls():
 
     # Should have fetched page 1 + page 2, then stopped (not page 3)
     assert call_count["n"] == 2
+
+
+from services.web_crawler import _detect_failure_cause, _probe_articles
+
+
+def test_detect_cloudflare():
+    raw = "<html>Just a moment... cf-ray: abc123 cloudflare</html>"
+    msg = _detect_failure_cause(raw)
+    assert "Cloudflare" in msg
+
+
+def test_detect_js_required():
+    raw = "<html><body></body></html>"  # very short
+    msg = _detect_failure_cause(raw)
+    assert "JavaScript" in msg
+
+
+def test_detect_none_response():
+    msg = _detect_failure_cause(None)
+    assert "połączenia" in msg
+
+
+def test_detect_generic_fallback():
+    raw = "<html>" + "x" * 600 + "</html>"  # long enough, no CF markers
+    msg = _detect_failure_cause(raw)
+    assert "Nie udało się" in msg
+
+
+def test_probe_returns_true_on_success():
+    """Probe returns True when at least one article extracts successfully."""
+    good_html = "<html><body><article>" + "word " * 200 + "</article></body></html>"
+
+    with patch("services.web_crawler.trafilatura") as mock_traf:
+        mock_traf.fetch_url.return_value = good_html
+        mock_traf.extract.return_value = "# Title\n" + "word " * 100
+
+        success, last_raw = _probe_articles(["https://example.com/article-one/"])
+
+    assert success is True
+    assert last_raw is None
+
+
+def test_probe_returns_false_and_raw_on_failure():
+    """Probe returns False and the last raw content when all articles fail."""
+    with patch("services.web_crawler.trafilatura") as mock_traf:
+        mock_traf.fetch_url.return_value = "<html>cf-ray cloudflare checking your browser</html>"
+        mock_traf.extract.return_value = None
+
+        success, last_raw = _probe_articles([
+            "https://example.com/a/",
+            "https://example.com/b/",
+            "https://example.com/c/",
+        ])
+
+    assert success is False
+    assert last_raw is not None
+    assert "cloudflare" in last_raw.lower()
