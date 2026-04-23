@@ -53,7 +53,6 @@ def _get_urls_from_listing_sync(start_url: str, max_articles: int) -> List[str]:
 
     parsed_start = urlparse(start_url)
     base_domain = f"{parsed_start.scheme}://{parsed_start.netloc}"
-    listing_path = parsed_start.path.rstrip("/")
 
     collected: List[str] = []
     seen: set = set()
