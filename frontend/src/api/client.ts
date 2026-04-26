@@ -66,6 +66,28 @@ export const api = {
   // Metrics
   getSessionMetrics: () => request<import("../types").SessionMetrics>("/metrics/session"),
   resetAll: () => request<{ reset: boolean }>("/data/reset", { method: "DELETE" }),
+
+  // Folders
+  getFolders: () => request<import("../types").Folder[]>("/folders/"),
+  createFolder: (name: string) =>
+    request<import("../types").Folder>("/folders/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
+  deleteFolder: (id: string) => request<{ deleted: string }>(`/folders/${id}`, { method: "DELETE" }),
+  renameFolder: (id: string, name: string) =>
+    request<import("../types").Folder>(`/folders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
+  assignDocumentToFolder: (docId: string, folderId: string | null) =>
+    request<import("../types").DocumentMeta>(`/documents/${docId}/folder`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder_id: folderId }),
+    }),
 };
 
 export interface CrawlEvent {

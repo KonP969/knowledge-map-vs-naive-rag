@@ -3,17 +3,38 @@ import uuid
 import json
 import tempfile
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from models.document import DocumentMeta, DocumentDetail
 from services.document_parser import parse_document
+from persistence import save_json, load_json, DOCUMENTS_FILE
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 # In-memory store: id -> {meta: DocumentMeta, text: str}
 _documents: Dict[str, Dict] = {}
+
+
+def _persist() -> None:
+    save_json(DOCUMENTS_FILE, {
+        doc_id: {"meta": entry["meta"].model_dump(), "text": entry["text"]}
+        for doc_id, entry in _documents.items()
+    })
+
+
+def load_documents() -> None:
+    data = load_json(DOCUMENTS_FILE)
+    for doc_id, entry in data.items():
+        _documents[doc_id] = {
+            "meta": DocumentMeta(**entry["meta"]),
+            "text": entry["text"],
+        }
+
+
+class AssignFolderRequest(BaseModel):
+    folder_id: Optional[str] = None
 
 
 @router.post("/upload", response_model=DocumentMeta)
@@ -43,8 +64,11 @@ async def upload_document(file: UploadFile = File(...)):
         page_count=parsed.get("page_count"),
         upload_date=datetime.utcnow().isoformat(),
         char_count=parsed["char_count"],
+        source_type="upload",
+        source_url=None,
     )
     _documents[doc_id] = {"meta": meta, "text": parsed["text"]}
+    _persist()
     return meta
 
 
@@ -61,11 +85,26 @@ def get_document(doc_id: str):
     return DocumentDetail(**entry["meta"].model_dump(), raw_text=entry["text"])
 
 
+@router.patch("/{doc_id}/folder", response_model=DocumentMeta)
+def assign_folder(doc_id: str, body: AssignFolderRequest):
+    if doc_id not in _documents:
+        raise HTTPException(404, "Document not found")
+    if body.folder_id is not None:
+        from api.folders import _folders
+        if body.folder_id not in _folders:
+            raise HTTPException(404, "Folder not found")
+    meta = _documents[doc_id]["meta"]
+    _documents[doc_id]["meta"] = DocumentMeta(**{**meta.model_dump(), "folder_id": body.folder_id})
+    _persist()
+    return _documents[doc_id]["meta"]
+
+
 @router.delete("/{doc_id}")
 def delete_document(doc_id: str):
     if doc_id not in _documents:
         raise HTTPException(404, "Document not found")
     del _documents[doc_id]
+    _persist()
     return {"deleted": doc_id}
 
 
@@ -95,8 +134,11 @@ async def crawl_url(req: CrawlRequest):
                         size_bytes=len(event["text"].encode()),
                         upload_date=datetime.utcnow().isoformat(),
                         char_count=len(event["text"]),
+                        source_type="crawl",
+                        source_url=event.get("url"),
                     )
                     _documents[doc_id] = {"meta": meta, "text": event["text"]}
+                    _persist()
                     added += 1
                     yield f"data: {json.dumps({**event, 'doc_id': doc_id})}\n\n"
                 elif event["type"] == "error":
