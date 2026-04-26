@@ -5,7 +5,7 @@ interface DocumentListProps {
   documents: DocumentMeta[];
   selectedId: string | null;
   onSelect: (doc: DocumentMeta) => void;
-  onDelete: (id: string) => void;
+  onDeleteRequest: (doc: DocumentMeta) => void;
 }
 
 function formatBytes(b: number) {
@@ -14,9 +14,9 @@ function formatBytes(b: number) {
   return `${(b / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function DocumentList({ documents, selectedId, onSelect, onDelete }: DocumentListProps) {
+export function DocumentList({ documents, selectedId, onSelect, onDeleteRequest }: DocumentListProps) {
   if (documents.length === 0) {
-    return <p className="text-sm text-muted-foreground py-4">No documents uploaded yet.</p>;
+    return <p className="text-sm text-muted-foreground py-4">Brak dokumentów.</p>;
   }
 
   return (
@@ -38,8 +38,9 @@ export function DocumentList({ documents, selectedId, onSelect, onDelete }: Docu
             </p>
           </div>
           <button
-            onClick={(e) => { e.stopPropagation(); onDelete(doc.id); }}
+            onClick={(e) => { e.stopPropagation(); onDeleteRequest(doc); }}
             className="p-1 rounded hover:bg-error/20 hover:text-error text-muted-foreground transition-colors"
+            title="Usuń dokument (razem z chunkami i embeddingami)"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>

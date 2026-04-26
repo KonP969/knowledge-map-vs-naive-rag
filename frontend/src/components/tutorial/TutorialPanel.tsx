@@ -45,44 +45,42 @@ npm run dev`}</Pre>
 
         <PipelineStep icon="📄" panel="Documents" title="Wgraj dokument">
           <ol className="list-decimal list-inside space-y-1 text-sm">
-            <li>Przeciągnij plik <Code>.txt</Code>, <Code>.pdf</Code> lub <Code>.docx</Code> na strefę uploadu</li>
-            <li>Dokument pojawi się na liście z nazwą, rozmiarem i liczbą znaków</li>
+            <li>Przeciągnij plik <Code>.txt</Code>, <Code>.pdf</Code> lub <Code>.docx</Code> na strefę uploadu — lub wklej URL bloga w zakładce "From URL"</li>
+            <li>Po wgraniu system zapyta, czy przypisać dokument do folderu — wybierz istniejący, utwórz nowy lub pomiń</li>
+            <li>Użyj chipów folderów i pola wyszukiwania aby filtrować listę dokumentów</li>
             <li>Kliknij na dokument — zobaczysz podgląd surowego tekstu po prawej</li>
+            <li>Kliknij ikonę kosza aby usunąć dokument — zostaniesz poproszony o potwierdzenie, po którym usunięte zostaną też jego chunki i embeddingi</li>
           </ol>
           <Note>Im bardziej spójny i ustrukturyzowany dokument, tym lepsze wyniki retrieval.</Note>
         </PipelineStep>
 
         <PipelineStep icon="✂️" panel="Chunking Lab" title="Podziel tekst na fragmenty">
           <ol className="list-decimal list-inside space-y-1 text-sm">
-            <li>Wybierz dokument z listy</li>
-            <li>Wybierz strategię: <strong>Fixed Size</strong> (co N znaków), <strong>Recursive</strong> (po separatorach), <strong>Semantic</strong> (po zdaniach)</li>
-            <li>Ustaw suwaki <strong>Chunk Size</strong> i <strong>Overlap %</strong></li>
-            <li>Kliknij <strong>Generate Chunks</strong> — zobaczysz statystyki i kolorowe bloki tekstu</li>
+            <li>W lewym panelu ustaw strategię: <strong>Fixed Size</strong>, <strong>Recursive</strong> lub <strong>Semantic</strong>, a także suwaki <strong>Chunk Size</strong> i <strong>Overlap</strong></li>
+            <li>Zakładka <strong>Kolejka</strong> pokazuje dokumenty bez chunków — kliknij "Chunkuj" przy wybranym dokumencie lub "Chunkuj całą kolejkę" dla wszystkich</li>
+            <li>Zakładka <strong>Przeglądaj</strong> pokazuje dokumenty z chunkami — wybierz dokument z listy aby zobaczyć wygenerowane fragmenty i ich statystyki</li>
           </ol>
           <Note>Zbyt duże chunki = mało precyzyjny retrieval. Overlap zapobiega ucinaniu sensu na granicy.</Note>
         </PipelineStep>
 
         <PipelineStep icon="🔵" panel="Embeddings" title="Wygeneruj embeddingi i wizualizuj">
           <ol className="list-decimal list-inside space-y-1 text-sm">
-            <li>Wybierz dokument (musi mieć wygenerowane chunki)</li>
-            <li>Kliknij <strong>Generate Embeddings</strong> — każdy chunk trafia do OpenAI, który zamienia go w wektor 1536 liczb, a potem do ChromaDB</li>
-            <li>Scatter plot pokazuje chunki jako punkty w 2D</li>
-            <li>Kliknij punkt — zobaczysz treść chunku</li>
+            <li>Zakładka <strong>Do wygenerowania</strong> pokazuje dokumenty bez embeddingów — kliknij "Embed" przy wybranym dokumencie lub "Wygeneruj wszystkie"</li>
+            <li>Zakładka <strong>Wygenerowane</strong> pokazuje dokumenty z embeddingami i scatter plot w 2D</li>
+            <li>Kliknij punkt na wykresie — zobaczysz treść chunku</li>
             <li>Kliknij dwa punkty kolejno → zobaczysz cosine similarity (0–1)</li>
           </ol>
 
           <div className="space-y-2 mt-2">
             <p className="font-medium text-foreground text-sm">Co widzę na wykresie?</p>
-            <p>Każdy punkt to jeden chunk tekstu. Jego <strong>pozycja</strong> reprezentuje znaczenie — model OpenAI zamienił każdy fragment w wektor 1536 liczb (tzw. embedding), a PCA spłaszczyło to do 2D żebyś mógł to zobaczyć. Punkty blisko siebie = fragmenty o podobnym znaczeniu. Punkty daleko = tematycznie różne.</p>
-            <p>Przy 2–3 punktach wykres wygląda pusto — dopiero przy 20+ chunków widać skupiska tematyczne i różnice między dokumentami.</p>
+            <p>Każdy punkt to jeden chunk tekstu. Jego <strong>pozycja</strong> reprezentuje znaczenie — model OpenAI zamienił każdy fragment w wektor 1536 liczb (tzw. embedding), a PCA spłaszczyło to do 2D żebyś mógł to zobaczyć. Punkty blisko siebie = fragmenty o podobnym znaczeniu.</p>
+            <p>Przy 2–3 punktach wykres wygląda pusto — dopiero przy 20+ chunków widać skupiska tematyczne.</p>
           </div>
 
           <div className="space-y-2 mt-2">
             <p className="font-medium text-foreground text-sm">Co oznacza cosine similarity?</p>
             <p>Miara podobieństwa między dwoma fragmentami: <strong>1.0</strong> = identyczne znaczenie, <strong>0.0</strong> = zupełnie różne, <strong>wartości ujemne</strong> = przeciwstawne. Właśnie tym kryterium RAG wybiera najlepsze chunki do odpowiedzi na Twoje pytanie.</p>
           </div>
-
-          <Note>Ten sam tekst → zawsze ten sam wektor (model jest deterministyczny). Nie klikaj Generate Embeddings dwa razy na tym samym dokumencie — tworzysz duplikaty w ChromaDB. Jeśli to zrobiłeś, użyj Clear All Data i zacznij od nowa.</Note>
         </PipelineStep>
 
         <PipelineStep icon="💬" panel="Chat" title="Zadaj pytanie i obserwuj pipeline">
@@ -118,9 +116,10 @@ npm run dev`}</Pre>
             {[
               ["Backend nie startuje — brak modułu", "pip install -r requirements.txt (w aktywowanym venv)"],
               ["\"OPENAI_API_KEY not set\"", "Sprawdź backend/.env — klucz musi zaczynać się od sk-"],
-              ["Scatter plot pusty", "Najpierw wygeneruj chunki (panel 2), potem embeddingi (panel 3)"],
+              ["Scatter plot pusty", "Przejdź do zakładki Wygenerowane w sekcji Embeddings — jeśli pusta, najpierw wygeneruj chunki i embeddingi"],
               ["Chat nie odpowiada", "Muszą istnieć embeddingi w ChromaDB — retrieval potrzebuje wektorów"],
               ["Dane po restarcie nadal są", "ChromaDB persystuje w backend/chroma_data/ — użyj Clear All Data"],
+              ["Chcę usunąć dokument z bazy", "Kliknij ikonę kosza w sekcji Documents — potwierdzenie usunie dokument razem z chunkami i embeddingami"],
             ].map(([problem, solution]) => (
               <tr key={problem} className="border-b border-border odd:bg-card even:bg-muted/20">
                 <td className="px-3 py-2 border border-border font-medium text-warning">{problem}</td>

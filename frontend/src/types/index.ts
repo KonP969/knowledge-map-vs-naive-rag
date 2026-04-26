@@ -5,6 +5,15 @@ export interface DocumentMeta {
   page_count: number | null;
   upload_date: string;
   char_count: number;
+  source_type: "upload" | "crawl";
+  source_url?: string | null;
+  folder_id?: string | null;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  created_at: string;
 }
 
 export interface DocumentDetail extends DocumentMeta {

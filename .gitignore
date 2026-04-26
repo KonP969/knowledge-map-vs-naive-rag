@@ -11,3 +11,17 @@ frontend/dist/
 backend/chroma_data_test/
 backend/test_results.txt
 backend/tests/rag_evaluation/reports/
+
+# Dev-tool internals (not for public repo)
+.claude/
+.superpowers/
+CLAUDE.md
+ai-product-strategist-prd-prompt.md
+
+# Runtime data (persisted state, not source)
+backend/data/
+
+# OS / editor noise
+bash.exe.stackdump
+*.stackdump
+stitch_redesign/

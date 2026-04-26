@@ -9,6 +9,9 @@ class DocumentMeta(BaseModel):
     page_count: Optional[int] = None
     upload_date: str
     char_count: int
+    source_type: str = "upload"
+    source_url: Optional[str] = None
+    folder_id: Optional[str] = None
 
 
 class DocumentDetail(DocumentMeta):
