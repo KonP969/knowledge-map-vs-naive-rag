@@ -173,7 +173,8 @@ class WikiStore:
         return self.root / "wiki" / "claims.jsonl"
 
     def _claim_dedup_key(self, claim: Claim) -> str:
-        raw = f"{claim.subject_id}|{claim.text.strip().lower()}|{claim.polarity}"
+        # Phase 1: dedup by id only (identical objects). Phase 2 adds semantic dedup.
+        raw = f"{claim.id}|{claim.subject_id}|{claim.text.strip().lower()}|{claim.polarity}"
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     def append_claim(self, claim: Claim) -> bool:
