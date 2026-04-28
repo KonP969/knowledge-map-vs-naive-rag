@@ -21,6 +21,11 @@ ai-product-strategist-prd-prompt.md
 # Runtime data (persisted state, not source)
 backend/data/
 
+# Knowledge map data — gitignored, except bundled .example/
+backend/wiki_data/*
+!backend/wiki_data/.example/
+!backend/wiki_data/.example/**
+
 # OS / editor noise
 bash.exe.stackdump
 *.stackdump
