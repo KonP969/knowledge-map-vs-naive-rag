@@ -1,5 +1,5 @@
 from typing import List, Literal, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from models.wiki_models import EntityType, Polarity, Span
 
 
@@ -22,7 +22,7 @@ class ClaimExtraction(BaseModel):
     subject_name: str
     subject_type: Literal["entity", "concept"]
     span: Span
-    confidence: float
+    confidence: float = Field(..., ge=0.0, le=1.0)
     polarity: Polarity
 
 
