@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 from typing import Any, Dict
 
@@ -66,6 +65,7 @@ def _parse_pdf(path: Path) -> str:
 
 
 def _parse_docx(path: Path) -> str:
+    """Extract body paragraph text only. Table cells, headers, and text frames are not included."""
     doc = Document(str(path))
     paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
     return "\n".join(paragraphs)
@@ -93,6 +93,6 @@ def _detect_language(text: str) -> str:
 
 
 def _atomic_write(path: Path, content: str) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp = path.parent / (path.name + ".tmp")
     tmp.write_text(content, encoding="utf-8")
     tmp.replace(path)
