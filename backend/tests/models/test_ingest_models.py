@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 from models.ingest_models import (
     EntityMention, ConceptMention, ClaimExtraction,
     SourceClassification, ConflictReport, IngestResult,
@@ -19,7 +20,7 @@ def test_entity_mention_valid():
 
 
 def test_entity_mention_invalid_type():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         EntityMention(
             name="IKEA",
             type="Company",  # not in EntityType
@@ -51,13 +52,25 @@ def test_claim_extraction_valid_polarity():
 
 
 def test_claim_extraction_invalid_subject_type():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         ClaimExtraction(
             text="X",
             subject_name="X",
             subject_type="relation",  # invalid
             span=Span(start=0, end=1, text="X"),
             confidence=0.5,
+            polarity="asserts",
+        )
+
+
+def test_claim_extraction_confidence_out_of_range():
+    with pytest.raises(ValidationError):
+        ClaimExtraction(
+            text="X",
+            subject_name="X",
+            subject_type="entity",
+            span=Span(start=0, end=1, text="X"),
+            confidence=1.5,  # out of range
             polarity="asserts",
         )
 
@@ -86,7 +99,7 @@ def test_conflict_report_valid():
 
 
 def test_ingest_result_status_enum():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         IngestResult(
             source_id="src_001",
             slug="test-source",
