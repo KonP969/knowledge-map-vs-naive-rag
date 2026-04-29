@@ -4,6 +4,15 @@ from models.ingest_models import (
     SourceClassification, EntityMention, ConceptMention, ClaimExtraction
 )
 from models.wiki_models import Span
+import services.source_classifier as _sc_module
+
+
+@pytest.fixture(autouse=True)
+def reset_openai_client():
+    """Reset the module-level _client singleton before and after each test."""
+    _sc_module._client = None
+    yield
+    _sc_module._client = None
 
 
 # ── shared fixture ────────────────────────────────────────────────────────────
@@ -86,7 +95,7 @@ def test_classify_source_passes_text_to_llm():
 
         call_kwargs = mock_client.beta.chat.completions.parse.call_args
         # The text must appear somewhere in the messages
-        messages = call_kwargs.kwargs.get("messages") or call_kwargs.args[0]
+        messages = call_kwargs.kwargs.get("messages", [])
         all_content = " ".join(
             m["content"] for m in messages if isinstance(m.get("content"), str)
         )
