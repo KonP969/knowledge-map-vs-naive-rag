@@ -44,4 +44,7 @@ def classify_source(text: str, model: str = None) -> SourceClassification:
         ],
         response_format=SourceClassification,
     )
-    return response.choices[0].message.parsed
+    result = response.choices[0].message.parsed
+    if result is None:
+        raise ValueError("LLM returned no structured output (possible refusal or content filter)")
+    return result
