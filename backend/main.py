@@ -7,6 +7,8 @@ from api.embeddings import router as embeddings_router
 from api.chat import router as chat_router
 from api.metrics import router as metrics_router
 from api.folders import router as folders_router
+from api.ingest import router as ingest_router
+from api.wiki import router as wiki_router
 
 load_dotenv()
 
@@ -36,6 +38,8 @@ app.include_router(embeddings_router)
 app.include_router(chat_router)
 app.include_router(metrics_router)
 app.include_router(folders_router)
+app.include_router(ingest_router)
+app.include_router(wiki_router)
 
 @app.get("/health")
 def health():
