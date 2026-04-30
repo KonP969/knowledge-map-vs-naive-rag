@@ -181,3 +181,28 @@ def test_resolve_concept_id_format(store, simple_classification):
     )
     concept = store.read_concept("neutral-palette")
     assert concept.id.startswith("c_")
+
+
+def test_resolve_entity_id_is_e001_in_empty_store(store, simple_classification):
+    resolve_classification(simple_classification, "src_001", store)
+    entity = store.read_entity("sypialnia", "Place")
+    assert entity.id == "e_001"
+
+
+def test_resolve_entity_id_seeds_correctly_with_preexisting(store, simple_classification):
+    # Pre-create entity with id e_003 (simulating a gap)
+    pre = Entity(
+        id="e_003", type="Place", aliases=[],
+        description="Pre-existing.", questions=[], tags=[],
+    )
+    store.write_entity(pre, slug="preexisting")
+    # Now resolve a new entity — it should get e_004, not e_001 or e_002
+    result = resolve_classification(simple_classification, "src_001", store)
+    entity = store.read_entity("sypialnia", "Place")
+    assert entity.id == "e_004"
+
+
+def test_resolve_edge_count_matches_mentions(store, simple_classification):
+    result = resolve_classification(simple_classification, "src_001", store)
+    # simple_classification has 1 entity mention + 1 concept mention = 2 edges
+    assert len(result["edges"]) == 2
