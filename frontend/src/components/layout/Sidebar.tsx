@@ -1,4 +1,4 @@
-import { FileText, Layers, ScatterChart, MessageSquare, BarChart2, BookOpen } from "lucide-react";
+import { FileText, Layers, ScatterChart, MessageSquare, BarChart2, BookOpen, Database, Zap } from "lucide-react";
 import type { Panel } from "../../types";
 
 const NAV = [
@@ -8,6 +8,8 @@ const NAV = [
   { id: "chat" as Panel, label: "Chat", icon: MessageSquare },
   { id: "metrics" as Panel, label: "Metrics", icon: BarChart2 },
   { id: "tutorial" as Panel, label: "Tutorial", icon: BookOpen },
+  { id: "sources" as Panel, label: "Sources", icon: Database },
+  { id: "ingest" as Panel, label: "Ingest", icon: Zap },
 ];
 
 interface SidebarProps {
