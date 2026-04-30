@@ -68,4 +68,5 @@ def detect_conflicts(
         messages=[{"role": "user", "content": prompt}],
         response_format=_ConflictList,
     )
-    return response.choices[0].message.parsed.conflicts
+    parsed = response.choices[0].message.parsed
+    return parsed.conflicts if parsed is not None else []
