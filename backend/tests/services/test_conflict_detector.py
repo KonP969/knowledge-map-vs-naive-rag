@@ -3,6 +3,14 @@ from unittest.mock import MagicMock, patch
 from models.wiki_models import Claim, Span
 from models.ingest_models import ConflictReport
 
+import services.conflict_detector as _cd_module
+
+@pytest.fixture(autouse=True)
+def reset_openai_client():
+    _cd_module._client = None
+    yield
+    _cd_module._client = None
+
 
 def _make_claim(id, text, subject_id, polarity, source_id="src_001"):
     return Claim(
