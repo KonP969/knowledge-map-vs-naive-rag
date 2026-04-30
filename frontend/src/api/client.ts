@@ -67,6 +67,21 @@ export const api = {
   getSessionMetrics: () => request<import("../types").SessionMetrics>("/metrics/session"),
   resetAll: () => request<{ reset: boolean }>("/data/reset", { method: "DELETE" }),
 
+  // Wiki
+  listWikiSources: () => request<import("../types").WikiSource[]>("/wiki/sources"),
+  listWikiEntities: () => request<import("../types").WikiEntity[]>("/wiki/entities"),
+  listWikiConcepts: () => request<import("../types").WikiConcept[]>("/wiki/concepts"),
+
+  // Ingest
+  ingestSource: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<import("../types").IngestResult>("/ingest/source", {
+      method: "POST",
+      body: form,
+    });
+  },
+
   // Folders
   getFolders: () => request<import("../types").Folder[]>("/folders/"),
   createFolder: (name: string) =>
