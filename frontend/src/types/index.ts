@@ -116,4 +116,73 @@ export interface SessionMetrics {
   queries: QueryMetrics[];
 }
 
-export type Panel = "documents" | "chunks" | "embeddings" | "chat" | "metrics" | "tutorial";
+export type Panel =
+  | "documents"
+  | "chunks"
+  | "embeddings"
+  | "chat"
+  | "metrics"
+  | "tutorial"
+  | "sources"
+  | "ingest";
+
+// ── Wiki / Ingest types ────────────────────────────────────────────────────
+
+export type WikiSourceStatus = "ok" | "partial" | "error";
+
+export interface WikiSource {
+  slug: string;
+  id: string;
+  title: string;
+  type: string;
+  ingested_at: string;
+  tags: string[];
+  questions: string[];
+  summary: string;
+  key_takeaways: string[];
+  source_url?: string | null;
+}
+
+export interface WikiEntity {
+  slug: string;
+  id: string;
+  type: "Person" | "Org" | "Product" | "Place" | "Event";
+  aliases: string[];
+  description: string;
+  mentions_count: number;
+  tags: string[];
+  questions: string[];
+}
+
+export interface WikiConcept {
+  slug: string;
+  id: string;
+  parent_concept?: string | null;
+  definition: string;
+  examples: string[];
+  related: string[];
+  tags: string[];
+  questions: string[];
+}
+
+export interface ConflictReport {
+  new_claim_id: string;
+  existing_claim_id: string;
+  description: string;
+}
+
+export interface IngestResult {
+  source_id: string;
+  slug: string;
+  status: WikiSourceStatus;
+  entities_created: number;
+  entities_merged: number;
+  concepts_created: number;
+  concepts_merged: number;
+  claims_added: number;
+  edges_added: number;
+  conflicts: ConflictReport[];
+  duration_ms: number;
+  llm_calls: number;
+  error?: string | null;
+}
