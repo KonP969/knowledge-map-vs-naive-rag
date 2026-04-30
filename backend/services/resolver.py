@@ -1,4 +1,7 @@
+import re
 from typing import Any, Dict, List
+
+import frontmatter as fm
 
 from models.ingest_models import SourceClassification
 from models.wiki_models import Claim, Concept, Edge, Entity
@@ -94,17 +97,19 @@ def resolve_classification(
             concepts_created += 1
         slug_to_concept[cm.name] = store.read_concept(slug)
 
+    # Build lowercase lookup dicts for case-insensitive subject_name matching
+    entity_lookup = {k.lower(): v for k, v in slug_to_entity.items()}
+    concept_lookup = {k.lower(): v for k, v in slug_to_concept.items()}
+
     claims: List[Claim] = []
     for ce in classification.claims:
         claim_count += 1
         cid = f"cl_{claim_count:03d}"
 
-        if ce.subject_type == "entity" and ce.subject_name in slug_to_entity:
-            entity = slug_to_entity[ce.subject_name]
-            subject_id = f"entity:{entity.id}"
-        elif ce.subject_type == "concept" and ce.subject_name in slug_to_concept:
-            concept = slug_to_concept[ce.subject_name]
-            subject_id = f"concept:{concept.id}"
+        if ce.subject_type == "entity" and ce.subject_name.lower() in entity_lookup:
+            subject_id = f"entity:{entity_lookup[ce.subject_name.lower()].id}"
+        elif ce.subject_type == "concept" and ce.subject_name.lower() in concept_lookup:
+            subject_id = f"concept:{concept_lookup[ce.subject_name.lower()].id}"
         else:
             subject_id = f"{ce.subject_type}:{slugify(ce.subject_name)}"
 
@@ -166,22 +171,37 @@ def resolve_classification(
 
 
 def _count_existing_entities(store: WikiStore) -> int:
-    """Count existing entity .md files to seed the ID counter.
-
-    Entities are stored under <store.root>/wiki/20-Entities/<Type>/<slug>.md
-    """
+    """Return the highest entity numeric ID found in the vault (seeds the counter)."""
     entities_root = store.root / "wiki" / ENTITIES_DIR
     if not entities_root.exists():
         return 0
-    return sum(1 for _ in entities_root.rglob("*.md"))
+    max_n = 0
+    for type_dir in entities_root.iterdir():
+        if not type_dir.is_dir():
+            continue
+        for md in type_dir.glob("*.md"):
+            try:
+                post = fm.load(str(md))
+                m = re.match(r"e_(\d+)", str(post.get("id", "")))
+                if m:
+                    max_n = max(max_n, int(m.group(1)))
+            except Exception:
+                pass
+    return max_n
 
 
 def _count_existing_concepts(store: WikiStore) -> int:
-    """Count existing concept .md files to seed the ID counter.
-
-    Concepts are stored under <store.root>/wiki/10-Concepts/<slug>.md
-    """
+    """Return the highest concept numeric ID found in the vault (seeds the counter)."""
     concepts_root = store.root / "wiki" / CONCEPTS_DIR
     if not concepts_root.exists():
         return 0
-    return sum(1 for _ in concepts_root.glob("*.md"))
+    max_n = 0
+    for md in concepts_root.glob("*.md"):
+        try:
+            post = fm.load(str(md))
+            m = re.match(r"c_(\d+)", str(post.get("id", "")))
+            if m:
+                max_n = max(max_n, int(m.group(1)))
+        except Exception:
+            pass
+    return max_n
