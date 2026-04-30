@@ -1,5 +1,6 @@
 import os
 import tempfile
+import uuid
 from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from services.ingest_pipeline import ingest_source
@@ -27,18 +28,23 @@ async def ingest_source_endpoint(file: UploadFile = File(...)):
 
     contents = await file.read()
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-        tmp.write(contents)
-        tmp_path = Path(tmp.name)
-
-    named_tmp = tmp_path.parent / file.filename
+    tmp_path = None
+    named_tmp = None
     try:
+        # Use UUID to guarantee unique temp name even under concurrent uploads
+        unique_name = f"{uuid.uuid4().hex}{ext}"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            tmp.write(contents)
+            tmp_path = Path(tmp.name)
+        named_tmp = tmp_path.parent / unique_name
         tmp_path.rename(named_tmp)
+        tmp_path = None  # ownership transferred to named_tmp
         store = _get_store()
         result = ingest_source(file_path=named_tmp, store=store)
     finally:
-        if named_tmp.exists():
-            named_tmp.unlink()
+        for p in (named_tmp, tmp_path):
+            if p is not None and p.exists():
+                p.unlink(missing_ok=True)
 
     if result.status == "error":
         raise HTTPException(status_code=500, detail=result.error)
