@@ -56,6 +56,10 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
         # Stage 4: Conflict Detection (conditional LLM)
         existing_claims = store.read_all_claims()
         conflicts = detect_conflicts(resolved["claims"], existing_claims)
+        # NOTE: increments llm_calls only when conflicts are returned. If the LLM runs
+        # but finds no genuine contradictions, that call is not counted here. This is a
+        # known limitation — an accurate cost counter would require detect_conflicts to
+        # return a richer signal.
         if conflicts:
             llm_calls += 1
 

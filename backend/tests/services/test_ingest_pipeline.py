@@ -148,6 +148,16 @@ def test_pipeline_duration_ms_positive(txt_file, store):
     assert result.duration_ms > 0
 
 
+def test_pipeline_returns_error_on_parse_failure(store):
+    from services.ingest_pipeline import ingest_source
+    from pathlib import Path
+    bad_path = Path("/nonexistent/file.txt")
+    result = ingest_source(file_path=bad_path, store=store)
+    assert result.status == "error"
+    assert result.error is not None
+    assert result.duration_ms >= 0
+
+
 # helper to avoid repeating the import
 def run_ingest(file_path, store):
     from services.ingest_pipeline import ingest_source
