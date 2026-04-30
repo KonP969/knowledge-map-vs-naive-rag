@@ -8,6 +8,8 @@ import { EmbeddingExplorer } from "./components/embeddings/EmbeddingExplorer";
 import { ChatInterface } from "./components/chat/ChatInterface";
 import { MetricsPanel } from "./components/metrics/MetricsPanel";
 import { TutorialPanel } from "./components/tutorial/TutorialPanel";
+import { SourcesPanel } from "./components/wiki/SourcesPanel";
+import { IngestPipelinePanel } from "./components/wiki/IngestPipelinePanel";
 import type { Panel, SessionMetrics } from "./types";
 import { api } from "./api/client";
 
@@ -35,6 +37,8 @@ export default function App() {
           {activePanel === "chat" && <ChatInterface />}
           {activePanel === "metrics" && <MetricsPanel />}
           {activePanel === "tutorial" && <TutorialPanel />}
+          {activePanel === "sources" && <SourcesPanel />}
+          {activePanel === "ingest" && <IngestPipelinePanel />}
         </main>
       </div>
       <Footer />
