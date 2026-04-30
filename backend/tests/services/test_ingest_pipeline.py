@@ -1,0 +1,154 @@
+import json
+import pytest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+from services.wiki_store import WikiStore
+from models.ingest_models import (
+    SourceClassification, EntityMention, ConceptMention, ClaimExtraction, IngestResult
+)
+from models.wiki_models import Span
+
+
+@pytest.fixture
+def store(tmp_path):
+    return WikiStore(root=tmp_path)
+
+
+@pytest.fixture
+def txt_file(tmp_path):
+    p = tmp_path / "design_article.txt"
+    p.write_text(
+        "Scandinavian bedroom design uses neutral colors.\n"
+        "Wood is the dominant material.",
+        encoding="utf-8",
+    )
+    return p
+
+
+FIXED_CLASSIFICATION = SourceClassification(
+    title="Scandinavian Bedroom",
+    description="Article about bedroom design.",
+    tags=["bedroom", "scandinavian"],
+    questions=["What colors?"],
+    key_takeaways=["Neutral palette."],
+    entity_mentions=[
+        EntityMention(
+            name="Sypialnia",
+            type="Place",
+            aliases=["bedroom"],
+            description="A Scandinavian bedroom.",
+            span=Span(start=0, end=8, text="Sypialnia"),
+        )
+    ],
+    concept_mentions=[
+        ConceptMention(
+            name="neutral palette",
+            definition="Whites, beiges, and grays.",
+            span=Span(start=10, end=24, text="neutral palette"),
+        )
+    ],
+    claims=[
+        ClaimExtraction(
+            text="Sypialnia uses neutral palette.",
+            subject_name="Sypialnia",
+            subject_type="entity",
+            span=Span(start=0, end=30, text="Sypialnia uses neutral palette."),
+            confidence=0.9,
+            polarity="asserts",
+        )
+    ],
+)
+
+
+def _mock_classify(text: str, model=None):
+    return FIXED_CLASSIFICATION
+
+
+def test_pipeline_returns_ingest_result(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        result = run_ingest(txt_file, store)
+    assert isinstance(result, IngestResult)
+    assert result.status == "ok"
+
+
+def test_pipeline_creates_source_in_store(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        result = run_ingest(txt_file, store)
+    source = store.read_source(result.slug)
+    assert source is not None
+    assert source.title == "Scandinavian Bedroom"
+
+
+def test_pipeline_creates_entity_in_store(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        run_ingest(txt_file, store)
+    entity = store.read_entity("sypialnia", "Place")
+    assert entity is not None
+
+
+def test_pipeline_creates_concept_in_store(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        run_ingest(txt_file, store)
+    concept = store.read_concept("neutral-palette")
+    assert concept is not None
+
+
+def test_pipeline_appends_claim(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        result = run_ingest(txt_file, store)
+    claims = store.read_all_claims()
+    assert len(claims) == result.claims_added
+    assert result.claims_added == 1
+
+
+def test_pipeline_appends_edges(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        result = run_ingest(txt_file, store)
+    edges = store.read_all_edges()
+    assert len(edges) >= 1
+    assert result.edges_added >= 1
+
+
+def test_pipeline_writes_log_entry(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        result = run_ingest(txt_file, store)
+    log_path = store.root / "wiki" / "log.md"
+    assert log_path.exists()
+    log = log_path.read_text(encoding="utf-8")
+    assert result.source_id in log
+
+
+def test_pipeline_regenerates_index(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        run_ingest(txt_file, store)
+    index_path = store.root / "wiki" / "00-Index" / "index.json"
+    assert index_path.exists()
+    idx = json.loads(index_path.read_text(encoding="utf-8"))
+    assert len(idx["sources"]) == 1
+
+
+def test_pipeline_result_counts_match(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        result = run_ingest(txt_file, store)
+    assert result.entities_created == 1
+    assert result.concepts_created == 1
+    assert result.llm_calls == 1  # only Stage 2 (no conflicts → Stage 4 skipped)
+
+
+def test_pipeline_parsed_md_exists(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        result = run_ingest(txt_file, store)
+    parsed_md = store.root / "raw" / result.slug / "parsed.md"
+    assert parsed_md.exists()
+
+
+def test_pipeline_duration_ms_positive(txt_file, store):
+    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+        result = run_ingest(txt_file, store)
+    assert result.duration_ms > 0
+
+
+# helper to avoid repeating the import
+def run_ingest(file_path, store):
+    from services.ingest_pipeline import ingest_source
+    return ingest_source(file_path=file_path, store=store)
