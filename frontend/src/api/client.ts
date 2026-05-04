@@ -82,6 +82,14 @@ export const api = {
     });
   },
 
+  // Retrieval
+  queryWiki: (question: string) =>
+    request<import("../types").QueryTrace>("/retrieval/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    }),
+
   // Folders
   getFolders: () => request<import("../types").Folder[]>("/folders/"),
   createFolder: (name: string) =>

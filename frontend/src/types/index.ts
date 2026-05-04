@@ -124,7 +124,9 @@ export type Panel =
   | "metrics"
   | "tutorial"
   | "sources"
-  | "ingest";
+  | "ingest"
+  | "chat_trace"
+  | "knowledge_map";
 
 // ── Wiki / Ingest types ────────────────────────────────────────────────────
 
@@ -185,4 +187,80 @@ export interface IngestResult {
   duration_ms: number;
   llm_calls: number;
   error?: string | null;
+}
+
+// ── Retrieval types ────────────────────────────────────────────────────────
+
+export interface TimePeriod {
+  start?: string | null;
+  end?: string | null;
+}
+
+export interface ParsedIntent {
+  original_question: string;
+  entity_mentions: string[];
+  concept_mentions: string[];
+  time_period?: TimePeriod | null;
+  intent_type: "fact_lookup" | "comparison" | "synthesis" | "definition" | "how_to" | "temporal_trend";
+  expected_answer_form: "short" | "list" | "table" | "analysis" | "citation";
+}
+
+export interface RetrievalCandidate {
+  artifact_id: string;
+  artifact_type: "source" | "entity" | "concept";
+  slug: string;
+  title: string;
+  score: number;
+  score_breakdown: Record<string, number>;
+  questions: string[];
+  tags: string[];
+  description_preview: string;
+}
+
+export interface SelectedArtifact {
+  artifact_id: string;
+  relevance_score: number;
+  reasoning: string;
+}
+
+export interface RetrievalSelection {
+  selected: SelectedArtifact[];
+  confidence: number;
+  reasoning: string;
+}
+
+export interface AnswerSource {
+  source_id: string;
+  claim_ids: string[];
+  relevance: string;
+}
+
+export interface RetrievalAnswer {
+  final_answer: string;
+  sources: AnswerSource[];
+  confidence: number;
+  reasoning_steps: string[];
+  related_questions: string[];
+}
+
+export interface RetrievalStageTrace {
+  stage: number;
+  name: string;
+  duration_ms: number;
+  llm_called: boolean;
+  input_summary: string;
+  output_summary: string;
+}
+
+export interface QueryTrace {
+  query_id: string;
+  question: string;
+  intent: ParsedIntent;
+  candidates_count: number;
+  selected_count: number;
+  context_chars: number;
+  answer: RetrievalAnswer;
+  stages: RetrievalStageTrace[];
+  total_duration_ms: number;
+  total_llm_calls: number;
 }
