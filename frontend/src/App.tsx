@@ -10,6 +10,8 @@ import { MetricsPanel } from "./components/metrics/MetricsPanel";
 import { TutorialPanel } from "./components/tutorial/TutorialPanel";
 import { SourcesPanel } from "./components/wiki/SourcesPanel";
 import { IngestPipelinePanel } from "./components/wiki/IngestPipelinePanel";
+import { ChatWithTracePanel } from "./components/chat_with_trace/ChatWithTracePanel";
+import { KnowledgeMapPanel } from "./components/wiki/KnowledgeMapPanel";
 import type { Panel, SessionMetrics } from "./types";
 import { api } from "./api/client";
 
@@ -39,6 +41,8 @@ export default function App() {
           {activePanel === "tutorial" && <TutorialPanel />}
           {activePanel === "sources" && <SourcesPanel />}
           {activePanel === "ingest" && <IngestPipelinePanel />}
+          {activePanel === "chat_trace" && <ChatWithTracePanel />}
+          {activePanel === "knowledge_map" && <KnowledgeMapPanel />}
         </main>
       </div>
       <Footer />
