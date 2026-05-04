@@ -1,0 +1,99 @@
+import time
+import uuid
+from models.retrieval_models import QueryTrace, StageTrace, Selection
+from services.wiki_store import WikiStore
+from services.retrieval.intent_parser import parse_intent
+from services.retrieval.candidate_filter import filter_candidates
+from services.retrieval.selection import select_candidates
+from services.retrieval.context_assembly import assemble_context
+from services.retrieval.answer_generator import generate_answer
+
+
+def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
+    """
+    Orchestrates the 5-stage retrieval pipeline:
+    Stage 1: Intent Parsing (LLM)
+    Stage 2: Candidate Filtering (deterministic)
+    Stage 3: Selection (LLM, skipped if no candidates)
+    Stage 4: Context Assembly (deterministic)
+    Stage 5: Answer Generation (LLM)
+    """
+    t_total = time.time()
+    query_id = f"q_{uuid.uuid4().hex[:8]}"
+    stages = []
+    total_llm_calls = 0
+
+    # Stage 1
+    t = time.time()
+    intent = parse_intent(question)
+    total_llm_calls += 1
+    stages.append(StageTrace(
+        stage=1, name="Intent Parser",
+        duration_ms=(time.time() - t) * 1000, llm_called=True,
+        input_summary=f"question: {question[:80]}",
+        output_summary=(
+            f"intent_type={intent.intent_type}, "
+            f"entities={intent.entity_mentions}, "
+            f"concepts={intent.concept_mentions}"
+        ),
+    ))
+
+    # Stage 2
+    t = time.time()
+    candidates = filter_candidates(intent, store)
+    stages.append(StageTrace(
+        stage=2, name="Candidate Filter",
+        duration_ms=(time.time() - t) * 1000, llm_called=False,
+        input_summary=f"intent_type={intent.intent_type}",
+        output_summary=f"{len(candidates)} candidates scored",
+    ))
+
+    # Stage 3
+    t = time.time()
+    if candidates:
+        selection = select_candidates(question, candidates)
+        total_llm_calls += 1
+        llm_called_s3 = True
+    else:
+        selection = Selection(selected=[], confidence=0.0, reasoning="No candidates found.")
+        llm_called_s3 = False
+    stages.append(StageTrace(
+        stage=3, name="Selection",
+        duration_ms=(time.time() - t) * 1000, llm_called=llm_called_s3,
+        input_summary=f"{len(candidates)} candidates",
+        output_summary=f"{len(selection.selected)} selected, confidence={selection.confidence:.2f}",
+    ))
+
+    # Stage 4
+    t = time.time()
+    context, context_chars = assemble_context(question, selection, candidates, store)
+    stages.append(StageTrace(
+        stage=4, name="Context Assembly",
+        duration_ms=(time.time() - t) * 1000, llm_called=False,
+        input_summary=f"{len(selection.selected)} selected artifacts",
+        output_summary=f"{context_chars} chars assembled",
+    ))
+
+    # Stage 5
+    t = time.time()
+    answer = generate_answer(question, context)
+    total_llm_calls += 1
+    stages.append(StageTrace(
+        stage=5, name="Answer Generator",
+        duration_ms=(time.time() - t) * 1000, llm_called=True,
+        input_summary=f"{context_chars} chars context",
+        output_summary=f"confidence={answer.confidence:.2f}, sources={len(answer.sources)}",
+    ))
+
+    return QueryTrace(
+        query_id=query_id,
+        question=question,
+        intent=intent,
+        candidates_count=len(candidates),
+        selected_count=len(selection.selected),
+        context_chars=context_chars,
+        answer=answer,
+        stages=stages,
+        total_duration_ms=(time.time() - t_total) * 1000,
+        total_llm_calls=total_llm_calls,
+    )
