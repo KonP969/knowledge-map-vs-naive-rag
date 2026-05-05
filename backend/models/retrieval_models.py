@@ -57,6 +57,21 @@ class Answer(BaseModel):
     related_questions: List[str]
 
 
+class AgentToolCall(BaseModel):
+    tool_name: str
+    args: dict
+    result_summary: str
+    duration_ms: float
+
+
+class AgentTrace(BaseModel):
+    triggered: bool
+    trigger_reason: str
+    tool_calls: List[AgentToolCall]
+    final_answer: Optional[Answer] = None
+    duration_ms: float
+
+
 class StageTrace(BaseModel):
     stage: int
     name: str
@@ -77,3 +92,4 @@ class QueryTrace(BaseModel):
     stages: List[StageTrace]
     total_duration_ms: float
     total_llm_calls: int
+    agent_trace: Optional[AgentTrace] = None

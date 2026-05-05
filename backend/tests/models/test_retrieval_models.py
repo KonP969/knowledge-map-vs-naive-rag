@@ -149,3 +149,85 @@ def test_query_trace_valid():
         answer=answer, stages=[], total_duration_ms=1500.0, total_llm_calls=3,
     )
     assert qt.total_llm_calls == 3
+
+
+from models.retrieval_models import (
+    AgentToolCall, AgentTrace, QueryTrace,
+    ParsedIntent, Answer, AnswerSource,
+)
+
+
+def test_agent_tool_call_fields():
+    tc = AgentToolCall(
+        tool_name="search_entities",
+        args={"q": "bedroom"},
+        result_summary='[{"slug": "sypialnia"}]',
+        duration_ms=12.5,
+    )
+    assert tc.tool_name == "search_entities"
+    assert tc.args == {"q": "bedroom"}
+    assert tc.duration_ms == 12.5
+
+
+def test_agent_trace_not_triggered():
+    at = AgentTrace(
+        triggered=False,
+        trigger_reason="",
+        tool_calls=[],
+        final_answer=None,
+        duration_ms=0.0,
+    )
+    assert at.triggered is False
+    assert at.tool_calls == []
+    assert at.final_answer is None
+
+
+def test_agent_trace_with_tool_calls():
+    tc = AgentToolCall(
+        tool_name="read_index",
+        args={},
+        result_summary="{}",
+        duration_ms=5.0,
+    )
+    at = AgentTrace(
+        triggered=True,
+        trigger_reason="Stage 2 returned 0 candidates",
+        tool_calls=[tc],
+        final_answer=None,
+        duration_ms=120.0,
+    )
+    assert len(at.tool_calls) == 1
+    assert at.trigger_reason == "Stage 2 returned 0 candidates"
+
+
+def test_query_trace_agent_trace_defaults_none():
+    from models.retrieval_models import (
+        StageTrace, Selection, SelectedArtifact, ParsedIntent,
+    )
+    intent = ParsedIntent(
+        original_question="q",
+        entity_mentions=[],
+        concept_mentions=[],
+        intent_type="fact_lookup",
+        expected_answer_form="short",
+    )
+    answer = Answer(
+        final_answer="ans",
+        sources=[],
+        confidence=0.9,
+        reasoning_steps=[],
+        related_questions=[],
+    )
+    qt = QueryTrace(
+        query_id="q_abc",
+        question="q",
+        intent=intent,
+        candidates_count=1,
+        selected_count=1,
+        context_chars=100,
+        answer=answer,
+        stages=[],
+        total_duration_ms=50.0,
+        total_llm_calls=3,
+    )
+    assert qt.agent_trace is None
