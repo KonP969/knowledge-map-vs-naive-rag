@@ -142,6 +142,8 @@ def test_run_agent_fallback_respects_max_iterations(tmp_path):
         result = run_agent_fallback("Q", store, "reason")
     assert mock_client.chat.completions.create.call_count == MAX_ITERATIONS
     assert result.triggered is True
+    assert result.final_answer is None  # no stop response → no answer produced
+    assert len(result.tool_calls) == MAX_ITERATIONS  # one tool call logged per iteration
 
 
 def test_run_agent_fallback_duration_ms_positive(tmp_path):
@@ -154,3 +156,14 @@ def test_run_agent_fallback_duration_ms_positive(tmp_path):
         mock_get.return_value = mock_client
         result = run_agent_fallback("Q", store, "reason")
     assert result.duration_ms >= 0.0
+
+
+def test_dispatch_tool_exception_returns_error_json(tmp_path):
+    from services.retrieval.agent_fallback import _dispatch_tool
+    from services.wiki_store import WikiStore
+    import services.retrieval.agent_tools as _tools
+    store = WikiStore(root=tmp_path)
+    with patch.object(_tools, "read_index", side_effect=IOError("disk error")):
+        result = json.loads(_dispatch_tool("read_index", {}, store))
+    assert "error" in result
+    assert "read_index" in result["error"]

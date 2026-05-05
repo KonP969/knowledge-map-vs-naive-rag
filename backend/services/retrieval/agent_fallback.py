@@ -9,7 +9,7 @@ from models.retrieval_models import AgentToolCall, AgentTrace, Answer
 from services.wiki_store import WikiStore
 import services.retrieval.agent_tools as _tools
 
-_client: OpenAI = None
+_client: Optional[OpenAI] = None
 MAX_ITERATIONS = 8
 
 _SYSTEM_PROMPT = (
@@ -182,7 +182,10 @@ def _dispatch_tool(name: str, args: dict, store: WikiStore) -> str:
     fn = dispatch.get(name)
     if fn is None:
         return json.dumps({"error": f"unknown tool: {name}"})
-    return fn()
+    try:
+        return fn()
+    except Exception as exc:
+        return json.dumps({"error": f"tool {name} failed: {exc}"})
 
 
 def run_agent_fallback(
