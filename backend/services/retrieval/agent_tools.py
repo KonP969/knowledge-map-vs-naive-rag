@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 from typing import Optional
 
 from services.wiki_store import WikiStore
@@ -12,7 +11,7 @@ def read_index(store: WikiStore) -> str:
     return index_path.read_text(encoding="utf-8")
 
 
-def search_entities(store: WikiStore, q: str, type: Optional[str] = None) -> str:
+def search_entities(store: WikiStore, q: str, entity_type: Optional[str] = None) -> str:
     index_path = store.root / "wiki" / "00-Index" / "index.json"
     if not index_path.exists():
         return "[]"
@@ -20,7 +19,7 @@ def search_entities(store: WikiStore, q: str, type: Optional[str] = None) -> str
     q_lower = q.lower()
     results = []
     for e in data.get("entities", []):
-        if type and e.get("type", "").lower() != type.lower():
+        if entity_type and e.get("type", "").lower() != entity_type.lower():
             continue
         if (
             q_lower in e.get("slug", "").lower()
@@ -50,6 +49,8 @@ def search_wiki_content(store: WikiStore, q: str) -> str:
     q_lower = q.lower()
     results = []
     for md_file in sorted(wiki_dir.rglob("*.md")):
+        if "00-Index" in md_file.parts:
+            continue
         try:
             text = md_file.read_text(encoding="utf-8")
         except Exception:
@@ -160,7 +161,7 @@ def get_relations(
     store: WikiStore,
     node_id: str,
     direction: Optional[str] = None,
-    type: Optional[str] = None,
+    relation_type: Optional[str] = None,
 ) -> str:
     edges = store.read_all_edges()
     result = []
@@ -173,7 +174,7 @@ def get_relations(
             continue
         if direction is None and not (from_match or to_match):
             continue
-        if type and e.relation != type:
+        if relation_type and e.relation != relation_type:
             continue
         result.append({
             "id": e.id, "from": e.from_, "to": e.to,
