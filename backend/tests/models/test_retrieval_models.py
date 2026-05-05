@@ -3,6 +3,7 @@ from pydantic import ValidationError
 from models.retrieval_models import (
     TimePeriod, ParsedIntent, Candidate, SelectedArtifact,
     Selection, AnswerSource, Answer, StageTrace, QueryTrace,
+    AgentToolCall, AgentTrace,
 )
 
 
@@ -151,12 +152,6 @@ def test_query_trace_valid():
     assert qt.total_llm_calls == 3
 
 
-from models.retrieval_models import (
-    AgentToolCall, AgentTrace, QueryTrace,
-    ParsedIntent, Answer, AnswerSource,
-)
-
-
 def test_agent_tool_call_fields():
     tc = AgentToolCall(
         tool_name="search_entities",
@@ -201,9 +196,6 @@ def test_agent_trace_with_tool_calls():
 
 
 def test_query_trace_agent_trace_defaults_none():
-    from models.retrieval_models import (
-        StageTrace, Selection, SelectedArtifact, ParsedIntent,
-    )
     intent = ParsedIntent(
         original_question="q",
         entity_mentions=[],
@@ -231,3 +223,24 @@ def test_query_trace_agent_trace_defaults_none():
         total_llm_calls=3,
     )
     assert qt.agent_trace is None
+
+
+def test_agent_tool_call_negative_duration_rejected():
+    with pytest.raises(ValidationError):
+        AgentToolCall(
+            tool_name="read_index",
+            args={},
+            result_summary="{}",
+            duration_ms=-1.0,
+        )
+
+
+def test_agent_trace_negative_duration_rejected():
+    with pytest.raises(ValidationError):
+        AgentTrace(
+            triggered=False,
+            trigger_reason="",
+            tool_calls=[],
+            final_answer=None,
+            duration_ms=-5.0,
+        )

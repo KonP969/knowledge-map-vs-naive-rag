@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -59,9 +59,9 @@ class Answer(BaseModel):
 
 class AgentToolCall(BaseModel):
     tool_name: str
-    args: dict
+    args: Dict[str, Any]
     result_summary: str
-    duration_ms: float
+    duration_ms: float = Field(..., ge=0.0)
 
 
 class AgentTrace(BaseModel):
@@ -69,7 +69,7 @@ class AgentTrace(BaseModel):
     trigger_reason: str
     tool_calls: List[AgentToolCall]
     final_answer: Optional[Answer] = None
-    duration_ms: float
+    duration_ms: float = Field(..., ge=0.0)
 
 
 class StageTrace(BaseModel):
