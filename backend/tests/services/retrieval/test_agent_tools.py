@@ -83,7 +83,7 @@ def test_search_entities_finds_by_alias(store):
 
 def test_search_entities_filters_by_type(store):
     from services.retrieval.agent_tools import search_entities
-    result = json.loads(search_entities(store, q="sypialnia", type="Person"))
+    result = json.loads(search_entities(store, q="sypialnia", entity_type="Person"))
     assert result == []
 
 
@@ -217,7 +217,7 @@ def test_get_relations_direction_in(store):
 
 def test_get_relations_type_filter(store):
     from services.retrieval.agent_tools import get_relations
-    result = json.loads(get_relations(store, node_id="entity:e_001", type="contradicts"))
+    result = json.loads(get_relations(store, node_id="entity:e_001", relation_type="contradicts"))
     assert result == []
 
 
