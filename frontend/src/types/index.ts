@@ -264,3 +264,44 @@ export interface QueryTrace {
   total_duration_ms: number;
   total_llm_calls: number;
 }
+
+// ── Graph / Node Detail types ──────────────────────────────────────────────────
+
+export interface WikiEdge {
+  id: string;
+  from: string;
+  to: string;
+  relation: string;
+  source_id: string;
+  confidence: number;
+}
+
+export interface NodeDetailClaim {
+  id: string;
+  text: string;
+  confidence: number;
+  polarity: "asserts" | "denies";
+  source_id: string;
+}
+
+export interface NodeDetailEdge {
+  id: string;
+  from: string;
+  to: string;
+  relation: string;
+  source_id: string;
+}
+
+export interface NodeDetail {
+  id: string;
+  node_type: "entity" | "concept" | "source";
+  entity_type?: string;
+  slug?: string;
+  title?: string;
+  description?: string;
+  aliases?: string[];
+  tags?: string[];
+  questions?: string[];
+  claims: NodeDetailClaim[];
+  edges: NodeDetailEdge[];
+}
