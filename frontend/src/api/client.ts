@@ -90,6 +90,11 @@ export const api = {
       body: JSON.stringify({ question }),
     }),
 
+  // Graph
+  listWikiEdges: () => request<import("../types").WikiEdge[]>("/wiki/edges"),
+  getWikiNodeDetail: (id: string) =>
+    request<import("../types").NodeDetail>(`/wiki/node-detail?id=${encodeURIComponent(id)}`),
+
   // Folders
   getFolders: () => request<import("../types").Folder[]>("/folders/"),
   createFolder: (name: string) =>
