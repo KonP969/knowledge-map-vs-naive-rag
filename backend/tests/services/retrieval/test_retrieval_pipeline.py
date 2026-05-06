@@ -6,6 +6,7 @@ from services.wiki_index import regenerate_index
 from models.wiki_models import Source, Entity, Concept, Claim, Edge, Span
 from models.retrieval_models import (
     ParsedIntent, Selection, SelectedArtifact, Answer, AnswerSource, QueryTrace,
+    AgentTrace, AgentToolCall,
 )
 
 
@@ -145,8 +146,91 @@ def test_pipeline_empty_vault_returns_trace(tmp_path):
     from services.retrieval.retrieval_pipeline import run_retrieval
     empty_store = WikiStore(root=tmp_path)
     with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
-         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER):
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER), \
+         patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE):
         result = run_retrieval("Q", empty_store)
     assert isinstance(result, QueryTrace)
     assert result.candidates_count == 0
     assert result.selected_count == 0
+
+
+FIXED_AGENT_TRACE = AgentTrace(
+    triggered=True,
+    trigger_reason="Stage 2 returned 0 candidates",
+    tool_calls=[
+        AgentToolCall(tool_name="read_index", args={}, result_summary="{}", duration_ms=5.0)
+    ],
+    final_answer=FIXED_ANSWER,
+    duration_ms=200.0,
+)
+
+
+def test_pipeline_no_agent_trace_when_confident(store):
+    result = run_pipeline(store)
+    # FIXED_SELECTION has confidence=0.85, FIXED_ANSWER has confidence=0.9 → no fallback
+    assert result.agent_trace is None
+
+
+def test_pipeline_triggers_fallback_when_no_candidates(tmp_path):
+    from services.retrieval.retrieval_pipeline import run_retrieval
+    from services.wiki_store import WikiStore
+    empty_store = WikiStore(root=tmp_path)
+    with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER), \
+         patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE) as mock_fb:
+        result = run_retrieval("Q", empty_store)
+    mock_fb.assert_called_once()
+    assert result.agent_trace is not None
+    assert result.agent_trace.triggered is True
+
+
+def test_pipeline_triggers_fallback_when_low_selection_confidence(store):
+    from services.retrieval.retrieval_pipeline import run_retrieval
+    from models.retrieval_models import Selection, SelectedArtifact
+    low_conf_selection = Selection(
+        selected=[SelectedArtifact(artifact_id="source:src_001", relevance_score=0.4, reasoning="weak")],
+        confidence=0.3,
+        reasoning="uncertain",
+    )
+    with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
+         patch("services.retrieval.retrieval_pipeline.select_candidates", return_value=low_conf_selection), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER), \
+         patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE) as mock_fb:
+        result = run_retrieval("Q", store)
+    mock_fb.assert_called_once()
+    call_trigger = mock_fb.call_args.kwargs["trigger_reason"]
+    assert "0.3" in call_trigger or "Stage 3" in call_trigger
+    assert result.agent_trace is not None
+
+
+def test_pipeline_triggers_fallback_when_low_answer_confidence(store):
+    from services.retrieval.retrieval_pipeline import run_retrieval
+    from models.retrieval_models import Answer, AnswerSource
+    low_conf_answer = Answer(
+        final_answer="I am not sure.",
+        sources=[AnswerSource(source_id="src_001", relevance="low")],
+        confidence=0.4,
+        reasoning_steps=[],
+        related_questions=[],
+    )
+    with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
+         patch("services.retrieval.retrieval_pipeline.select_candidates", return_value=FIXED_SELECTION), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=low_conf_answer), \
+         patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE) as mock_fb:
+        result = run_retrieval("Q", store)
+    mock_fb.assert_called_once()
+    call_trigger = mock_fb.call_args.kwargs["trigger_reason"]
+    assert "0.4" in call_trigger or "Stage 5" in call_trigger
+    assert result.agent_trace is not None
+
+
+def test_pipeline_fallback_trigger_reason_no_candidates(tmp_path):
+    from services.retrieval.retrieval_pipeline import run_retrieval
+    from services.wiki_store import WikiStore
+    empty_store = WikiStore(root=tmp_path)
+    with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER), \
+         patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE) as mock_fb:
+        run_retrieval("Q", empty_store)
+    trigger_reason = mock_fb.call_args.kwargs["trigger_reason"]
+    assert "Stage 2" in trigger_reason or "0 candidates" in trigger_reason
