@@ -1,7 +1,8 @@
 import os
+import json as _json
 from pathlib import Path
 from typing import Any, Dict, List
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from services.wiki_store import WikiStore, ENTITIES_DIR, CONCEPTS_DIR
 
 router = APIRouter(prefix="/api/wiki", tags=["wiki"])
@@ -84,3 +85,99 @@ def list_wiki_concepts():
                 "questions": concept.questions,
             })
     return result
+
+
+@router.get("/edges", response_model=List[Dict[str, Any]])
+def list_wiki_edges():
+    store = _get_store()
+    return [
+        {
+            "id": e.id,
+            "from": e.from_,
+            "to": e.to,
+            "relation": e.relation,
+            "source_id": e.source_id,
+            "confidence": e.confidence,
+        }
+        for e in store.read_all_edges()
+    ]
+
+
+@router.get("/node-detail", response_model=Dict[str, Any])
+def get_wiki_node_detail(id: str):
+    """
+    id format: "entity:e_001", "concept:c_001", "source:src_001"
+    Returns node metadata + up to 20 claims + up to 20 edges for the drawer.
+    """
+    store = _get_store()
+    if ":" not in id:
+        raise HTTPException(status_code=400, detail="id must be prefixed: entity:, concept:, or source:")
+
+    prefix, inner_id = id.split(":", 1)
+
+    claims = [
+        {
+            "id": c.id, "text": c.text, "confidence": c.confidence,
+            "polarity": c.polarity, "source_id": c.source_id,
+        }
+        for c in store.read_all_claims()
+        if c.subject_id == id or (prefix == "source" and c.source_id == inner_id)
+    ][:20]
+
+    edges = [
+        {
+            "id": e.id, "from": e.from_, "to": e.to,
+            "relation": e.relation, "source_id": e.source_id,
+        }
+        for e in store.read_all_edges()
+        if e.from_ == id or e.to == id
+    ][:20]
+
+    base: Dict[str, Any] = {"id": id, "node_type": prefix, "claims": claims, "edges": edges}
+
+    index_path = store.root / "wiki" / "00-Index" / "index.json"
+
+    if prefix == "entity" and index_path.exists():
+        idx = _json.loads(index_path.read_text(encoding="utf-8"))
+        entry = next((e for e in idx.get("entities", []) if e.get("id") == inner_id), None)
+        if entry:
+            entity = store.read_entity(entry["slug"], entry["type"])
+            if entity:
+                base.update({
+                    "slug": entry["slug"],
+                    "title": entry["slug"].replace("-", " ").title(),
+                    "entity_type": entity.type,
+                    "description": entity.description,
+                    "aliases": entity.aliases,
+                    "tags": entity.tags,
+                    "questions": entity.questions,
+                })
+
+    elif prefix == "concept" and index_path.exists():
+        idx = _json.loads(index_path.read_text(encoding="utf-8"))
+        entry = next((c for c in idx.get("concepts", []) if c.get("id") == inner_id), None)
+        if entry:
+            concept = store.read_concept(entry["slug"])
+            if concept:
+                base.update({
+                    "slug": entry["slug"],
+                    "title": entry["slug"].replace("-", " ").title(),
+                    "description": concept.definition,
+                    "tags": concept.tags,
+                    "questions": concept.questions,
+                })
+
+    elif prefix == "source":
+        for slug in store.list_sources():
+            src = store.read_source(slug)
+            if src and src.id == inner_id:
+                base.update({
+                    "slug": slug,
+                    "title": src.title,
+                    "description": src.summary,
+                    "tags": src.tags,
+                    "questions": src.questions,
+                })
+                break
+
+    return base
