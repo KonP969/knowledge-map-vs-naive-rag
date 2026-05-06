@@ -7,21 +7,22 @@ from services.retrieval.candidate_filter import filter_candidates
 from services.retrieval.selection import select_candidates
 from services.retrieval.context_assembly import assemble_context
 from services.retrieval.answer_generator import generate_answer
+from services.retrieval.agent_fallback import run_agent_fallback
 
 
 def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
     """
-    Orchestrates the 5-stage retrieval pipeline:
-    Stage 1: Intent Parsing (LLM)
-    Stage 2: Candidate Filtering (deterministic)
-    Stage 3: Selection (LLM, skipped if no candidates)
-    Stage 4: Context Assembly (deterministic)
-    Stage 5: Answer Generation (LLM)
+    Orchestrates the 5-stage retrieval pipeline with agent fallback.
+    Fallback triggers when:
+      - Stage 2 returns 0 candidates, OR
+      - Stage 3 selection confidence < 0.5, OR
+      - Stage 5 answer confidence < 0.6.
     """
     t_total = time.time()
     query_id = f"q_{uuid.uuid4().hex[:8]}"
     stages = []
     total_llm_calls = 0
+    agent_trace = None
 
     # Stage 1
     t = time.time()
@@ -48,6 +49,12 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
         output_summary=f"{len(candidates)} candidates scored",
     ))
 
+    if not candidates:
+        agent_trace = run_agent_fallback(
+            question, store,
+            trigger_reason="Stage 2 returned 0 candidates",
+        )
+
     # Stage 3
     t = time.time()
     if candidates:
@@ -63,6 +70,12 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
         input_summary=f"{len(candidates)} candidates",
         output_summary=f"{len(selection.selected)} selected, confidence={selection.confidence:.2f}",
     ))
+
+    if agent_trace is None and candidates and selection.confidence < 0.5:
+        agent_trace = run_agent_fallback(
+            question, store,
+            trigger_reason=f"Stage 3 confidence too low ({selection.confidence:.2f} < 0.5)",
+        )
 
     # Stage 4
     t = time.time()
@@ -85,6 +98,12 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
         output_summary=f"confidence={answer.confidence:.2f}, sources={len(answer.sources)}",
     ))
 
+    if agent_trace is None and answer.confidence < 0.6:
+        agent_trace = run_agent_fallback(
+            question, store,
+            trigger_reason=f"Stage 5 answer confidence too low ({answer.confidence:.2f} < 0.6)",
+        )
+
     return QueryTrace(
         query_id=query_id,
         question=question,
@@ -96,4 +115,5 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
         stages=stages,
         total_duration_ms=(time.time() - t_total) * 1000,
         total_llm_calls=total_llm_calls,
+        agent_trace=agent_trace,
     )
