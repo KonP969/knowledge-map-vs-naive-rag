@@ -225,14 +225,9 @@ Logika:
 - `reject` → status → `rejected`.
 - `wontfix` → status → `wontfix`.
 
-Po każdym `apply/reject/wontfix` aktualizujemy raport (rewrite JSON-a). Po ostatnim issue w raporcie — append podsumowania do `log.md`:
-```
-## [TS] lint | report <id> closed | fixed: 8, rejected: 2, wontfix: 5
-```
+Po każdym `apply/reject/wontfix` aktualizujemy raport (rewrite JSON-a, atomic write).
 
-(Ten append zostawiamy do Phase 7 jeśli się okaże, że per-action update logu wystarczy. Na razie: append per-run + per-action notatkę nieagresywnie.)
-
-**Decision Phase 6:** ZERO append do log.md przy fix actions. Tylko append przy `POST /api/lint/run`. Logi per-action ↔ Phase 7+.
+**Logowanie:** w Phase 6 dopisujemy do `log.md` tylko przy `POST /api/lint/run`. Per-action update logu (podsumowanie po zamknięciu raportu) → Phase 7+.
 
 ## UI — `LintPanel.tsx`
 
