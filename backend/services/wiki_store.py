@@ -220,3 +220,76 @@ class WikiStore:
             for line in path.read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
+
+    # ── deletes / updates (Phase 6 lint fixers) ───────────────────────────
+
+    def _rewrite_jsonl_skipping(self, path: Path, predicate) -> int:
+        """Rewrite path keeping only lines where predicate(parsed_dict) is True. Returns count removed."""
+        if not path.exists():
+            return 0
+        kept: List[str] = []
+        removed = 0
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            if not raw.strip():
+                continue
+            try:
+                parsed = json.loads(raw)
+            except json.JSONDecodeError:
+                kept.append(raw)
+                continue
+            if predicate(parsed):
+                kept.append(raw)
+            else:
+                removed += 1
+        new_content = "\n".join(kept) + ("\n" if kept else "")
+        self._atomic_write(path, new_content)
+        return removed
+
+    def delete_claim(self, claim_id: str) -> bool:
+        path = self._claims_path()
+        removed = self._rewrite_jsonl_skipping(path, lambda d: d.get("id") != claim_id)
+        return removed > 0
+
+    def delete_edge(self, edge_id: str) -> bool:
+        path = self._edges_path()
+        removed = self._rewrite_jsonl_skipping(path, lambda d: d.get("id") != edge_id)
+        return removed > 0
+
+    def delete_jsonl_line(self, path: Path, line_no: int) -> None:
+        """Remove the 1-indexed line, preserve a `.bak` copy of the original file."""
+        original = path.read_text(encoding="utf-8")
+        backup = path.with_suffix(path.suffix + ".bak")
+        backup.write_text(original, encoding="utf-8")
+        lines = original.splitlines()
+        if 1 <= line_no <= len(lines):
+            del lines[line_no - 1]
+        new_content = "\n".join(lines) + ("\n" if lines else "")
+        self._atomic_write(path, new_content)
+
+    def delete_entity(self, slug: str, entity_type: str) -> bool:
+        path = self._entity_path(slug, entity_type)
+        if not path.exists():
+            return False
+        path.unlink()
+        return True
+
+    def delete_concept(self, slug: str) -> bool:
+        path = self._concept_path(slug)
+        if not path.exists():
+            return False
+        path.unlink()
+        return True
+
+    def update_entity_description(self, slug: str, entity_type: str, new_description: str) -> None:
+        ent = self.read_entity(slug, entity_type)
+        if ent is None:
+            raise FileNotFoundError(f"Entity not found: {entity_type}/{slug}")
+        updated = ent.model_copy(update={"description": new_description})
+        self.write_entity(updated, slug)
+
+    def update_concept_description(self, slug: str, new_definition: str) -> None:
+        c = self.read_concept(slug)
+        if c is None:
+            raise FileNotFoundError(f"Concept not found: {slug}")
+        updated = c.model_copy(update={"definition": new_definition})
+        self.write_concept(updated, slug)
