@@ -2,7 +2,7 @@ import json
 from typing import List, Set
 
 from models.lint_models import LintIssue
-from services.wiki_store import WikiStore
+from services.wiki_store import CONCEPTS_DIR, ENTITIES_DIR, WikiStore
 
 
 REQUIRED_CLAIM_FIELDS = {"id", "text", "subject_id", "source_id", "span", "confidence", "polarity"}
@@ -25,6 +25,7 @@ def _read_jsonl_dicts(path) -> List[tuple]:
 
 
 def check_provenance_missing(store: WikiStore) -> List[LintIssue]:
+    """Detect claims/edges with missing required fields. Reads raw JSONL (bypasses Pydantic) so it can detect lines that would fail validation."""
     issues: List[LintIssue] = []
 
     claims_path = store.root / "wiki" / "claims.jsonl"
@@ -77,7 +78,6 @@ def _collect_source_ids(store: WikiStore) -> Set[str]:
 
 def _collect_node_ids(store: WikiStore) -> Set[str]:
     """Returns prefixed node IDs ('entity:e_001', 'concept:c_001')."""
-    from services.wiki_store import ENTITIES_DIR, CONCEPTS_DIR
     ids: Set[str] = set()
 
     entities_dir = store.root / "wiki" / ENTITIES_DIR
