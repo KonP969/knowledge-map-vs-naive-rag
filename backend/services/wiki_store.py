@@ -224,7 +224,11 @@ class WikiStore:
     # ── deletes / updates (Phase 6 lint fixers) ───────────────────────────
 
     def _rewrite_jsonl_skipping(self, path: Path, predicate) -> int:
-        """Rewrite path keeping only lines where predicate(parsed_dict) is True. Returns count removed."""
+        """Rewrite path keeping only lines where predicate(parsed_dict) is True. Returns count removed.
+
+        Malformed (non-JSON) lines are preserved untouched; use delete_jsonl_line
+        to remove a specific corrupt line by 1-indexed line number.
+        """
         if not path.exists():
             return 0
         kept: List[str] = []
@@ -256,13 +260,21 @@ class WikiStore:
         return removed > 0
 
     def delete_jsonl_line(self, path: Path, line_no: int) -> None:
-        """Remove the 1-indexed line, preserve a `.bak` copy of the original file."""
+        """Remove the 1-indexed line, preserve a `.bak` copy of the original file.
+
+        Raises FileNotFoundError if path does not exist, ValueError if line_no
+        is out of range. Backup is written before the rewrite so a mid-operation
+        crash leaves the original recoverable from `.bak`.
+        """
+        if not path.exists():
+            raise FileNotFoundError(f"Cannot delete line: {path} does not exist")
         original = path.read_text(encoding="utf-8")
+        lines = original.splitlines()
+        if not (1 <= line_no <= len(lines)):
+            raise ValueError(f"line_no {line_no} out of range (1..{len(lines)}) for {path}")
         backup = path.with_suffix(path.suffix + ".bak")
         backup.write_text(original, encoding="utf-8")
-        lines = original.splitlines()
-        if 1 <= line_no <= len(lines):
-            del lines[line_no - 1]
+        del lines[line_no - 1]
         new_content = "\n".join(lines) + ("\n" if lines else "")
         self._atomic_write(path, new_content)
 

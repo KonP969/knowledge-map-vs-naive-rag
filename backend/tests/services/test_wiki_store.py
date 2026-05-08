@@ -169,10 +169,6 @@ def test_merge_concept_combines_examples(store, sample_concept):
 # ── Phase 6 deletes/updates ────────────────────────────────────────────────
 
 def test_delete_claim_removes_line(tmp_path):
-    from datetime import datetime
-    from models.wiki_models import Claim, Span
-    from services.wiki_store import WikiStore
-
     store = WikiStore(root=tmp_path)
     c1 = Claim(id="cl_001", text="a", subject_id="entity:e_001", source_id="src_001",
                span=Span(start=0, end=1, text="a"), confidence=0.9, polarity="asserts")
@@ -190,15 +186,11 @@ def test_delete_claim_removes_line(tmp_path):
 
 
 def test_delete_claim_returns_false_for_missing_id(tmp_path):
-    from services.wiki_store import WikiStore
     store = WikiStore(root=tmp_path)
     assert store.delete_claim("cl_999") is False
 
 
 def test_delete_edge_removes_line(tmp_path):
-    from models.wiki_models import Edge, Span
-    from services.wiki_store import WikiStore
-
     store = WikiStore(root=tmp_path)
     e1 = Edge(id="ed_001", **{"from": "entity:a"}, to="entity:b",
               relation="mentions", source_id="src_001",
@@ -216,7 +208,6 @@ def test_delete_edge_removes_line(tmp_path):
 
 
 def test_delete_jsonl_line_removes_line_and_creates_backup(tmp_path):
-    from services.wiki_store import WikiStore
     store = WikiStore(root=tmp_path)
     path = store.root / "wiki" / "claims.jsonl"
     path.write_text("good1\nGARBAGE\ngood2\n", encoding="utf-8")
@@ -230,8 +221,6 @@ def test_delete_jsonl_line_removes_line_and_creates_backup(tmp_path):
 
 
 def test_delete_entity_removes_file(tmp_path):
-    from models.wiki_models import Entity
-    from services.wiki_store import WikiStore
     store = WikiStore(root=tmp_path)
     ent = Entity(id="e_001", type="Place", aliases=[], description="A long description with chars.",
                  mentions_count=0, questions=["q?"], tags=[])
@@ -243,14 +232,11 @@ def test_delete_entity_removes_file(tmp_path):
 
 
 def test_delete_entity_returns_false_for_missing(tmp_path):
-    from services.wiki_store import WikiStore
     store = WikiStore(root=tmp_path)
     assert store.delete_entity("nope", "Place") is False
 
 
 def test_delete_concept_removes_file(tmp_path):
-    from models.wiki_models import Concept
-    from services.wiki_store import WikiStore
     store = WikiStore(root=tmp_path)
     c = Concept(id="c_001", definition="A long concept definition with characters.",
                 examples=[], related=[], questions=["q?"], tags=[])
@@ -261,8 +247,6 @@ def test_delete_concept_removes_file(tmp_path):
 
 
 def test_update_entity_description_persists(tmp_path):
-    from models.wiki_models import Entity
-    from services.wiki_store import WikiStore
     store = WikiStore(root=tmp_path)
     ent = Entity(id="e_001", type="Place", aliases=[], description="short",
                  mentions_count=0, questions=["q?"], tags=[])
@@ -276,8 +260,6 @@ def test_update_entity_description_persists(tmp_path):
 
 
 def test_update_concept_description_persists(tmp_path):
-    from models.wiki_models import Concept
-    from services.wiki_store import WikiStore
     store = WikiStore(root=tmp_path)
     c = Concept(id="c_001", definition="short",
                 examples=[], related=[], questions=["q?"], tags=[])
@@ -288,3 +270,15 @@ def test_update_concept_description_persists(tmp_path):
 
     reread = store.read_concept("test")
     assert reread.definition == new_def
+
+
+def test_update_entity_description_raises_when_missing(tmp_path):
+    store = WikiStore(root=tmp_path)
+    with pytest.raises(FileNotFoundError):
+        store.update_entity_description("nope", "Place", "new desc")
+
+
+def test_update_concept_description_raises_when_missing(tmp_path):
+    store = WikiStore(root=tmp_path)
+    with pytest.raises(FileNotFoundError):
+        store.update_concept_description("nope", "new def")
