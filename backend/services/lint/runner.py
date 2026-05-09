@@ -27,7 +27,7 @@ def _reports_dir(store: WikiStore) -> Path:
 
 
 def _make_report_id(now: datetime) -> str:
-    return now.strftime("%Y-%m-%dT%H-%M-%S")
+    return now.strftime("%Y-%m-%dT%H-%M-%S-%f")
 
 
 def _aggregate_issues(issues: List[LintIssue]) -> Tuple[Dict[str, int], Dict[str, int]]:

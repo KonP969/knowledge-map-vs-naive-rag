@@ -73,9 +73,11 @@ def test_run_lint_aggregates_counts(store):
 def test_list_reports_returns_summaries(store):
     r1 = run_lint(store)
     r2 = run_lint(store)
+    assert r1.id != r2.id, "report IDs should be unique even on rapid back-to-back runs"
     summaries = list_reports(store)
     ids = {s["id"] for s in summaries}
     assert r1.id in ids and r2.id in ids
+    assert len(summaries) == 2
 
 
 def test_load_report_returns_full_object(store):
