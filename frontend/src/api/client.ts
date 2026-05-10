@@ -95,6 +95,24 @@ export const api = {
   getWikiNodeDetail: (id: string) =>
     request<import("../types").NodeDetail>(`/wiki/node-detail?id=${encodeURIComponent(id)}`),
 
+  // Lint
+  runLint: () =>
+    request<import("../types").LintReport>("/lint/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+  listLintReports: () =>
+    request<import("../types").LintReportSummary[]>("/lint/reports"),
+  getLintReport: (id: string) =>
+    request<import("../types").LintReport>(`/lint/report/${encodeURIComponent(id)}`),
+  applyLintFix: (body: import("../types").LintFixRequest) =>
+    request<{ id: string; status: import("../types").IssueStatus }>("/lint/fix", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+
   // Folders
   getFolders: () => request<import("../types").Folder[]>("/folders/"),
   createFolder: (name: string) =>
