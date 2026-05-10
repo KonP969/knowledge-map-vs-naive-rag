@@ -12,6 +12,7 @@ import { SourcesPanel } from "./components/wiki/SourcesPanel";
 import { IngestPipelinePanel } from "./components/wiki/IngestPipelinePanel";
 import { ChatWithTracePanel } from "./components/chat_with_trace/ChatWithTracePanel";
 import { KnowledgeMapPanel } from "./components/wiki/KnowledgeMapPanel";
+import { LintPanel } from "./components/lint/LintPanel";
 import type { Panel, SessionMetrics } from "./types";
 import { api } from "./api/client";
 
@@ -43,6 +44,7 @@ export default function App() {
           {activePanel === "ingest" && <IngestPipelinePanel />}
           {activePanel === "chat_trace" && <ChatWithTracePanel />}
           {activePanel === "knowledge_map" && <KnowledgeMapPanel />}
+          {activePanel === "lint" && <LintPanel />}
         </main>
       </div>
       <Footer />
