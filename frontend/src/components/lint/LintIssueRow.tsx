@@ -1,0 +1,112 @@
+import { useState } from "react";
+import { AlertTriangle, AlertOctagon, Info, Check, X, Ban } from "lucide-react";
+import type { LintIssue } from "../../types";
+
+const SEVERITY_ICON = {
+  error: AlertOctagon,
+  warning: AlertTriangle,
+  info: Info,
+};
+
+const SEVERITY_COLOR: Record<string, string> = {
+  error: "text-red-600 dark:text-red-400",
+  warning: "text-yellow-600 dark:text-yellow-400",
+  info: "text-blue-500",
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  open: "bg-muted text-muted-foreground",
+  fixed: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  wontfix: "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
+};
+
+interface LintIssueRowProps {
+  issue: LintIssue;
+  onApply: (issueId: string, editPayload?: { description: string }) => void;
+  onReject: (issueId: string) => void;
+  onWontFix: (issueId: string) => void;
+  busy: boolean;
+}
+
+export function LintIssueRow({ issue, onApply, onReject, onWontFix, busy }: LintIssueRowProps) {
+  const Icon = SEVERITY_ICON[issue.severity];
+  const isEmptyDescriptionEdit =
+    issue.type === "empty_description" && issue.auto_fixable;
+  const [editText, setEditText] = useState("");
+  const editValid = editText.trim().length >= 30;
+  const closed = issue.status !== "open";
+
+  return (
+    <div className="border border-border rounded-md p-3 flex flex-col gap-2 text-xs bg-card">
+      <div className="flex items-start gap-2">
+        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${SEVERITY_COLOR[issue.severity]}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-[11px] text-muted-foreground">{issue.type}</span>
+            <span className="font-mono text-[11px] text-muted-foreground">·</span>
+            <span className="font-mono text-[11px] text-muted-foreground truncate">
+              {issue.location}
+            </span>
+            <span className={`ml-auto px-2 py-0.5 rounded text-[10px] uppercase ${STATUS_BADGE[issue.status]}`}>
+              {issue.status}
+            </span>
+          </div>
+          <p className="mt-1 text-foreground leading-snug">{issue.description}</p>
+          {issue.suggested_fix && (
+            <p className="mt-1 text-muted-foreground">
+              suggested: {issue.suggested_fix}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {!closed && isEmptyDescriptionEdit && (
+        <textarea
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          placeholder="Replacement description (≥30 chars)…"
+          rows={2}
+          className="w-full px-2 py-1 text-xs border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+        />
+      )}
+
+      {!closed && (
+        <div className="flex gap-2 flex-wrap">
+          {isEmptyDescriptionEdit ? (
+            <button
+              disabled={busy || !editValid}
+              onClick={() => onApply(issue.id, { description: editText.trim() })}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Check className="w-3 h-3" /> Save
+            </button>
+          ) : (
+            <button
+              disabled={busy || !issue.auto_fixable}
+              onClick={() => onApply(issue.id)}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              title={issue.auto_fixable ? undefined : "No deterministic fix available in this phase"}
+            >
+              <Check className="w-3 h-3" /> Apply Fix
+            </button>
+          )}
+          <button
+            disabled={busy}
+            onClick={() => onReject(issue.id)}
+            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+          >
+            <X className="w-3 h-3" /> Reject
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => onWontFix(issue.id)}
+            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+          >
+            <Ban className="w-3 h-3" /> Won't fix
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
