@@ -10,6 +10,7 @@ from api.folders import router as folders_router
 from api.ingest import router as ingest_router
 from api.wiki import router as wiki_router
 from api.retrieval import router as retrieval_router
+from api.lint import router as lint_router
 
 load_dotenv()
 
@@ -42,6 +43,7 @@ app.include_router(folders_router)
 app.include_router(ingest_router)
 app.include_router(wiki_router)
 app.include_router(retrieval_router)
+app.include_router(lint_router)
 
 @app.get("/health")
 def health():
