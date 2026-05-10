@@ -126,7 +126,8 @@ export type Panel =
   | "sources"
   | "ingest"
   | "chat_trace"
-  | "knowledge_map";
+  | "knowledge_map"
+  | "lint";
 
 // ── Wiki / Ingest types ────────────────────────────────────────────────────
 
@@ -304,4 +305,54 @@ export interface NodeDetail {
   questions?: string[];
   claims: NodeDetailClaim[];
   edges: NodeDetailEdge[];
+}
+
+// ── Lint types ─────────────────────────────────────────────────────────────
+
+export type IssueSeverity = "error" | "warning" | "info";
+
+export type IssueType =
+  | "provenance_missing"
+  | "dangling_source_ref"
+  | "dangling_node_ref"
+  | "corrupted_jsonl"
+  | "orphan_entity"
+  | "orphan_concept"
+  | "empty_questions"
+  | "empty_description";
+
+export type IssueStatus = "open" | "fixed" | "rejected" | "wontfix";
+
+export interface LintIssue {
+  id: string;
+  type: IssueType;
+  severity: IssueSeverity;
+  location: string;
+  description: string;
+  suggested_fix: string | null;
+  auto_fixable: boolean;
+  payload: Record<string, unknown>;
+  status: IssueStatus;
+}
+
+export interface LintReport {
+  id: string;
+  created_at: string;
+  issues: LintIssue[];
+  counts_by_severity: Record<string, number>;
+  counts_by_type: Record<string, number>;
+}
+
+export interface LintReportSummary {
+  id: string;
+  created_at: string;
+  counts_by_severity: Record<string, number>;
+  total: number;
+}
+
+export interface LintFixRequest {
+  report_id: string;
+  issue_id: string;
+  action: "apply" | "reject" | "wontfix";
+  edit_payload?: { description?: string };
 }
