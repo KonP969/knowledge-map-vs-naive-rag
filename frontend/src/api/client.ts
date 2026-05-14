@@ -96,11 +96,11 @@ export const api = {
     request<import("../types").NodeDetail>(`/wiki/node-detail?id=${encodeURIComponent(id)}`),
 
   // Lint
-  runLint: () =>
+  runLint: (includeSemantic = false) =>
     request<import("../types").LintReport>("/lint/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ include_semantic: includeSemantic }),
     }),
   listLintReports: () =>
     request<import("../types").LintReportSummary[]>("/lint/reports"),

@@ -96,8 +96,8 @@ def check_empty_questions(store: WikiStore) -> List[LintIssue]:
                 severity="warning",
                 location=node_id,
                 description=f"Entity {ent.id} has empty questions[]",
-                suggested_fix=None,
-                auto_fixable=False,
+                suggested_fix="Generate analytical questions (LLM)",
+                auto_fixable=True,
                 payload={"node_id": node_id, "slug": slug, "entity_type": ent.type},
             ))
 
@@ -110,8 +110,8 @@ def check_empty_questions(store: WikiStore) -> List[LintIssue]:
                 severity="warning",
                 location=node_id,
                 description=f"Concept {c.id} has empty questions[]",
-                suggested_fix=None,
-                auto_fixable=False,
+                suggested_fix="Generate analytical questions (LLM)",
+                auto_fixable=True,
                 payload={"node_id": node_id, "slug": slug},
             ))
 
@@ -124,8 +124,8 @@ def check_empty_questions(store: WikiStore) -> List[LintIssue]:
                 severity="warning",
                 location=node_id,
                 description=f"Source {s.id} has empty questions[]",
-                suggested_fix=None,
-                auto_fixable=False,
+                suggested_fix="Generate analytical questions (LLM)",
+                auto_fixable=True,
                 payload={"node_id": node_id, "slug": slug},
             ))
 

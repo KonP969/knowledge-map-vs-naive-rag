@@ -14,14 +14,12 @@ export function LintPanel() {
   const [error, setError] = useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
+  const [includeSemantic, setIncludeSemantic] = useState(false);
 
   async function loadLatestReport() {
     try {
       const summaries = await api.listLintReports();
-      if (summaries.length === 0) {
-        setReport(null);
-        return;
-      }
+      if (summaries.length === 0) { setReport(null); return; }
       const latest = await api.getLintReport(summaries[0].id);
       setReport(latest);
     } catch (e) {
@@ -29,15 +27,13 @@ export function LintPanel() {
     }
   }
 
-  useEffect(() => {
-    loadLatestReport();
-  }, []);
+  useEffect(() => { loadLatestReport(); }, []);
 
   async function runNow() {
     setRunning(true);
     setError(null);
     try {
-      const fresh = await api.runLint();
+      const fresh = await api.runLint(includeSemantic);
       setReport(fresh);
     } catch (e) {
       setError((e as Error).message);
@@ -55,12 +51,7 @@ export function LintPanel() {
     setBusyIssueId(issueId);
     setError(null);
     try {
-      await api.applyLintFix({
-        report_id: report.id,
-        issue_id: issueId,
-        action,
-        edit_payload: editPayload,
-      });
+      await api.applyLintFix({ report_id: report.id, issue_id: issueId, action, edit_payload: editPayload });
       const refreshed = await api.getLintReport(report.id);
       setReport(refreshed);
     } catch (e) {
@@ -82,9 +73,19 @@ export function LintPanel() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 flex-wrap">
         <ShieldCheck className="w-4 h-4 text-primary" />
         <h2 className="text-sm font-medium">Lint</h2>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={includeSemantic}
+            onChange={(e) => setIncludeSemantic(e.target.checked)}
+            className="rounded"
+          />
+          Semantic checks{" "}
+          <span className="text-muted-foreground/60">(LLM, ~30–60s)</span>
+        </label>
         <button
           onClick={runNow}
           disabled={running}
@@ -103,6 +104,7 @@ export function LintPanel() {
             <span className="font-mono text-foreground">{report.id}</span> ·{" "}
             <span className="text-red-600">{sev.error} errors</span> ·{" "}
             <span className="text-yellow-600">{sev.warning} warnings</span> ·{" "}
+            <span className="text-blue-500">{sev.info ?? 0} info</span> ·{" "}
             {issues.length} total
           </span>
         ) : (
@@ -110,9 +112,8 @@ export function LintPanel() {
             No lint reports yet. Click <span className="font-medium">Run Now</span>.
           </span>
         )}
-
         <div className="flex gap-1 ml-auto">
-          {(["all", "error", "warning"] as SeverityFilter[]).map((s) => (
+          {(["all", "error", "warning", "info"] as SeverityFilter[]).map((s) => (
             <button
               key={s}
               onClick={() => setSeverityFilter(s)}
