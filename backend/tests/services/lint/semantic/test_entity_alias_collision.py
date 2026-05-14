@@ -4,6 +4,7 @@ from models.lint_models import AliasMergeJudgement
 from models.wiki_models import Entity
 from services.lint.checks.semantic.entity_alias_collision import (
     _edit_distance,
+    _normalize,
     check_entity_alias_collision,
 )
 from services.wiki_store import WikiStore
@@ -31,6 +32,12 @@ def _write_entity(store, slug, entity_type="Person", entity_id=None):
     )
     store.write_entity(ent, slug)
     return ent
+
+
+def test_normalize_hyphens_and_underscores():
+    assert _normalize("jan-kowalski") == "jan kowalski"
+    assert _normalize("jan_kowalski") == "jan kowalski"
+    assert _normalize("jan-kowalski") == _normalize("jan_kowalski")
 
 
 def test_edit_distance_same():
