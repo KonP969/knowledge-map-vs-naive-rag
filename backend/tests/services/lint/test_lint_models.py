@@ -81,3 +81,53 @@ def test_lint_issue_status_can_be_updated():
     )
     issue.status = "fixed"
     assert issue.status == "fixed"
+
+
+# ── Tier 3 IssueTypes and LLM response models ────────────────────────────────
+
+from models.lint_models import (
+    ContradictionJudgement,
+    AliasMergeJudgement,
+    MissingConceptJudgement,
+    StaleSummaryJudgement,
+    LlmQuestionsResult,
+)
+
+
+def test_tier3_issue_types_are_valid():
+    for t in ("unmarked_contradiction", "entity_alias_collision", "missing_concept", "stale_summary"):
+        issue = LintIssue(
+            id=f"{t}:x",
+            type=t,
+            severity="info",
+            location="entity:e_001",
+            description="test",
+            auto_fixable=False,
+        )
+        assert issue.type == t
+        assert issue.severity == "info"
+
+
+def test_contradiction_judgement():
+    j = ContradictionJudgement(is_contradiction=True, explanation="opposing facts")
+    assert j.is_contradiction is True
+
+
+def test_alias_merge_judgement():
+    j = AliasMergeJudgement(should_merge=True, explanation="same person", suggested_canonical="jan-kowalski")
+    assert j.suggested_canonical == "jan-kowalski"
+
+
+def test_missing_concept_judgement():
+    j = MissingConceptJudgement(has_missing_concept=True, concept_name="oświetlenie", explanation="7 claims")
+    assert j.concept_name == "oświetlenie"
+
+
+def test_stale_summary_judgement():
+    j = StaleSummaryJudgement(is_stale=True, proposed_summary="Updated summary.", explanation="missing claims")
+    assert j.proposed_summary == "Updated summary."
+
+
+def test_llm_questions_result():
+    r = LlmQuestionsResult(questions=["What is X?", "How does Y work?"])
+    assert len(r.questions) == 2
