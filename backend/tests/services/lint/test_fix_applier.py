@@ -162,3 +162,96 @@ def test_apply_fix_empty_description_without_payload_raises(store):
     )
     with pytest.raises(FixError):
         apply_fix(store, issue)
+
+
+from unittest.mock import MagicMock
+from models.lint_models import LlmQuestionsResult
+
+
+def _mock_questions_llm(questions=None):
+    questions = questions or ["What is X?", "How does Y work?", "Why Z?"]
+    client = MagicMock()
+    resp = MagicMock()
+    resp.choices[0].message.parsed = LlmQuestionsResult(questions=questions)
+    client.beta.chat.completions.parse.return_value = resp
+    return client
+
+
+def test_fix_empty_questions_entity(tmp_path):
+    from models.wiki_models import Entity
+    store = WikiStore(root=tmp_path)
+    ent = Entity(id="e_001", type="Person", description="A person.", questions=[], tags=[])
+    store.write_entity(ent, "jan")
+    issue = LintIssue(
+        id="empty_questions:entity:e_001",
+        type="empty_questions",
+        severity="warning",
+        location="entity:e_001",
+        description="Empty questions",
+        auto_fixable=True,
+        payload={"node_id": "entity:e_001", "slug": "jan", "entity_type": "Person"},
+    )
+    apply_fix(store, issue, llm_client=_mock_questions_llm())
+    reloaded = store.read_entity("jan", "Person")
+    assert len(reloaded.questions) == 3
+
+
+def test_fix_empty_questions_concept(tmp_path):
+    from models.wiki_models import Concept
+    store = WikiStore(root=tmp_path)
+    c = Concept(id="c_001", definition="A concept.", examples=[], related=[], questions=[], tags=[])
+    store.write_concept(c, "my-concept")
+    issue = LintIssue(
+        id="empty_questions:concept:c_001",
+        type="empty_questions",
+        severity="warning",
+        location="concept:c_001",
+        description="Empty questions",
+        auto_fixable=True,
+        payload={"node_id": "concept:c_001", "slug": "my-concept"},
+    )
+    apply_fix(store, issue, llm_client=_mock_questions_llm(["Q1?", "Q2?"]))
+    reloaded = store.read_concept("my-concept")
+    assert reloaded.questions == ["Q1?", "Q2?"]
+
+
+def test_fix_unmarked_contradiction_appends_edge(tmp_path):
+    store = WikiStore(root=tmp_path)
+    issue = LintIssue(
+        id="unmarked_contradiction:cl_001:cl_002",
+        type="unmarked_contradiction",
+        severity="info",
+        location="entity:e_001",
+        description="Contradiction",
+        auto_fixable=True,
+        payload={"claim_a_id": "cl_001", "claim_b_id": "cl_002", "source_id": "src_001"},
+    )
+    apply_fix(store, issue)
+    edges = store.read_all_edges()
+    assert any(e.relation == "contradicts" for e in edges)
+    contradicts = [e for e in edges if e.relation == "contradicts"]
+    assert contradicts[0].from_ == "claim:cl_001"
+    assert contradicts[0].to == "claim:cl_002"
+
+
+def test_fix_stale_summary_updates_source(tmp_path):
+    from datetime import datetime
+    from models.wiki_models import Source
+    store = WikiStore(root=tmp_path)
+    src = Source(
+        id="src_001", title="T", type="article", raw_path="r",
+        ingested_at=datetime.now(), summary="Old.", key_takeaways=[], questions=[], tags=[],
+    )
+    store.write_source(src, "test-source")
+    issue = LintIssue(
+        id="stale_summary:src_001",
+        type="stale_summary",
+        severity="info",
+        location="source:src_001",
+        description="Stale",
+        auto_fixable=True,
+        payload={"slug": "test-source", "source_id": "src_001", "proposed_summary": "New updated summary."},
+    )
+    apply_fix(store, issue)
+    reloaded = store.read_source("test-source")
+    assert reloaded.summary == "New updated summary."
