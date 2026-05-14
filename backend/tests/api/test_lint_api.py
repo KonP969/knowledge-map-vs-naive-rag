@@ -127,14 +127,19 @@ def test_post_lint_fix_apply_with_edit_payload(client, tmp_path):
 
 
 def test_post_lint_fix_apply_on_non_auto_fixable_returns_400(client, tmp_path):
+    from datetime import datetime
+    from models.wiki_models import Source
     store = WikiStore(root=tmp_path)
-    e = Entity(id="e_001", type="Place", aliases=[], description="long enough description here.",
-               mentions_count=0, questions=[], tags=[])
-    store.write_entity(e, slug="e_001")
+    src = Source(
+        id="src_001", title="T", type="article", raw_path="r",
+        ingested_at=datetime.now(), summary="",
+        key_takeaways=[], questions=[], tags=[],
+    )
+    store.write_source(src, "src-001")
 
     with patch("api.lint._get_store", return_value=store):
         run = client.post("/api/lint/run", json={}).json()
-        issue = next(i for i in run["issues"] if i["type"] == "empty_questions")
+        issue = next(i for i in run["issues"] if i["type"] == "empty_description" and "source" in i["id"])
         response = client.post("/api/lint/fix", json={
             "report_id": run["id"], "issue_id": issue["id"], "action": "apply",
         })
