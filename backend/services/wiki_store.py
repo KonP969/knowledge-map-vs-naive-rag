@@ -305,3 +305,27 @@ class WikiStore:
             raise FileNotFoundError(f"Concept not found: {slug}")
         updated = c.model_copy(update={"definition": new_definition})
         self.write_concept(updated, slug)
+
+    def update_source_summary(self, slug: str, summary: str) -> None:
+        s = self.read_source(slug)
+        if s is None:
+            raise FileNotFoundError(f"Source not found: {slug}")
+        self.write_source(s.model_copy(update={"summary": summary}), slug)
+
+    def update_entity_questions(self, slug: str, entity_type: str, questions: List[str]) -> None:
+        ent = self.read_entity(slug, entity_type)
+        if ent is None:
+            raise FileNotFoundError(f"Entity not found: {entity_type}/{slug}")
+        self.write_entity(ent.model_copy(update={"questions": questions}), slug)
+
+    def update_concept_questions(self, slug: str, questions: List[str]) -> None:
+        c = self.read_concept(slug)
+        if c is None:
+            raise FileNotFoundError(f"Concept not found: {slug}")
+        self.write_concept(c.model_copy(update={"questions": questions}), slug)
+
+    def update_source_questions(self, slug: str, questions: List[str]) -> None:
+        s = self.read_source(slug)
+        if s is None:
+            raise FileNotFoundError(f"Source not found: {slug}")
+        self.write_source(s.model_copy(update={"questions": questions}), slug)

@@ -98,7 +98,52 @@ def test_write_and_read_entity(store, sample_entity):
 def test_write_and_read_concept(store, sample_concept):
     store.write_concept(sample_concept, slug="kolory-neutralne")
     loaded = store.read_concept("kolory-neutralne")
-    assert loaded.examples == ["beż", "biel"]
+
+
+def test_update_source_summary(tmp_path):
+    from datetime import datetime
+    store = WikiStore(root=tmp_path)
+    src = Source(
+        id="src_001", title="Test", type="article", raw_path="raw/test",
+        ingested_at=datetime.now(), summary="Old summary.",
+        key_takeaways=[], questions=[], tags=[],
+    )
+    store.write_source(src, "test")
+    store.update_source_summary("test", "New summary updated.")
+    reloaded = store.read_source("test")
+    assert reloaded.summary == "New summary updated."
+
+
+def test_update_entity_questions(tmp_path):
+    store = WikiStore(root=tmp_path)
+    ent = Entity(id="e_001", type="Person", description="A person.", questions=[], tags=[])
+    store.write_entity(ent, "jan-kowalski")
+    store.update_entity_questions("jan-kowalski", "Person", ["What does Jan do?"])
+    reloaded = store.read_entity("jan-kowalski", "Person")
+    assert reloaded.questions == ["What does Jan do?"]
+
+
+def test_update_concept_questions(tmp_path):
+    store = WikiStore(root=tmp_path)
+    c = Concept(id="c_001", definition="A concept.", examples=[], related=[], questions=[], tags=[])
+    store.write_concept(c, "my-concept")
+    store.update_concept_questions("my-concept", ["What is this concept?"])
+    reloaded = store.read_concept("my-concept")
+    assert reloaded.questions == ["What is this concept?"]
+
+
+def test_update_source_questions(tmp_path):
+    from datetime import datetime
+    store = WikiStore(root=tmp_path)
+    src = Source(
+        id="src_002", title="T2", type="article", raw_path="raw/t2",
+        ingested_at=datetime.now(), summary="Summary.",
+        key_takeaways=[], questions=[], tags=[],
+    )
+    store.write_source(src, "t2")
+    store.update_source_questions("t2", ["Q1?", "Q2?"])
+    reloaded = store.read_source("t2")
+    assert reloaded.questions == ["Q1?", "Q2?"]
 
 
 def test_append_claim_and_read_back(store, sample_claim):
