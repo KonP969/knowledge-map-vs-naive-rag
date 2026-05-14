@@ -4,6 +4,7 @@ import { SectionNaiveRag } from "./sections/SectionNaiveRag";
 import { SectionIngest } from "./sections/SectionIngest";
 import { SectionRetrieval } from "./sections/SectionRetrieval";
 import { SectionQuerying } from "./sections/SectionQuerying";
+import { SectionWalkthroughs } from "./sections/SectionWalkthroughs";
 
 type TabId = "intro" | "naive-rag" | "ingest" | "retrieval" | "querying" | "walkthroughs";
 
@@ -47,7 +48,7 @@ export function TutorialPanel() {
       {activeTab === "ingest" && <SectionIngest />}
       {activeTab === "retrieval" && <SectionRetrieval />}
       {activeTab === "querying" && <SectionQuerying />}
-      {activeTab === "walkthroughs" && <div className="text-muted-foreground text-sm">Sekcja 6 — wkrótce</div>}
+      {activeTab === "walkthroughs" && <SectionWalkthroughs />}
     </div>
   );
 }
