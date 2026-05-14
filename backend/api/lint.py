@@ -13,6 +13,7 @@ from services.lint.runner import (
     run_lint,
     update_issue_status,
 )
+from services.wiki_log import append_lint_action_summary
 from services.wiki_store import WikiStore
 
 
@@ -26,7 +27,7 @@ def _get_store() -> WikiStore:
 
 
 class RunLintBody(BaseModel):
-    pass
+    include_semantic: bool = False
 
 
 class FixBody(BaseModel):
@@ -37,9 +38,9 @@ class FixBody(BaseModel):
 
 
 @router.post("/run", response_model=LintReport)
-def post_run_lint(_body: RunLintBody = RunLintBody()):
+def post_run_lint(body: RunLintBody = RunLintBody()):
     store = _get_store()
-    return run_lint(store)
+    return run_lint(store, include_semantic=body.include_semantic)
 
 
 @router.get("/reports", response_model=List[Dict[str, Any]])
@@ -80,5 +81,10 @@ def post_fix(body: FixBody):
     else:
         new_status = "wontfix"
 
-    update_issue_status(store, body.report_id, body.issue_id, new_status)
+    updated_report = update_issue_status(store, body.report_id, body.issue_id, new_status)
+
+    terminal = {"fixed", "rejected", "wontfix"}
+    if all(i.status in terminal for i in updated_report.issues):
+        append_lint_action_summary(store, updated_report)
+
     return {"id": body.issue_id, "status": new_status}
