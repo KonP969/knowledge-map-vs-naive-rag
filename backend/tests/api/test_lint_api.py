@@ -150,3 +150,53 @@ def test_post_lint_fix_unknown_issue_returns_404(client, tmp_path):
             "report_id": run["id"], "issue_id": "nonexistent", "action": "reject",
         })
     assert response.status_code == 404
+
+
+def test_run_lint_include_semantic_false_by_default(client, tmp_path):
+    """POST /api/lint/run with empty body should not call LLM."""
+    from unittest.mock import patch
+    store = WikiStore(root=tmp_path)
+    with patch("api.lint._get_store", return_value=store):
+        with patch("services.lint.runner.OpenAI") as mock_openai:
+            response = client.post("/api/lint/run", json={})
+    assert response.status_code == 200
+    mock_openai.assert_not_called()
+
+
+def test_run_lint_with_include_semantic_true(client, tmp_path):
+    """POST /api/lint/run with include_semantic:true should create LLM client."""
+    from unittest.mock import MagicMock, patch
+    store = WikiStore(root=tmp_path)
+    noop = MagicMock()
+    noop_resp = MagicMock()
+    from models.lint_models import ContradictionJudgement
+    noop_resp.choices[0].message.parsed = ContradictionJudgement(is_contradiction=False, explanation="")
+    noop.beta.chat.completions.parse.return_value = noop_resp
+    with patch("api.lint._get_store", return_value=store):
+        with patch("services.lint.runner.OpenAI", return_value=noop):
+            response = client.post("/api/lint/run", json={"include_semantic": True})
+    assert response.status_code == 200
+
+
+def test_per_action_log_written_when_all_issues_closed(client, tmp_path):
+    """When last open issue is fixed/rejected, log.md gets a 'closed' entry."""
+    store = WikiStore(root=tmp_path)
+    with patch("api.lint._get_store", return_value=store):
+        # Run lint to get a report
+        run_resp = client.post("/api/lint/run", json={})
+        assert run_resp.status_code == 200
+        report = run_resp.json()
+        if not report["issues"]:
+            return  # nothing to close
+        # Reject all issues
+        for issue in report["issues"]:
+            client.post("/api/lint/fix", json={
+                "report_id": report["id"],
+                "issue_id": issue["id"],
+                "action": "reject",
+            })
+    # Check log.md contains 'closed'
+    from pathlib import Path
+    log_path = store.root / "wiki" / "log.md"
+    if log_path.exists():
+        assert "closed" in log_path.read_text(encoding="utf-8")

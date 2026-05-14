@@ -21,3 +21,15 @@ def append_log_entry(
         log_path.write_text("# Wiki Log\n\n", encoding="utf-8")
     with log_path.open("a", encoding="utf-8") as f:
         f.write(line)
+
+
+def append_lint_action_summary(store: "WikiStore", report) -> None:
+    fixed = sum(1 for i in report.issues if i.status == "fixed")
+    rejected = sum(1 for i in report.issues if i.status == "rejected")
+    wontfix = sum(1 for i in report.issues if i.status == "wontfix")
+    append_log_entry(
+        store,
+        op="lint",
+        source_id=None,
+        details=f"closed {report.id} | fixed: {fixed}, rejected: {rejected}, wontfix: {wontfix}",
+    )
