@@ -51,7 +51,6 @@ def check_entity_alias_collision(
 
     issues: List[LintIssue] = []
     checked = 0
-    seen_pairs: set = set()
     model = os.getenv("CHAT_MODEL", "gpt-4o-mini")
 
     for i in range(len(entities)):
@@ -62,10 +61,6 @@ def check_entity_alias_collision(
             if checked >= _SEMANTIC_CAP:
                 break
             slug_b, type_b, ent_b, norm_b = entities[j]
-            pair = tuple(sorted([ent_a.id, ent_b.id]))
-            if pair in seen_pairs:
-                continue
-            seen_pairs.add(pair)
             if _edit_distance(norm_a, norm_b) >= 3:
                 continue
 
