@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Walkthrough, WalkthroughStep } from "../Walkthrough";
+import { Walkthrough } from "../Walkthrough";
+import type { WalkthroughStep } from "../Walkthrough";
 
 interface GuidedWalkthrough {
   id: string;
