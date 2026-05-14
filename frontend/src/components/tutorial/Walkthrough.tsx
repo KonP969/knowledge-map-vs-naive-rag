@@ -1,8 +1,9 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 
 export interface WalkthroughStep {
   title: string;
-  content: React.ReactNode;
+  content: ReactNode;
   panelHint?: string;
 }
 
@@ -32,6 +33,7 @@ export function Walkthrough({ steps }: { steps: WalkthroughStep[] }) {
             <button
               key={i}
               onClick={() => setCurrent(i)}
+              aria-label={`Przejdź do kroku ${i + 1}`}
               className={`w-2 h-2 rounded-full transition-colors ${
                 i === current ? "bg-primary" : "bg-muted-foreground/30 hover:bg-muted-foreground/60"
               }`}
