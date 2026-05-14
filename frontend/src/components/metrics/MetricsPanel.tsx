@@ -11,7 +11,7 @@ export function MetricsPanel() {
   }, []);
 
   async function handleReset() {
-    if (!confirm("Reset all data (documents, chunks, embeddings, metrics)?")) return;
+    if (!confirm("Reset session metrics?")) return;
     setResetting(true);
     try {
       await api.resetAll();
