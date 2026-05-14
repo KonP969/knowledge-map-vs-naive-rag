@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, AlertOctagon, Info, Check, X, Ban } from "lucide-react";
+import { AlertTriangle, AlertOctagon, Info, Check, X, Ban, Sparkles } from "lucide-react";
 import type { LintIssue } from "../../types";
 
 const SEVERITY_ICON = {
@@ -31,8 +31,8 @@ interface LintIssueRowProps {
 
 export function LintIssueRow({ issue, onApply, onReject, onWontFix, busy }: LintIssueRowProps) {
   const Icon = SEVERITY_ICON[issue.severity];
-  const isEmptyDescriptionEdit =
-    issue.type === "empty_description" && issue.auto_fixable;
+  const isEmptyDescriptionEdit = issue.type === "empty_description" && issue.auto_fixable;
+  const isGenerateQuestions = issue.type === "empty_questions" && issue.auto_fixable;
   const [editText, setEditText] = useState("");
   const editValid = editText.trim().length >= 30;
   const closed = issue.status !== "open";
@@ -54,9 +54,7 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, busy }: Lint
           </div>
           <p className="mt-1 text-foreground leading-snug">{issue.description}</p>
           {issue.suggested_fix && (
-            <p className="mt-1 text-muted-foreground">
-              suggested: {issue.suggested_fix}
-            </p>
+            <p className="mt-1 text-muted-foreground">suggested: {issue.suggested_fix}</p>
           )}
         </div>
       </div>
@@ -81,12 +79,20 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, busy }: Lint
             >
               <Check className="w-3 h-3" /> Save
             </button>
+          ) : isGenerateQuestions ? (
+            <button
+              disabled={busy}
+              onClick={() => onApply(issue.id)}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-violet-600 text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+            >
+              <Sparkles className="w-3 h-3" /> Generate Questions
+            </button>
           ) : (
             <button
               disabled={busy || !issue.auto_fixable}
               onClick={() => onApply(issue.id)}
               className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-              title={issue.auto_fixable ? undefined : "No deterministic fix available in this phase"}
+              title={issue.auto_fixable ? undefined : "No automatic fix available"}
             >
               <Check className="w-3 h-3" /> Apply Fix
             </button>

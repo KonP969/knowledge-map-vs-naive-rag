@@ -319,7 +319,11 @@ export type IssueType =
   | "orphan_entity"
   | "orphan_concept"
   | "empty_questions"
-  | "empty_description";
+  | "empty_description"
+  | "unmarked_contradiction"
+  | "entity_alias_collision"
+  | "missing_concept"
+  | "stale_summary";
 
 export type IssueStatus = "open" | "fixed" | "rejected" | "wontfix";
 
