@@ -1,7 +1,10 @@
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+from openai import OpenAI
 
 from models.lint_models import IssueStatus, LintIssue, LintReport
 from services.lint.checks.navigability import (
@@ -39,16 +42,33 @@ def _aggregate_issues(issues: List[LintIssue]) -> Tuple[Dict[str, int], Dict[str
     return sev, by_type
 
 
-def run_lint(store: WikiStore) -> LintReport:
+def run_lint(store: WikiStore, include_semantic: bool = False) -> LintReport:
     issues: List[LintIssue] = []
+
+    # Tier 1 — provenance & integrity
     issues.extend(check_corrupted_jsonl(store))
     issues.extend(check_provenance_missing(store))
     issues.extend(check_dangling_source_ref(store))
     issues.extend(check_dangling_node_ref(store))
+
+    # Tier 2 — navigability
     issues.extend(check_orphan_entity(store))
     issues.extend(check_orphan_concept(store))
     issues.extend(check_empty_questions(store))
     issues.extend(check_empty_description(store))
+
+    # Tier 3 — semantic (LLM-assisted, opt-in)
+    if include_semantic:
+        from services.lint.checks.semantic.unmarked_contradiction import check_unmarked_contradiction
+        from services.lint.checks.semantic.entity_alias_collision import check_entity_alias_collision
+        from services.lint.checks.semantic.missing_concept import check_missing_concept
+        from services.lint.checks.semantic.stale_summary import check_stale_summary
+
+        llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        issues.extend(check_unmarked_contradiction(store, llm_client))
+        issues.extend(check_entity_alias_collision(store, llm_client))
+        issues.extend(check_missing_concept(store, llm_client))
+        issues.extend(check_stale_summary(store, llm_client))
 
     now = datetime.now()
     report_id = _make_report_id(now)
@@ -67,7 +87,7 @@ def run_lint(store: WikiStore) -> LintReport:
         store,
         op="lint",
         source_id=None,
-        details=f"run {report_id} | found: {len(issues)} ({sev['error']} errors, {sev['warning']} warnings)",
+        details=f"run {report_id} | found: {len(issues)} ({sev['error']} errors, {sev['warning']} warnings, {sev['info']} info)",
         timestamp=now,
     )
     return report

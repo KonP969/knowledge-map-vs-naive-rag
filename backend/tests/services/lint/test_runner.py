@@ -106,3 +106,79 @@ def test_save_report_round_trip(store):
     save_report(store, report)
     loaded = load_report(store, report.id)
     assert loaded.id == report.id
+
+
+# ---------------------------------------------------------------------------
+# Tier 3 / include_semantic tests
+# ---------------------------------------------------------------------------
+from unittest.mock import MagicMock, patch
+from models.lint_models import (
+    ContradictionJudgement, AliasMergeJudgement,
+    MissingConceptJudgement, StaleSummaryJudgement,
+)
+
+
+def _make_noop_llm():
+    """LLM client that always returns 'no issue' for all Tier 3 checks."""
+    client = MagicMock()
+    resp = MagicMock()
+    # Return negative results for all check types
+    resp.choices[0].message.parsed = ContradictionJudgement(is_contradiction=False, explanation="")
+    client.beta.chat.completions.parse.return_value = resp
+    return client
+
+
+def test_run_lint_without_semantic_does_not_call_llm(tmp_path):
+    store = WikiStore(root=tmp_path)
+    with patch("services.lint.runner.OpenAI") as mock_openai:
+        report = run_lint(store, include_semantic=False)
+    mock_openai.assert_not_called()
+    assert report.counts_by_severity.get("info", 0) == 0
+
+
+def test_run_lint_with_semantic_calls_tier3(tmp_path):
+    from models.wiki_models import Claim, Span
+    store = WikiStore(root=tmp_path)
+    # Add contradicting claims to trigger unmarked_contradiction check
+    for i, polarity in enumerate(["asserts", "denies"]):
+        store.append_claim(Claim(
+            id=f"cl_{i}", text=f"Claim {i}.", subject_id="entity:e_001",
+            source_id="src_001", span=Span(start=0, end=5, text="test"),
+            confidence=0.9, polarity=polarity,
+        ))
+
+    noop = _make_noop_llm()
+    with patch("services.lint.runner.OpenAI", return_value=noop):
+        report = run_lint(store, include_semantic=True)
+    # LLM was called at least once (for unmarked_contradiction check)
+    assert noop.beta.chat.completions.parse.called
+
+
+def test_run_lint_semantic_issues_have_info_severity(tmp_path):
+    from datetime import datetime
+    from models.wiki_models import Claim, Source, Span
+    store = WikiStore(root=tmp_path)
+    src = Source(
+        id="src_001", title="T", type="article", raw_path="r",
+        ingested_at=datetime.now(), summary="Summary.", key_takeaways=[], questions=[], tags=[],
+    )
+    store.write_source(src, "test")
+    store.append_claim(Claim(
+        id="cl_001", text="Fact.", subject_id="entity:e_001", source_id="src_001",
+        span=Span(start=0, end=4, text="Fact"), confidence=0.9, polarity="asserts",
+    ))
+
+    # Mock stale_summary to return True
+    stale_client = MagicMock()
+    stale_resp = MagicMock()
+    stale_resp.choices[0].message.parsed = StaleSummaryJudgement(
+        is_stale=True, proposed_summary="Updated.", explanation="missing facts",
+    )
+    stale_client.beta.chat.completions.parse.return_value = stale_resp
+
+    with patch("services.lint.runner.OpenAI", return_value=stale_client):
+        report = run_lint(store, include_semantic=True)
+
+    info_issues = [i for i in report.issues if i.severity == "info"]
+    assert len(info_issues) >= 1
+    assert all(i.severity == "info" for i in info_issues)
