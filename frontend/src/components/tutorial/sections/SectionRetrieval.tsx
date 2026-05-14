@@ -67,6 +67,11 @@ export function SectionRetrieval() {
             panelHint: "Chat with Trace → Stage 3",
           },
           {
+            title: "Stage 4: Context assembly — co LLM dostaje",
+            content: <p>System ładuje pełną zawartość wybranych stron wiki: treść MD, claims z proweniencją, relacje. Trace w Stage 4 pokazuje <code className="bg-muted px-1 rounded text-xs">token_count</code> — jeśli zbyt duży, context jest przycinany do limitu modelu.</p>,
+            panelHint: "Chat with Trace → Stage 4",
+          },
+          {
             title: "Stage 5: Answer z cytatami",
             content: <p>Odpowiedź zawiera <code className="bg-muted px-1 rounded text-xs">[Entity:Dario Amodei]</code> i <code className="bg-muted px-1 rounded text-xs">[Source:raport_2024]</code>. Trace pokazuje pełny assembled context który dostał LLM.</p>,
             panelHint: "Chat with Trace → Stage 5",
