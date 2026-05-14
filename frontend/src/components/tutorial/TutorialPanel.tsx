@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { SectionIntro } from "./sections/SectionIntro";
+import { SectionNaiveRag } from "./sections/SectionNaiveRag";
 
 type TabId = "intro" | "naive-rag" | "ingest" | "retrieval" | "querying" | "walkthroughs";
 
@@ -39,7 +40,7 @@ export function TutorialPanel() {
       </div>
 
       {activeTab === "intro" && <SectionIntro />}
-      {activeTab === "naive-rag" && <div className="text-muted-foreground text-sm">Sekcja 2 — wkrótce</div>}
+      {activeTab === "naive-rag" && <SectionNaiveRag />}
       {activeTab === "ingest" && <div className="text-muted-foreground text-sm">Sekcja 3 — wkrótce</div>}
       {activeTab === "retrieval" && <div className="text-muted-foreground text-sm">Sekcja 4 — wkrótce</div>}
       {activeTab === "querying" && <div className="text-muted-foreground text-sm">Sekcja 5 — wkrótce</div>}
