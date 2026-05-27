@@ -59,4 +59,18 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+
+  // Crawl
+  crawlAndIngest: (url: string, maxArticles: number = 5) =>
+    request<{
+      articles_found: number;
+      ingested: number;
+      failed: number;
+      results: Array<{ url: string; title: string; status: string; error?: string; slug?: string }>;
+      fatal_error?: string | null;
+    }>("/crawl/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, max_articles: maxArticles }),
+    }),
 };

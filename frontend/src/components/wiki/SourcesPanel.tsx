@@ -13,6 +13,18 @@ export function SourcesPanel() {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // URL crawl states
+  const [crawlUrl, setCrawlUrl] = useState("");
+  const [crawlMax, setCrawlMax] = useState(5);
+  const [crawling, setCrawling] = useState(false);
+  const [crawlResult, setCrawlResult] = useState<{
+    articles_found: number;
+    ingested: number;
+    failed: number;
+    results: Array<{ url: string; title: string; status: string; error?: string; slug?: string }>;
+    fatal_error?: string | null;
+  } | null>(null);
+
   async function fetchSources() {
     setLoading(true);
     try {
@@ -62,6 +74,24 @@ export function SourcesPanel() {
 
     setUploading(false);
     setUploadProgress({ current: 0, total: 0 });
+  }
+
+  async function handleCrawl() {
+    if (!crawlUrl.trim() || crawling) return;
+    setCrawling(true);
+    setCrawlResult(null);
+    try {
+      const result = await api.crawlAndIngest(crawlUrl.trim(), crawlMax);
+      setCrawlResult(result);
+      if (result.ingested > 0) await fetchSources();
+    } catch (e: unknown) {
+      setCrawlResult({
+        articles_found: 0, ingested: 0, failed: 0, results: [],
+        fatal_error: e instanceof Error ? e.message : "Błąd połączenia",
+      });
+    } finally {
+      setCrawling(false);
+    }
   }
 
   const isMultiFile = uploading && uploadProgress.total > 1;
@@ -116,6 +146,52 @@ export function SourcesPanel() {
             </>
           )}
         </div>
+
+        {/* URL import section */}
+        <details className="border border-border rounded-lg overflow-hidden">
+          <summary className="px-3 py-2 text-xs font-medium cursor-pointer hover:bg-muted/50 select-none">
+            Importuj z URL / bloga
+          </summary>
+          <div className="px-3 pb-3 pt-2 space-y-2 border-t border-border">
+            <input
+              type="url"
+              placeholder="https://example.com/blog"
+              value={crawlUrl}
+              onChange={(e) => setCrawlUrl(e.target.value)}
+              className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground shrink-0">Maks. artykułów:</label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={crawlMax}
+                onChange={(e) => setCrawlMax(Number(e.target.value))}
+                className="w-16 text-xs border border-border rounded px-2 py-1 bg-background"
+              />
+            </div>
+            <button
+              onClick={handleCrawl}
+              disabled={!crawlUrl.trim() || crawling}
+              className="w-full py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
+            >
+              {crawling ? "Importuję…" : "Importuj artykuły"}
+            </button>
+            {crawlResult && (
+              <div className={`rounded border p-2 text-xs space-y-1 ${crawlResult.fatal_error ? "border-red-500/30 bg-red-500/5" : "border-green-500/30 bg-green-500/5"}`}>
+                {crawlResult.fatal_error ? (
+                  <p className="text-red-600">{crawlResult.fatal_error}</p>
+                ) : (
+                  <>
+                    <p className="font-medium text-green-700">Zaimportowano {crawlResult.ingested}/{crawlResult.articles_found} artykułów</p>
+                    {crawlResult.failed > 0 && <p className="text-yellow-600">{crawlResult.failed} błędów</p>}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </details>
 
         {/* Multi-file progress bar */}
         {isMultiFile && (
