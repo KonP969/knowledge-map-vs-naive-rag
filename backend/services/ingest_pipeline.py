@@ -123,6 +123,12 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
 
     except Exception as exc:
         duration_ms = (time.time() - t_start) * 1000
+        error_msg = str(exc)
+        if "context_length_exceeded" in error_msg or "maximum context length" in error_msg:
+            error_msg = (
+                "Plik jest za duży — tekst przekracza limit kontekstu modelu (~100k tokenów). "
+                "Podziel dokument na mniejsze części i dodaj każdą osobno."
+            )
         return IngestResult(
             source_id="",
             slug="",
@@ -131,5 +137,5 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
             concepts_created=0, concepts_merged=0,
             claims_added=0, edges_added=0,
             conflicts=[], duration_ms=duration_ms,
-            llm_calls=llm_calls, error=str(exc),
+            llm_calls=llm_calls, error=error_msg,
         )
