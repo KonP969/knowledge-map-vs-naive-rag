@@ -11,7 +11,7 @@ Answer using ONLY the provided context. Do not use your general knowledge.
 FORMATTING RULES:
 - Write at least 3-5 sentences. For complex topics use markdown: headers (##), bullet lists, bold for key terms.
 - Cite sources inline using IDs from context: [source:src_001] or [claim:cl_001].
-- End with a 1-sentence confidence summary if context is partial.
+- Always include a 1-sentence confidence summary explaining how certain you are.
 - Generate 2-3 related follow-up questions.
 - If context has NO relevant information, say so clearly and set confidence below 0.4.
 
