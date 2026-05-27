@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Send, Brain, Filter, CheckSquare, Layers, Sparkles, Clock, AlertCircle } from "lucide-react";
 import { api } from "../../api/client";
 import type { QueryTrace, RetrievalStageTrace } from "../../types";
@@ -38,7 +38,34 @@ export function ChatWithTracePanel() {
   const [loading, setLoading] = useState(false);
   const [trace, setTrace] = useState<QueryTrace | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sourcesMap, setSourcesMap] = useState<Record<string, string>>({});
+  const [revealedStages, setRevealedStages] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load source titles on mount
+  useEffect(() => {
+    api.listWikiSources().then((sources) => {
+      const map: Record<string, string> = {};
+      for (const s of sources) map[s.id] = s.title;
+      setSourcesMap(map);
+    }).catch(() => {
+      // Non-fatal: fall back to raw IDs
+    });
+  }, []);
+
+  // Sequential stage replay after trace arrives
+  useEffect(() => {
+    if (!trace) {
+      setRevealedStages(0);
+      return;
+    }
+    setRevealedStages(0);
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    trace.stages.forEach((_, i) => {
+      timeouts.push(setTimeout(() => setRevealedStages(i + 1), (i + 1) * 450));
+    });
+    return () => timeouts.forEach(clearTimeout);
+  }, [trace]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,8 +84,11 @@ export function ChatWithTracePanel() {
   }
 
   const stageStatus = (idx: number): "idle" | "running" | "done" | "error" => {
-    if (!trace) return loading ? (idx === 0 ? "running" : "idle") : "idle";
-    return "done";
+    if (!trace) return loading && idx === 0 ? "running" : "idle";
+    if (revealedStages >= trace.stages.length) return "done";
+    if (idx < revealedStages - 1) return "done";
+    if (idx === revealedStages - 1) return "running";
+    return "idle";
   };
 
   return (
@@ -113,10 +143,11 @@ export function ChatWithTracePanel() {
                   <p className="text-xs text-muted-foreground mb-1">Sources</p>
                   <div className="space-y-1">
                     {trace.answer.sources.map((s) => (
-                      <div key={s.source_id} className="text-xs border border-border rounded px-2 py-1">
-                        <span className="font-mono">[source:{s.source_id}]</span>
+                      <div key={s.source_id} className="text-xs border border-border rounded px-2 py-1 flex items-baseline gap-1 flex-wrap">
+                        <span className="font-medium">{sourcesMap[s.source_id] ?? s.source_id}</span>
+                        <span className="text-muted-foreground font-mono text-[10px]">[{s.source_id}]</span>
                         {s.claim_ids.length > 0 && (
-                          <span className="text-muted-foreground ml-2">
+                          <span className="text-muted-foreground ml-1">
                             via {s.claim_ids.map((c) => `[claim:${c}]`).join(", ")}
                           </span>
                         )}
