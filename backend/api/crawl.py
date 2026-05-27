@@ -1,6 +1,7 @@
 import os
 import tempfile
 from pathlib import Path
+from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from services.web_crawler import crawl_url
@@ -25,8 +26,8 @@ class ArticleResult(BaseModel):
     url: str
     title: str
     status: str  # "ok" | "error"
-    error: str | None = None
-    slug: str | None = None
+    error: Optional[str] = None
+    slug: Optional[str] = None
 
 
 class CrawlIngestResult(BaseModel):
@@ -34,7 +35,7 @@ class CrawlIngestResult(BaseModel):
     ingested: int
     failed: int
     results: list[ArticleResult]
-    fatal_error: str | None = None
+    fatal_error: Optional[str] = None
 
 
 @router.post("/ingest", response_model=CrawlIngestResult)
