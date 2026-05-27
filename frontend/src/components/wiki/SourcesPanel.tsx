@@ -7,6 +7,7 @@ export function SourcesPanel() {
   const [sources, setSources] = useState<WikiSource[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
   const [lastResult, setLastResult] = useState<IngestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -28,22 +29,42 @@ export function SourcesPanel() {
     fetchSources();
   }, []);
 
-  async function handleFile(file: File) {
+  async function handleFiles(files: FileList | File[]) {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
+
     setUploading(true);
     setError(null);
     setLastResult(null);
-    try {
-      const result = await api.ingestSource(file);
-      setLastResult(result);
-      if (result.status !== "error") {
-        await fetchSources();
+    setUploadProgress({ current: 0, total: fileArray.length });
+
+    let lastIngestResult: IngestResult | null = null;
+    let hadSuccess = false;
+
+    for (let i = 0; i < fileArray.length; i++) {
+      setUploadProgress({ current: i + 1, total: fileArray.length });
+      try {
+        const result = await api.ingestSource(fileArray[i]);
+        lastIngestResult = result;
+        if (result.status !== "error") {
+          hadSuccess = true;
+        }
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Ingest failed.");
+        break;
       }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ingest failed.");
-    } finally {
-      setUploading(false);
     }
+
+    setLastResult(lastIngestResult);
+    if (hadSuccess) {
+      await fetchSources();
+    }
+
+    setUploading(false);
+    setUploadProgress({ current: 0, total: 0 });
   }
+
+  const isMultiFile = uploading && uploadProgress.total > 1;
 
   return (
     <div className="p-6 h-full flex gap-6">
@@ -59,12 +80,15 @@ export function SourcesPanel() {
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
-            const f = e.dataTransfer.files[0];
-            if (f) handleFile(f);
+            if (e.dataTransfer.files.length > 0) {
+              handleFiles(e.dataTransfer.files);
+            }
           }}
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
             dragging
               ? "border-primary bg-primary/5"
+              : uploading && !isMultiFile
+              ? "border-primary/50 animate-pulse"
               : "border-border hover:border-primary/50"
           }`}
         >
@@ -72,10 +96,14 @@ export function SourcesPanel() {
             ref={inputRef}
             type="file"
             accept=".pdf,.docx,.txt"
+            multiple
             className="hidden"
             onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFile(f);
+              if (e.target.files && e.target.files.length > 0) {
+                handleFiles(e.target.files);
+                // Reset so the same file(s) can be re-selected
+                e.target.value = "";
+              }
             }}
           />
           <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
@@ -83,11 +111,26 @@ export function SourcesPanel() {
             <p className="text-sm text-muted-foreground">Ingesting…</p>
           ) : (
             <>
-              <p className="text-sm font-medium">Drop file or click to ingest</p>
+              <p className="text-sm font-medium">Drop files or click to ingest</p>
               <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT</p>
             </>
           )}
         </div>
+
+        {/* Multi-file progress bar */}
+        {isMultiFile && (
+          <>
+            <div className="w-full bg-muted rounded-full h-1.5 mt-2">
+              <div
+                className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center mt-1">
+              Ingesting {uploadProgress.current}/{uploadProgress.total}…
+            </p>
+          </>
+        )}
 
         {error && (
           <p className="text-xs text-red-500">{error}</p>
@@ -124,10 +167,11 @@ export function SourcesPanel() {
           <h3 className="font-semibold text-sm">Sources ({sources.length})</h3>
           <button
             onClick={fetchSources}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            disabled={loading}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
-            <RefreshCw className="w-3 h-3" />
-            Refresh
+            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Refreshing…" : "Refresh"}
           </button>
         </div>
 
