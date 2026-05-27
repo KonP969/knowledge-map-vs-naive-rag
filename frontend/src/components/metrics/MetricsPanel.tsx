@@ -37,18 +37,33 @@ export function MetricsPanel() {
 
       {metrics ? (
         <>
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: "Total Queries", value: metrics.total_queries },
-              { label: "Total Tokens", value: metrics.total_tokens.toLocaleString() },
-              { label: "Total Cost", value: `$${metrics.total_cost_usd.toFixed(4)}` },
-            ].map(({ label, value }) => (
-              <div key={label} className="border border-border rounded-lg p-4 bg-card text-center">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-xl font-semibold mt-1 text-foreground">{value}</p>
+          {metrics.total_queries === 0 && (
+            <div className="flex items-start gap-3 text-sm border border-border rounded-lg p-4 bg-muted/30">
+              <div className="mt-0.5 text-muted-foreground shrink-0">ℹ</div>
+              <div>
+                <p className="font-medium text-foreground mb-1">Brak danych sesji</p>
+                <p className="text-muted-foreground text-xs">
+                  Metryki są zbierane od startu serwera i nie są zapisywane między sesjami.
+                  Zadaj pytanie w <span className="font-medium text-foreground">Wiki Chat</span> żeby zobaczyć dane o tokenach i koszcie.
+                </p>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {metrics.total_queries > 0 && (
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "Total Queries", value: metrics.total_queries },
+                { label: "Total Tokens", value: metrics.total_tokens.toLocaleString() },
+                { label: "Total Cost", value: `$${metrics.total_cost_usd.toFixed(4)}` },
+              ].map(({ label, value }) => (
+                <div key={label} className="border border-border rounded-lg p-4 bg-card text-center">
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                  <p className="text-xl font-semibold mt-1 text-foreground">{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="border border-border rounded-lg bg-card overflow-hidden">
             <table className="w-full text-xs">
