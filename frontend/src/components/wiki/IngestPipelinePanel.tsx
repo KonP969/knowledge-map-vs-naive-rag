@@ -107,12 +107,10 @@ export function IngestPipelinePanel() {
     setStages(INITIAL_STAGES);
 
     setStageStatus(1, "running");
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 150));
     setStageStatus(1, "done", "Text extracted.");
 
     setStageStatus(2, "running");
-    await new Promise((r) => setTimeout(r, 300));
-
     setStageStatus(3, "running");
 
     let ingestResult: IngestResult;
@@ -121,6 +119,7 @@ export function IngestPipelinePanel() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       setStageStatus(2, "error", msg);
+      setStageStatus(3, "idle");
       setRunning(false);
       return;
     }
@@ -156,6 +155,12 @@ export function IngestPipelinePanel() {
     <div className="p-6 h-full flex gap-6">
       {/* Left: file selector + trigger */}
       <div className="w-72 shrink-0 space-y-4">
+        <div className="text-xs text-muted-foreground bg-muted/40 rounded-md p-2.5 border-l-2 border-primary/50 mb-4">
+          <span className="font-medium text-foreground">Panel edukacyjny</span> — pokazuje jak działa pipeline krok po kroku.
+          Aby dodawać pliki do wiki, użyj panelu{" "}
+          <span className="font-medium text-primary">Sources</span>.
+        </div>
+
         <h2 className="font-semibold text-sm">Pipeline Visualizer</h2>
         <p className="text-xs text-muted-foreground">
           Select a file and run the ingest pipeline to see each stage execute in real time.
