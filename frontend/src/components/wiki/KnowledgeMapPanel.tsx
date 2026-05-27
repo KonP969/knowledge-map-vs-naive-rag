@@ -136,7 +136,7 @@ export function KnowledgeMapPanel() {
       {/* Content */}
       {view === "graph" ? (
         <div className="flex-1 flex overflow-hidden">
-          <GraphView onNodeClick={setSelectedNodeId} />
+          <GraphView onNodeClick={setSelectedNodeId} selectedNodeId={selectedNodeId} />
           <NodeDetailDrawer
             nodeId={selectedNodeId}
             onClose={() => setSelectedNodeId(null)}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -73,9 +73,10 @@ interface FilterState {
 
 interface GraphViewProps {
   onNodeClick: (nodeId: string) => void;
+  selectedNodeId?: string | null;
 }
 
-export function GraphView({ onNodeClick }: GraphViewProps) {
+export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
   const [entities, setEntities] = useState<WikiEntity[]>([]);
@@ -165,6 +166,35 @@ export function GraphView({ onNodeClick }: GraphViewProps) {
     setRfEdges(rawEdges);
   }, [entities, concepts, sources, wikiEdges, filters, loading]);
 
+  // Derived nodes/edges with selection highlighting
+  const displayNodes = useMemo(() => {
+    if (!selectedNodeId) return rfNodes;
+
+    const connectedNodeIds = new Set<string>();
+    rfEdges.forEach((e) => {
+      if (e.source === selectedNodeId) connectedNodeIds.add(e.target);
+      if (e.target === selectedNodeId) connectedNodeIds.add(e.source);
+    });
+
+    return rfNodes.map((n) => {
+      if (n.id === selectedNodeId || connectedNodeIds.has(n.id)) {
+        return n; // keep fully visible
+      }
+      return { ...n, style: { ...(n.style as object), opacity: 0.3 } };
+    });
+  }, [rfNodes, rfEdges, selectedNodeId]);
+
+  const displayEdges = useMemo(() => {
+    if (!selectedNodeId) return rfEdges;
+
+    return rfEdges.map((e) => {
+      const connected = e.source === selectedNodeId || e.target === selectedNodeId;
+      return connected
+        ? { ...e, style: { stroke: "#3b82f6", strokeWidth: 2, opacity: 1 } }
+        : { ...e, style: { opacity: 0.15 } };
+    });
+  }, [rfEdges, selectedNodeId]);
+
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => onNodeClick(node.id),
     [onNodeClick],
@@ -239,8 +269,8 @@ export function GraphView({ onNodeClick }: GraphViewProps) {
       {/* Canvas */}
       <div className="flex-1">
         <ReactFlow
-          nodes={rfNodes}
-          edges={rfEdges}
+          nodes={displayNodes}
+          edges={displayEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
