@@ -1,11 +1,10 @@
 import os
 import re
 import time
-import tempfile
-from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
+import lxml.html as lxhtml
 import trafilatura
 
 _BLOCKED_SEGMENTS = frozenset({
@@ -52,7 +51,6 @@ def _collect_urls(start_url: str, max_articles: int) -> list[str]:
         return []
 
     # Parse links from the page
-    import lxml.html as lxhtml  # lxml is a trafilatura dependency
     try:
         tree = lxhtml.fromstring(raw.encode() if isinstance(raw, str) else raw)
     except Exception:

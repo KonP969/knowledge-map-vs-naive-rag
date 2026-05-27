@@ -1,0 +1,56 @@
+{
+  "sources": [],
+  "entities": [
+    {
+      "slug": "no-questions-org",
+      "id": "e_noq_001",
+      "type": "Org",
+      "aliases": [],
+      "tags": [
+        "test"
+      ],
+      "questions": [],
+      "description_preview": "An organization with no analytical questions defined yet."
+    },
+    {
+      "slug": "lone-person",
+      "id": "e_orphan_001",
+      "type": "Person",
+      "aliases": [],
+      "tags": [
+        "test"
+      ],
+      "questions": [
+        "Kim on jest?"
+      ],
+      "description_preview": "A long enough description with plenty of characters here."
+    },
+    {
+      "slug": "short-desc-place",
+      "id": "e_short_001",
+      "type": "Place",
+      "aliases": [],
+      "tags": [
+        "test"
+      ],
+      "questions": [
+        "Gdzie to?"
+      ],
+      "description_preview": "krótki"
+    }
+  ],
+  "concepts": [
+    {
+      "slug": "lonely-concept",
+      "id": "c_orphan_001",
+      "parent_concept": null,
+      "tags": [
+        "test"
+      ],
+      "questions": [
+        "Co to jest?"
+      ],
+      "definition_preview": "A concept that bridges nothing here."
+    }
+  ]
+}

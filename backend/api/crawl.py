@@ -2,7 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.web_crawler import crawl_url
 from services.ingest_pipeline import ingest_source
 from services.wiki_store import WikiStore
@@ -18,7 +18,7 @@ def _get_store() -> WikiStore:
 
 class CrawlRequest(BaseModel):
     url: str
-    max_articles: int = 5
+    max_articles: int = Field(default=5, ge=1, le=20)
 
 
 class ArticleResult(BaseModel):
@@ -39,9 +39,6 @@ class CrawlIngestResult(BaseModel):
 
 @router.post("/ingest", response_model=CrawlIngestResult)
 def crawl_and_ingest(req: CrawlRequest) -> CrawlIngestResult:
-    if req.max_articles < 1 or req.max_articles > 20:
-        req.max_articles = 5
-
     crawl_result = crawl_url(req.url, req.max_articles)
 
     if crawl_result["error"] and not crawl_result["articles"]:
