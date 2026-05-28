@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, RefreshCw, FileText, Tag, Clock } from "lucide-react";
+import { Upload, RefreshCw, FileText, Tag, Clock, Trash2 } from "lucide-react";
 import { api } from "../../api/client";
 import type { WikiSource, IngestResult } from "../../types";
 
@@ -12,6 +12,9 @@ export function SourcesPanel() {
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   // URL crawl states
   const [crawlUrl, setCrawlUrl] = useState("");
@@ -74,6 +77,19 @@ export function SourcesPanel() {
 
     setUploading(false);
     setUploadProgress({ current: 0, total: 0 });
+  }
+
+  async function handleDelete(slug: string) {
+    setDeleting(slug);
+    setConfirmDelete(null);
+    try {
+      await api.deleteSource(slug);
+      await fetchSources();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Delete failed.");
+    } finally {
+      setDeleting(null);
+    }
   }
 
   async function handleCrawl() {
@@ -268,7 +284,36 @@ export function SourcesPanel() {
               <div className="flex items-start gap-2">
                 <FileText className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{src.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium truncate flex-1">{src.title}</p>
+                    {confirmDelete === src.slug ? (
+                      <span className="flex items-center gap-1 shrink-0">
+                        <span className="text-xs text-muted-foreground">Usuń?</span>
+                        <button
+                          onClick={() => handleDelete(src.slug)}
+                          disabled={deleting === src.slug}
+                          className="text-xs text-red-500 hover:text-red-700 font-medium px-1"
+                        >
+                          Tak
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(null)}
+                          className="text-xs text-muted-foreground hover:text-foreground px-1"
+                        >
+                          Nie
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDelete(src.slug)}
+                        disabled={deleting === src.slug}
+                        className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-30"
+                        title="Usuń źródło"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{src.summary}</p>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     {src.tags.slice(0, 4).map((tag) => (

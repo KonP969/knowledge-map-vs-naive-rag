@@ -249,6 +249,17 @@ class WikiStore:
         self._atomic_write(path, new_content)
         return removed
 
+    def delete_source(self, slug: str) -> Optional[str]:
+        """Delete source file + all its claims and edges. Returns source_id if found, None if missing."""
+        src = self.read_source(slug)
+        if src is None:
+            return None
+        source_id = src.id
+        self._rewrite_jsonl_skipping(self._claims_path(), lambda d: d.get("source_id") != source_id)
+        self._rewrite_jsonl_skipping(self._edges_path(), lambda d: d.get("source_id") != source_id)
+        self._source_path(slug).unlink()
+        return source_id
+
     def delete_claim(self, claim_id: str) -> bool:
         path = self._claims_path()
         removed = self._rewrite_jsonl_skipping(path, lambda d: d.get("id") != claim_id)

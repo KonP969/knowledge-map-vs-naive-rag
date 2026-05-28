@@ -60,6 +60,13 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  // Source deletion
+  deleteSource: (slug: string) =>
+    request<{ slug: string; source_id: string; deleted: boolean }>(
+      `/wiki/source/${encodeURIComponent(slug)}`,
+      { method: "DELETE" }
+    ),
+
   // Crawl
   crawlAndIngest: (url: string, maxArticles: number = 5) =>
     request<{

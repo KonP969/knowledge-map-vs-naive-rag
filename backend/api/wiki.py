@@ -103,6 +103,15 @@ def list_wiki_edges():
     ]
 
 
+@router.delete("/source/{slug}")
+def delete_wiki_source(slug: str):
+    store = _get_store()
+    source_id = store.delete_source(slug)
+    if source_id is None:
+        raise HTTPException(status_code=404, detail=f"Source '{slug}' not found")
+    return {"slug": slug, "source_id": source_id, "deleted": True}
+
+
 @router.get("/node-detail", response_model=Dict[str, Any])
 def get_wiki_node_detail(id: str):
     """
