@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, RefreshCw, FileText, Tag, Clock, Trash2 } from "lucide-react";
+import { Upload, RefreshCw, FileText, Tag, Clock, Trash2, RotateCcw } from "lucide-react";
 import { api } from "../../api/client";
 import type { WikiSource, IngestResult } from "../../types";
 
@@ -15,6 +15,8 @@ export function SourcesPanel() {
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // URL crawl states
   const [crawlUrl, setCrawlUrl] = useState("");
@@ -77,6 +79,21 @@ export function SourcesPanel() {
 
     setUploading(false);
     setUploadProgress({ current: 0, total: 0 });
+  }
+
+  async function handleReset() {
+    setResetting(true);
+    setConfirmReset(false);
+    setLastResult(null);
+    setError(null);
+    try {
+      await api.resetAll();
+      await fetchSources();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Reset failed.");
+    } finally {
+      setResetting(false);
+    }
   }
 
   async function handleDelete(slug: string) {
@@ -257,14 +274,44 @@ export function SourcesPanel() {
       <div className="flex-1 border rounded-lg bg-card border-border overflow-auto p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-sm">Sources ({sources.length})</h3>
-          <button
-            onClick={fetchSources}
-            disabled={loading}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Refreshing…" : "Refresh"}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchSources}
+              disabled={loading}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
+              {loading ? "Refreshing…" : "Refresh"}
+            </button>
+            {confirmReset ? (
+              <span className="flex items-center gap-1">
+                <span className="text-xs text-red-500 font-medium">Wyczyścić wszystko?</span>
+                <button
+                  onClick={handleReset}
+                  disabled={resetting}
+                  className="text-xs text-red-500 hover:text-red-700 font-medium px-1"
+                >
+                  Tak
+                </button>
+                <button
+                  onClick={() => setConfirmReset(false)}
+                  className="text-xs text-muted-foreground hover:text-foreground px-1"
+                >
+                  Nie
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => setConfirmReset(true)}
+                disabled={resetting || sources.length === 0}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-30"
+                title="Usuń wszystkie źródła i dane"
+              >
+                <RotateCcw className={`w-3 h-3 ${resetting ? "animate-spin" : ""}`} />
+                Reset
+              </button>
+            )}
+          </div>
         </div>
 
         {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
