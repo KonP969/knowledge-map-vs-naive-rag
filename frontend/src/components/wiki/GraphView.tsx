@@ -207,6 +207,17 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
       return { ...f, entityTypes: next };
     });
 
+  function resetFilters() {
+    setFilters({
+      showEntities: true,
+      showConcepts: true,
+      showSources: true,
+      entityTypes: new Set(ENTITY_TYPES),
+    });
+  }
+
+  const totalData = entities.length + concepts.length + sources.length;
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
@@ -215,17 +226,9 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
     );
   }
 
-  if (rfNodes.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-        No nodes to display. Ingest some sources first.
-      </div>
-    );
-  }
-
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Filter bar */}
+      {/* Filter bar — always rendered so filters stay accessible */}
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border flex-wrap shrink-0">
         {(["Entities", "Concepts", "Sources"] as const).map((label) => {
           const key = `show${label}` as keyof FilterState;
@@ -264,26 +267,52 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
         <span className="ml-auto text-xs text-muted-foreground">
           {rfNodes.length} nodes · {rfEdges.length} edges
         </span>
+        {/* Legend */}
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground border-l border-border pl-2 ml-1">
+          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: "#f59e0b" }} />Concept
+          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0 ml-1" style={{ background: "#3b82f6" }} />Person
+          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: "#10b981" }} />Org
+          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: "#f97316" }} />Product
+          <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0 ml-1" style={{ background: "#6b7280" }} />Source
+        </div>
       </div>
 
-      {/* Canvas */}
-      <div className="flex-1">
-        <ReactFlow
-          nodes={displayNodes}
-          edges={displayEdges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={handleNodeClick}
-          fitView
-          minZoom={0.1}
-          maxZoom={3}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background color="#e2e8f0" gap={20} />
-          <Controls />
-          <MiniMap nodeStrokeWidth={3} pannable zoomable />
-        </ReactFlow>
-      </div>
+      {/* Canvas or empty state */}
+      {rfNodes.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+          {totalData === 0 ? (
+            <p>Brak danych. Dodaj źródła w panelu Sources.</p>
+          ) : (
+            <>
+              <p>Wszystkie filtry wyłączone — brak węzłów do wyświetlenia.</p>
+              <button
+                onClick={resetFilters}
+                className="text-xs text-primary hover:underline"
+              >
+                Włącz wszystkie filtry
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="flex-1">
+          <ReactFlow
+            nodes={displayNodes}
+            edges={displayEdges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={handleNodeClick}
+            fitView
+            minZoom={0.1}
+            maxZoom={3}
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background color="#e2e8f0" gap={20} />
+            <Controls />
+            <MiniMap nodeStrokeWidth={3} pannable zoomable />
+          </ReactFlow>
+        </div>
+      )}
     </div>
   );
 }

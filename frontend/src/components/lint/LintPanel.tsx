@@ -145,6 +145,15 @@ export function LintPanel() {
         </div>
       </div>
 
+      {/* Panel explanation */}
+      <div className="px-4 py-2.5 bg-muted/40 border-b border-border text-xs text-muted-foreground shrink-0">
+        <span className="font-medium text-foreground">Co to jest Lint?</span>{" "}
+        Automatyczna kontrola jakości wiki — wykrywa brakujące opisy, sprzeczne twierdzenia i duplikaty.
+        Kliknij <span className="font-medium text-foreground">Run Now</span>, potem{" "}
+        <span className="font-medium text-foreground">Fix</span> lub{" "}
+        <span className="font-medium text-foreground">Reject</span> przy każdym problemie.
+      </div>
+
       {error && (
         <div className="px-4 py-2 text-xs text-red-600 bg-red-100/40 border-b border-red-200">
           {error}

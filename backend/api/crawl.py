@@ -1,8 +1,10 @@
+import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Iterator
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from services.web_crawler import crawl_url
 from services.ingest_pipeline import ingest_source
@@ -22,42 +24,27 @@ class CrawlRequest(BaseModel):
     max_articles: int = Field(default=5, ge=1, le=20)
 
 
-class ArticleResult(BaseModel):
-    url: str
-    title: str
-    status: str  # "ok" | "error"
-    error: Optional[str] = None
-    slug: Optional[str] = None
+def _sse(data: dict) -> str:
+    return f"data: {json.dumps(data)}\n\n"
 
 
-class CrawlIngestResult(BaseModel):
-    articles_found: int
-    ingested: int
-    failed: int
-    results: list[ArticleResult]
-    fatal_error: Optional[str] = None
-
-
-@router.post("/ingest", response_model=CrawlIngestResult)
-def crawl_and_ingest(req: CrawlRequest) -> CrawlIngestResult:
+def _generate_crawl_events(req: CrawlRequest) -> Iterator[str]:
     crawl_result = crawl_url(req.url, req.max_articles)
 
     if crawl_result["error"] and not crawl_result["articles"]:
-        return CrawlIngestResult(
-            articles_found=0,
-            ingested=0,
-            failed=0,
-            results=[],
-            fatal_error=crawl_result["error"],
-        )
+        yield _sse({"event": "fatal_error", "error": crawl_result["error"]})
+        return
+
+    articles = crawl_result["articles"]
+    yield _sse({"event": "articles_found", "count": len(articles)})
 
     store = _get_store()
-    results: list[ArticleResult] = []
     ingested = 0
     failed = 0
 
-    for article in crawl_result["articles"]:
-        # Write article text to temp file and ingest
+    for i, article in enumerate(articles):
+        yield _sse({"event": "article_start", "index": i, "title": article["title"], "url": article["url"]})
+
         try:
             with tempfile.NamedTemporaryFile(
                 mode="w", suffix=".txt", delete=False, encoding="utf-8"
@@ -69,34 +56,34 @@ def crawl_and_ingest(req: CrawlRequest) -> CrawlIngestResult:
             tmp_path.unlink(missing_ok=True)
 
             if ingest_result.status == "error":
-                results.append(ArticleResult(
-                    url=article["url"],
-                    title=article["title"],
-                    status="error",
-                    error=ingest_result.error,
-                ))
                 failed += 1
+                yield _sse({
+                    "event": "article_done", "index": i,
+                    "title": article["title"], "status": "error",
+                    "error": ingest_result.error or "Pipeline error",
+                })
             else:
-                results.append(ArticleResult(
-                    url=article["url"],
-                    title=article["title"],
-                    status="ok",
-                    slug=ingest_result.slug,
-                ))
                 ingested += 1
+                yield _sse({
+                    "event": "article_done", "index": i,
+                    "title": article["title"], "status": "ok",
+                    "slug": ingest_result.slug,
+                })
         except Exception as exc:
-            results.append(ArticleResult(
-                url=article["url"],
-                title=article["title"],
-                status="error",
-                error=str(exc),
-            ))
             failed += 1
+            yield _sse({
+                "event": "article_done", "index": i,
+                "title": article["title"], "status": "error",
+                "error": str(exc),
+            })
 
-    return CrawlIngestResult(
-        articles_found=len(crawl_result["articles"]),
-        ingested=ingested,
-        failed=failed,
-        results=results,
-        fatal_error=crawl_result["error"] if not crawl_result["articles"] else None,
+    yield _sse({"event": "done", "ingested": ingested, "failed": failed})
+
+
+@router.post("/ingest")
+def crawl_and_ingest(req: CrawlRequest) -> StreamingResponse:
+    return StreamingResponse(
+        _generate_crawl_events(req),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

@@ -258,3 +258,12 @@ export interface LintFixRequest {
   action: "apply" | "reject" | "wontfix";
   edit_payload?: { description?: string };
 }
+
+// ── Crawl SSE types ────────────────────────────────────────────────────────
+
+export type CrawlSSEEvent =
+  | { event: "articles_found"; count: number }
+  | { event: "article_start"; index: number; title: string; url: string }
+  | { event: "article_done"; index: number; title: string; status: "ok" | "error"; slug?: string; error?: string }
+  | { event: "done"; ingested: number; failed: number }
+  | { event: "fatal_error"; error: string };

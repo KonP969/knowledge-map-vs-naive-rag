@@ -38,16 +38,16 @@ export function ChatWithTracePanel() {
   const [loading, setLoading] = useState(false);
   const [trace, setTrace] = useState<QueryTrace | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sourcesMap, setSourcesMap] = useState<Record<string, string>>({});
+  const [sourcesData, setSourcesData] = useState<Record<string, { title: string; summary: string }>>({});
   const [revealedStages, setRevealedStages] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load source titles on mount
+  // Load source data on mount
   useEffect(() => {
     api.listWikiSources().then((sources) => {
-      const map: Record<string, string> = {};
-      for (const s of sources) map[s.id] = s.title;
-      setSourcesMap(map);
+      const map: Record<string, { title: string; summary: string }> = {};
+      for (const s of sources) map[s.id] = { title: s.title, summary: s.summary ?? "" };
+      setSourcesData(map);
     }).catch(() => {
       // Non-fatal: fall back to raw IDs
     });
@@ -141,18 +141,21 @@ export function ChatWithTracePanel() {
               {trace.answer.sources.length > 0 && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Sources</p>
-                  <div className="space-y-1">
-                    {trace.answer.sources.map((s) => (
-                      <div key={s.source_id} className="text-xs border border-border rounded px-2 py-1 flex items-baseline gap-1 flex-wrap">
-                        <span className="font-medium">{sourcesMap[s.source_id] ?? s.source_id}</span>
-                        <span className="text-muted-foreground font-mono text-[10px]">[{s.source_id}]</span>
-                        {s.claim_ids.length > 0 && (
-                          <span className="text-muted-foreground ml-1">
-                            via {s.claim_ids.map((c) => `[claim:${c}]`).join(", ")}
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                  <div className="space-y-1.5">
+                    {trace.answer.sources.map((s) => {
+                      const src = sourcesData[s.source_id];
+                      return (
+                        <div key={s.source_id} className="text-xs border border-border rounded-md px-3 py-2 space-y-0.5">
+                          <p className="font-medium text-foreground">{src?.title ?? s.source_id}</p>
+                          {src?.summary && (
+                            <p className="text-muted-foreground line-clamp-2">{src.summary}</p>
+                          )}
+                          <p className="text-muted-foreground/60 font-mono text-[10px]">
+                            {s.source_id} · {s.claim_ids.length} claim(s)
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -195,15 +198,25 @@ export function ChatWithTracePanel() {
 
         {/* Right: Stage trace */}
         <div className="w-72 shrink-0 space-y-2 overflow-auto">
-          <h3 className="text-sm font-semibold">Pipeline Trace</h3>
+          <div className="mb-1">
+            <h3 className="text-sm font-semibold">Pipeline Trace</h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Jak system przetwarza pytanie krok po kroku</p>
+          </div>
           {trace ? (
             trace.stages.map((s, i) => (
               <StageCard key={s.stage} stage={s} status={stageStatus(i)} />
             ))
           ) : (
-            Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className="border border-border rounded-md p-2.5 text-xs text-muted-foreground">
-                Stage {i + 1}: waiting…
+            [
+              { name: "Intent Parser", desc: "Analizuje pytanie, wyciąga encje i koncepty" },
+              { name: "Candidate Filter", desc: "Szuka pasujących wpisów w wiki" },
+              { name: "Selection", desc: "Wybiera najlepiej pasujące wyniki" },
+              { name: "Context Assembly", desc: "Składa kontekst dla modelu" },
+              { name: "Answer Generator", desc: "Generuje odpowiedź na podstawie kontekstu" },
+            ].map((info, i) => (
+              <div key={i} className="border border-border rounded-md p-2.5 text-xs opacity-50">
+                <p className="font-medium">Stage {i + 1}: {info.name}</p>
+                <p className="text-muted-foreground mt-0.5">{info.desc}</p>
               </div>
             ))
           )}

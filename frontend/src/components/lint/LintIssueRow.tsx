@@ -2,6 +2,42 @@ import { useState } from "react";
 import { AlertTriangle, AlertOctagon, Info, Check, X, Ban, Sparkles } from "lucide-react";
 import type { LintIssue } from "../../types";
 
+const TYPE_LABELS: Record<string, string> = {
+  provenance_missing: "Brak proweniencji",
+  dangling_source_ref: "Odwołanie do usuniętego źródła",
+  dangling_node_ref: "Odwołanie do nieistniejącego węzła",
+  corrupted_jsonl: "Uszkodzony plik danych",
+  orphan_entity: "Encja bez powiązań",
+  orphan_concept: "Koncept bez powiązań",
+  empty_questions: "Brak pytań",
+  empty_description: "Brak opisu",
+  unmarked_contradiction: "Nieoflagowana sprzeczność",
+  entity_alias_collision: "Kolizja aliasów encji",
+  missing_concept: "Brakujący koncept",
+  stale_summary: "Nieaktualny opis",
+};
+
+const FIX_DESCRIPTIONS: Record<string, string> = {
+  provenance_missing: "Uzupełni brakujące dane proweniencji",
+  dangling_source_ref: "Usunie odwołanie do nieistniejącego źródła",
+  dangling_node_ref: "Usunie krawędź wskazującą na nieistniejący węzeł",
+  orphan_entity: "Oflaguje encję jako izolowaną",
+  orphan_concept: "Oflaguje koncept jako izolowany",
+  empty_questions: "Wygeneruje pytania pomocne przy wyszukiwaniu (LLM)",
+  empty_description: "Zapisze podany opis",
+  entity_alias_collision: "Połączy encje z identycznymi aliasami",
+  missing_concept: "Doda brakujący koncept do wiki",
+};
+
+function formatLocation(location: string): string {
+  const prefixes = ["entity:", "concept:", "source:", "claim:", "edge:"];
+  let clean = location;
+  for (const p of prefixes) {
+    if (clean.startsWith(p)) { clean = clean.slice(p.length); break; }
+  }
+  return clean.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 const SEVERITY_ICON = {
   error: AlertOctagon,
   warning: AlertTriangle,
@@ -43,10 +79,12 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, busy }: Lint
         <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${SEVERITY_COLOR[issue.severity]}`} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-[11px] text-muted-foreground">{issue.type}</span>
-            <span className="font-mono text-[11px] text-muted-foreground">·</span>
-            <span className="font-mono text-[11px] text-muted-foreground truncate">
-              {issue.location}
+            <span className="font-medium text-[11px] text-foreground">
+              {TYPE_LABELS[issue.type] ?? issue.type}
+            </span>
+            <span className="text-[11px] text-muted-foreground">·</span>
+            <span className="text-[11px] text-muted-foreground truncate" title={issue.location}>
+              {formatLocation(issue.location)}
             </span>
             <span className={`ml-auto px-2 py-0.5 rounded text-[10px] uppercase ${STATUS_BADGE[issue.status]}`}>
               {issue.status}
@@ -92,7 +130,7 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, busy }: Lint
               disabled={busy || !issue.auto_fixable}
               onClick={() => onApply(issue.id)}
               className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-              title={issue.auto_fixable ? undefined : "No automatic fix available"}
+              title={FIX_DESCRIPTIONS[issue.type] ?? (issue.auto_fixable ? "Zastosuj automatyczną poprawkę" : "Brak automatycznej poprawki")}
             >
               <Check className="w-3 h-3" /> Apply Fix
             </button>
