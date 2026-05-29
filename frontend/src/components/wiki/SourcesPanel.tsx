@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, RefreshCw, FileText, Tag, Clock, Trash2, RotateCcw } from "lucide-react";
+import { Upload, RefreshCw, FileText, Tag, Clock, Trash2, RotateCcw, Loader, CheckCircle, AlertCircle } from "lucide-react";
 import { api } from "../../api/client";
 import type { WikiSource, IngestResult } from "../../types";
 
@@ -22,13 +22,12 @@ export function SourcesPanel() {
   const [crawlUrl, setCrawlUrl] = useState("");
   const [crawlMax, setCrawlMax] = useState(5);
   const [crawling, setCrawling] = useState(false);
-  const [crawlResult, setCrawlResult] = useState<{
-    articles_found: number;
-    ingested: number;
-    failed: number;
-    results: Array<{ url: string; title: string; status: string; error?: string; slug?: string }>;
-    fatal_error?: string | null;
-  } | null>(null);
+
+  type CrawlItem = { index: number; title: string; url: string; status: "pending" | "ok" | "error"; slug?: string; error?: string };
+  const [crawlItems, setCrawlItems] = useState<CrawlItem[]>([]);
+  const [crawlTotal, setCrawlTotal] = useState(0);
+  const [crawlSummary, setCrawlSummary] = useState<{ ingested: number; failed: number } | null>(null);
+  const [crawlFatalError, setCrawlFatalError] = useState<string | null>(null);
 
   async function fetchSources() {
     setLoading(true);
@@ -112,16 +111,33 @@ export function SourcesPanel() {
   async function handleCrawl() {
     if (!crawlUrl.trim() || crawling) return;
     setCrawling(true);
-    setCrawlResult(null);
+    setCrawlItems([]);
+    setCrawlTotal(0);
+    setCrawlSummary(null);
+    setCrawlFatalError(null);
     try {
-      const result = await api.crawlAndIngest(crawlUrl.trim(), crawlMax);
-      setCrawlResult(result);
-      if (result.ingested > 0) await fetchSources();
-    } catch (e: unknown) {
-      setCrawlResult({
-        articles_found: 0, ingested: 0, failed: 0, results: [],
-        fatal_error: e instanceof Error ? e.message : "Błąd połączenia",
+      await api.crawlAndIngestStream(crawlUrl.trim(), crawlMax, (evt) => {
+        if (evt.event === "fatal_error") {
+          setCrawlFatalError(evt.error);
+        } else if (evt.event === "articles_found") {
+          setCrawlTotal(evt.count);
+        } else if (evt.event === "article_start") {
+          setCrawlItems((prev) => [...prev, { index: evt.index, title: evt.title, url: evt.url, status: "pending" }]);
+        } else if (evt.event === "article_done") {
+          setCrawlItems((prev) =>
+            prev.map((item) =>
+              item.index === evt.index
+                ? { ...item, status: evt.status, slug: evt.slug, error: evt.error }
+                : item
+            )
+          );
+          if (evt.status === "ok") fetchSources();
+        } else if (evt.event === "done") {
+          setCrawlSummary({ ingested: evt.ingested, failed: evt.failed });
+        }
       });
+    } catch (e: unknown) {
+      setCrawlFatalError(e instanceof Error ? e.message : "Błąd połączenia");
     } finally {
       setCrawling(false);
     }
@@ -211,33 +227,64 @@ export function SourcesPanel() {
             >
               {crawling ? "Importuję…" : "Importuj artykuły"}
             </button>
-            {crawlResult && (
-              <div className={`rounded border p-2 text-xs space-y-1 ${crawlResult.fatal_error ? "border-red-500/30 bg-red-500/5" : "border-green-500/30 bg-green-500/5"}`}>
-                {crawlResult.fatal_error ? (
-                  <p className="text-red-600">{crawlResult.fatal_error}</p>
-                ) : (
-                  <>
-                    <p className="font-medium text-green-700">Zaimportowano {crawlResult.ingested}/{crawlResult.articles_found} artykułów</p>
-                    {crawlResult.failed > 0 && <p className="text-yellow-600">{crawlResult.failed} błędów</p>}
-                  </>
+            {/* SSE crawl progress */}
+            {(crawlFatalError || crawlItems.length > 0) && (
+              <div className="space-y-1.5 mt-1">
+                {crawlFatalError && (
+                  <p className="text-xs text-red-600">{crawlFatalError}</p>
+                )}
+                {crawlTotal > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-muted rounded-full h-1 overflow-hidden">
+                      <div
+                        className="bg-primary h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${(crawlItems.filter((i) => i.status !== "pending").length / crawlTotal) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {crawlItems.filter((i) => i.status !== "pending").length}/{crawlTotal}
+                    </span>
+                  </div>
+                )}
+                <div className="max-h-36 overflow-auto space-y-0.5">
+                  {crawlItems.map((item) => (
+                    <div key={item.index} className="flex items-center gap-1.5 text-xs py-0.5">
+                      {item.status === "pending" ? (
+                        <Loader className="w-3 h-3 animate-spin text-muted-foreground shrink-0" />
+                      ) : item.status === "ok" ? (
+                        <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-3 h-3 text-red-500 shrink-0" title={item.error} />
+                      )}
+                      <span className="truncate text-muted-foreground">{item.title}</span>
+                    </div>
+                  ))}
+                </div>
+                {crawlSummary && (
+                  <p className={`text-xs font-medium ${crawlSummary.failed > 0 ? "text-yellow-600" : "text-green-700"}`}>
+                    Zaimportowano {crawlSummary.ingested}/{crawlTotal}
+                    {crawlSummary.failed > 0 ? ` (${crawlSummary.failed} błędów)` : ""}
+                  </p>
                 )}
               </div>
             )}
           </div>
         </details>
 
-        {/* Multi-file progress bar */}
-        {isMultiFile && (
+        {/* Progress bar */}
+        {uploading && (
           <>
-            <div className="w-full bg-muted rounded-full h-1.5 mt-2">
+            <div className="w-full bg-muted rounded-full h-1.5 mt-2 overflow-hidden">
               <div
-                className="bg-primary h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                className={`bg-primary h-1.5 rounded-full transition-all duration-300 ${isMultiFile ? "" : "animate-pulse"}`}
+                style={{ width: isMultiFile ? `${(uploadProgress.current / uploadProgress.total) * 100}%` : "45%" }}
               />
             </div>
-            <p className="text-xs text-muted-foreground text-center mt-1">
-              Ingesting {uploadProgress.current}/{uploadProgress.total}…
-            </p>
+            {isMultiFile && (
+              <p className="text-xs text-muted-foreground text-center mt-1">
+                Ingesting {uploadProgress.current}/{uploadProgress.total}…
+              </p>
+            )}
           </>
         )}
 

@@ -1,4 +1,6 @@
 import os
+import time
+from dataclasses import dataclass
 from openai import OpenAI
 from models.retrieval_models import Answer
 
@@ -19,6 +21,14 @@ Reasoning: show 2-4 steps explaining how you connected the context to the answer
 """
 
 
+@dataclass
+class AnswerWithUsage:
+    answer: Answer
+    prompt_tokens: int
+    completion_tokens: int
+    llm_ms: float
+
+
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
@@ -26,10 +36,11 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def generate_answer(question: str, context: str, model: str = None) -> Answer:
+def generate_answer(question: str, context: str, model: str = None) -> AnswerWithUsage:
     if model is None:
         model = os.getenv("CHAT_MODEL", "gpt-4o-mini")
     client = _get_client()
+    t = time.time()
     response = client.beta.chat.completions.parse(
         model=model,
         messages=[
@@ -38,7 +49,14 @@ def generate_answer(question: str, context: str, model: str = None) -> Answer:
         ],
         response_format=Answer,
     )
+    llm_ms = (time.time() - t) * 1000
     result = response.choices[0].message.parsed
     if result is None:
         raise ValueError("LLM returned no structured output for answer generation")
-    return result
+    usage = response.usage
+    return AnswerWithUsage(
+        answer=result,
+        prompt_tokens=usage.prompt_tokens if usage else 0,
+        completion_tokens=usage.completion_tokens if usage else 0,
+        llm_ms=llm_ms,
+    )

@@ -8,6 +8,7 @@ from services.retrieval.selection import select_candidates
 from services.retrieval.context_assembly import assemble_context
 from services.retrieval.answer_generator import generate_answer
 from services.retrieval.agent_fallback import run_agent_fallback
+from services.llm_service import record_query
 
 
 def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
@@ -88,12 +89,12 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
     ))
 
     # Stage 5
-    t = time.time()
-    answer = generate_answer(question, context)
+    answer_result = generate_answer(question, context)
+    answer = answer_result.answer
     total_llm_calls += 1
     stages.append(StageTrace(
         stage=5, name="Answer Generator",
-        duration_ms=(time.time() - t) * 1000, llm_called=True,
+        duration_ms=answer_result.llm_ms, llm_called=True,
         input_summary=f"{context_chars} chars context",
         output_summary=f"confidence={answer.confidence:.2f}, sources={len(answer.sources)}",
     ))
@@ -104,6 +105,18 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
             trigger_reason=f"Stage 5 answer confidence too low ({answer.confidence:.2f} < 0.6)",
         )
 
+    total_duration_ms = (time.time() - t_total) * 1000
+    # gpt-4o-mini pricing: $0.15/1M input tokens, $0.60/1M output tokens
+    cost_usd = (answer_result.prompt_tokens * 0.15 + answer_result.completion_tokens * 0.60) / 1_000_000
+    record_query(
+        query=question,
+        retrieval_ms=max(0.0, total_duration_ms - answer_result.llm_ms),
+        llm_ms=answer_result.llm_ms,
+        prompt_tokens=answer_result.prompt_tokens,
+        completion_tokens=answer_result.completion_tokens,
+        estimated_cost_usd=cost_usd,
+    )
+
     return QueryTrace(
         query_id=query_id,
         question=question,
@@ -113,7 +126,7 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
         context_chars=context_chars,
         answer=answer,
         stages=stages,
-        total_duration_ms=(time.time() - t_total) * 1000,
+        total_duration_ms=total_duration_ms,
         total_llm_calls=total_llm_calls,
         agent_trace=agent_trace,
     )
