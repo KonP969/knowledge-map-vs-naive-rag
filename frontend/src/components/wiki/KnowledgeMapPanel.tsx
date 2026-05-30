@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { RefreshCw, Search, User, Building, Package, MapPin, Calendar, Lightbulb } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { RefreshCw, Search, X, User, Building, Package, MapPin, Calendar, Lightbulb } from "lucide-react";
 import { api } from "../../api/client";
 import type { WikiEntity, WikiConcept, WikiSource } from "../../types";
 import { GraphView } from "./GraphView";
@@ -25,6 +25,9 @@ export function KnowledgeMapPanel() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [graphSearch, setGraphSearch] = useState("");
+  const [graphDropdownOpen, setGraphDropdownOpen] = useState(false);
+  const graphSearchRef = useRef<HTMLInputElement>(null);
 
   async function fetchAll() {
     setLoading(true);
@@ -73,6 +76,32 @@ export function KnowledgeMapPanel() {
     { id: "sources", label: "Sources", count: sources.length },
   ];
 
+  type GraphSearchResult = { nodeId: string; label: string; type: string; Icon: React.ElementType };
+
+  const graphSearchResults: GraphSearchResult[] = (() => {
+    const gq = graphSearch.toLowerCase();
+    if (!gq) return [];
+    const results: GraphSearchResult[] = [];
+    for (const e of entities) {
+      if (
+        results.length >= 8 ||
+        (!e.slug.includes(gq) && !e.type.toLowerCase().includes(gq) && !e.description.toLowerCase().includes(gq) && !e.aliases.some((a) => a.toLowerCase().includes(gq)))
+      ) continue;
+      results.push({ nodeId: `entity:${e.id}`, label: e.slug, type: e.type, Icon: ENTITY_TYPE_ICONS[e.type] ?? User });
+    }
+    for (const c of concepts) {
+      if (results.length >= 8) break;
+      if (!c.slug.includes(gq) && !c.definition.toLowerCase().includes(gq)) continue;
+      results.push({ nodeId: `concept:${c.id}`, label: c.slug, type: "Concept", Icon: Lightbulb });
+    }
+    for (const s of sources) {
+      if (results.length >= 8) break;
+      if (!s.title.toLowerCase().includes(gq) && !s.summary.toLowerCase().includes(gq) && !s.tags.some((t) => t.includes(gq))) continue;
+      results.push({ nodeId: `source:${s.id}`, label: s.title, type: "Source", Icon: Package });
+    }
+    return results;
+  })();
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Top bar */}
@@ -93,6 +122,52 @@ export function KnowledgeMapPanel() {
             </button>
           ))}
         </div>
+
+        {/* Graph search */}
+        {view === "graph" && (
+          <div className="relative">
+            <div className="flex items-center border border-border rounded-md bg-background overflow-hidden">
+              <Search className="w-3.5 h-3.5 text-muted-foreground ml-2 shrink-0" />
+              <input
+                ref={graphSearchRef}
+                value={graphSearch}
+                onChange={(e) => { setGraphSearch(e.target.value); setGraphDropdownOpen(true); }}
+                onFocus={() => setGraphDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setGraphDropdownOpen(false), 150)}
+                placeholder="Search nodes…"
+                className="px-2 py-1.5 text-xs bg-transparent focus:outline-none w-44"
+              />
+              {graphSearch && (
+                <button onClick={() => { setGraphSearch(""); setGraphDropdownOpen(false); graphSearchRef.current?.focus(); }} className="px-1.5 text-muted-foreground hover:text-foreground">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            {graphDropdownOpen && graphSearch.length > 0 && (
+              <div className="absolute top-full left-0 mt-1 w-72 bg-popover border border-border rounded-md shadow-md z-50 overflow-hidden">
+                {graphSearchResults.length === 0 ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">Brak wyników dla «{graphSearch}»</p>
+                ) : (
+                  graphSearchResults.map((r) => (
+                    <button
+                      key={r.nodeId}
+                      onMouseDown={() => {
+                        setSelectedNodeId(r.nodeId);
+                        setGraphSearch("");
+                        setGraphDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-left"
+                    >
+                      <r.Icon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 truncate font-medium">{r.label}</span>
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">{r.type}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Browser-only controls */}
         {view === "browser" && (

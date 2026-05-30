@@ -6,6 +6,7 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Node,
   type Edge as RFEdge,
 } from "@xyflow/react";
@@ -69,6 +70,17 @@ interface FilterState {
   showConcepts: boolean;
   showSources: boolean;
   entityTypes: Set<string>;
+}
+
+function GraphAutoFocus({ selectedNodeId, nodes }: { selectedNodeId: string | null | undefined; nodes: Node[] }) {
+  const { setCenter } = useReactFlow();
+  useEffect(() => {
+    if (!selectedNodeId) return;
+    const node = nodes.find((n) => n.id === selectedNodeId);
+    if (!node) return;
+    setCenter(node.position.x + NODE_W / 2, node.position.y + NODE_H / 2, { zoom: 1.5, duration: 600 });
+  }, [selectedNodeId, nodes, setCenter]);
+  return null;
 }
 
 interface GraphViewProps {
@@ -307,6 +319,7 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
             maxZoom={3}
             proOptions={{ hideAttribution: true }}
           >
+            <GraphAutoFocus selectedNodeId={selectedNodeId} nodes={rfNodes} />
             <Background color="#e2e8f0" gap={20} />
             <Controls />
             <MiniMap nodeStrokeWidth={3} pannable zoomable />
