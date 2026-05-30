@@ -27,7 +27,9 @@ export function KnowledgeMapPanel() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [graphSearch, setGraphSearch] = useState("");
   const [graphDropdownOpen, setGraphDropdownOpen] = useState(false);
+  const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const graphSearchRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   async function fetchAll() {
     setLoading(true);
@@ -123,26 +125,45 @@ export function KnowledgeMapPanel() {
 
         {/* Graph search */}
         {view === "graph" && (
-          <div className="relative">
+          <div ref={searchContainerRef} className="relative">
             <div className="flex items-center border border-border rounded-md bg-background overflow-hidden">
               <Search className="w-3.5 h-3.5 text-muted-foreground ml-2 shrink-0" />
               <input
                 ref={graphSearchRef}
                 value={graphSearch}
-                onChange={(e) => { setGraphSearch(e.target.value); setGraphDropdownOpen(true); }}
-                onFocus={() => setGraphDropdownOpen(true)}
+                onChange={(e) => {
+                  setGraphSearch(e.target.value);
+                  setGraphDropdownOpen(true);
+                  if (searchContainerRef.current) {
+                    const r = searchContainerRef.current.getBoundingClientRect();
+                    setDropdownRect({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 280) });
+                  }
+                }}
+                onFocus={() => {
+                  setGraphDropdownOpen(true);
+                  if (searchContainerRef.current) {
+                    const r = searchContainerRef.current.getBoundingClientRect();
+                    setDropdownRect({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 280) });
+                  }
+                }}
                 onBlur={() => setTimeout(() => setGraphDropdownOpen(false), 150)}
                 placeholder="Search nodes…"
                 className="px-2 py-1.5 text-xs bg-transparent focus:outline-none w-32"
               />
               {graphSearch && (
-                <button onClick={() => { setGraphSearch(""); setGraphDropdownOpen(false); graphSearchRef.current?.focus(); }} className="px-1.5 text-muted-foreground hover:text-foreground">
+                <button
+                  onClick={() => { setGraphSearch(""); setGraphDropdownOpen(false); graphSearchRef.current?.focus(); }}
+                  className="px-1.5 text-muted-foreground hover:text-foreground"
+                >
                   <X className="w-3 h-3" />
                 </button>
               )}
             </div>
-            {graphDropdownOpen && graphSearch.length > 0 && (
-              <div className="absolute top-full left-0 mt-1 w-72 bg-popover border border-border rounded-md shadow-md z-50 overflow-hidden">
+            {graphDropdownOpen && graphSearch.length > 0 && dropdownRect && (
+              <div
+                style={{ position: "fixed", top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width, zIndex: 9999 }}
+                className="bg-popover border border-border rounded-md shadow-md overflow-hidden"
+              >
                 {graphSearchResults.length === 0 ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">Brak wyników dla «{graphSearch}»</p>
                 ) : (
