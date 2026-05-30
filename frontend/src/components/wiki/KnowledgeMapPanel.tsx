@@ -83,20 +83,18 @@ export function KnowledgeMapPanel() {
     if (!gq) return [];
     const results: GraphSearchResult[] = [];
     for (const e of entities) {
-      if (
-        results.length >= 8 ||
-        (!e.slug.includes(gq) && !e.type.toLowerCase().includes(gq) && !e.description.toLowerCase().includes(gq) && !e.aliases.some((a) => a.toLowerCase().includes(gq)))
-      ) continue;
+      if (results.length >= 8) break;
+      if (!e.slug.includes(gq) && !e.aliases.some((a) => a.toLowerCase().includes(gq))) continue;
       results.push({ nodeId: `entity:${e.id}`, label: e.slug, type: e.type, Icon: ENTITY_TYPE_ICONS[e.type] ?? User });
     }
     for (const c of concepts) {
       if (results.length >= 8) break;
-      if (!c.slug.includes(gq) && !c.definition.toLowerCase().includes(gq)) continue;
+      if (!c.slug.includes(gq)) continue;
       results.push({ nodeId: `concept:${c.id}`, label: c.slug, type: "Concept", Icon: Lightbulb });
     }
     for (const s of sources) {
       if (results.length >= 8) break;
-      if (!s.title.toLowerCase().includes(gq) && !s.summary.toLowerCase().includes(gq) && !s.tags.some((t) => t.includes(gq))) continue;
+      if (!s.title.toLowerCase().includes(gq)) continue;
       results.push({ nodeId: `source:${s.id}`, label: s.title, type: "Source", Icon: Package });
     }
     return results;
@@ -107,7 +105,7 @@ export function KnowledgeMapPanel() {
       {/* Top bar */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
         {/* View toggle */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 shrink-0">
           {(["graph", "browser"] as View[]).map((v) => (
             <button
               key={v}
@@ -135,7 +133,7 @@ export function KnowledgeMapPanel() {
                 onFocus={() => setGraphDropdownOpen(true)}
                 onBlur={() => setTimeout(() => setGraphDropdownOpen(false), 150)}
                 placeholder="Search nodes…"
-                className="px-2 py-1.5 text-xs bg-transparent focus:outline-none w-44"
+                className="px-2 py-1.5 text-xs bg-transparent focus:outline-none w-32"
               />
               {graphSearch && (
                 <button onClick={() => { setGraphSearch(""); setGraphDropdownOpen(false); graphSearchRef.current?.focus(); }} className="px-1.5 text-muted-foreground hover:text-foreground">
