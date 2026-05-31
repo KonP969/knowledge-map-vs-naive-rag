@@ -16,7 +16,12 @@ const ENTITY_TYPE_ICONS: Record<string, React.ElementType> = {
   Event: Calendar,
 };
 
-export function KnowledgeMapPanel() {
+interface KnowledgeMapPanelProps {
+  focusNode?: string | null;
+  onFocusHandled?: () => void;
+}
+
+export function KnowledgeMapPanel({ focusNode, onFocusHandled }: KnowledgeMapPanelProps = {}) {
   const [view, setView] = useState<View>("graph");
   const [browserTab, setBrowserTab] = useState<BrowserTab>("entities");
   const [entities, setEntities] = useState<WikiEntity[]>([]);
@@ -43,6 +48,14 @@ export function KnowledgeMapPanel() {
   }
 
   useEffect(() => { fetchAll(); }, []);
+
+  // External focus request (e.g. from Lint): jump to graph view and select the node.
+  useEffect(() => {
+    if (!focusNode) return;
+    setView("graph");
+    setSelectedNodeId(focusNode);
+    onFocusHandled?.();
+  }, [focusNode, onFocusHandled]);
 
   const q = search.toLowerCase();
 
