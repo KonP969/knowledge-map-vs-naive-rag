@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, RefreshCw, FileText, Tag, Clock, Trash2, RotateCcw, Loader, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, RefreshCw, FileText, Tag, Clock, Trash2, RotateCcw, Loader, CheckCircle, AlertCircle, ArrowUp, ArrowDown } from "lucide-react";
 import { api } from "../../api/client";
 import type { WikiSource, IngestResult } from "../../types";
+
+type SortBy = "date" | "title";
+type SortDir = "asc" | "desc";
 
 export function SourcesPanel() {
   const [sources, setSources] = useState<WikiSource[]>([]);
@@ -12,6 +15,9 @@ export function SourcesPanel() {
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [sortBy, setSortBy] = useState<SortBy>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -144,6 +150,41 @@ export function SourcesPanel() {
   }
 
   const isMultiFile = uploading && uploadProgress.total > 1;
+
+  const sortedSources = [...sources].sort((a, b) => {
+    let cmp: number;
+    if (sortBy === "title") {
+      cmp = a.title.localeCompare(b.title);
+    } else {
+      cmp = new Date(a.ingested_at).getTime() - new Date(b.ingested_at).getTime();
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  function toggleSort(field: SortBy) {
+    if (sortBy === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortDir(field === "title" ? "asc" : "desc");
+    }
+  }
+
+  const SortButton = ({ field, label }: { field: SortBy; label: string }) => {
+    const active = sortBy === field;
+    return (
+      <button
+        onClick={() => toggleSort(field)}
+        className={`flex items-center gap-0.5 text-xs transition-colors ${
+          active ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+        }`}
+        title={`Sortuj wg ${label.toLowerCase()}`}
+      >
+        {label}
+        {active && (sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
+      </button>
+    );
+  };
 
   return (
     <div className="p-6 h-full flex gap-6">
@@ -322,6 +363,13 @@ export function SourcesPanel() {
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-sm">Sources ({sources.length})</h3>
           <div className="flex items-center gap-3">
+            {sources.length > 1 && (
+              <div className="flex items-center gap-2 border-r border-border pr-3">
+                <span className="text-xs text-muted-foreground">Sort:</span>
+                <SortButton field="date" label="Data" />
+                <SortButton field="title" label="Tytuł" />
+              </div>
+            )}
             <button
               onClick={fetchSources}
               disabled={loading}
@@ -370,7 +418,7 @@ export function SourcesPanel() {
         )}
 
         <div className="space-y-2">
-          {sources.map((src) => (
+          {sortedSources.map((src) => (
             <div
               key={src.id}
               className="border border-border rounded-md p-3 hover:bg-muted/50 transition-colors"
