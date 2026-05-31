@@ -1,6 +1,12 @@
 import { useState } from "react";
-import { AlertTriangle, AlertOctagon, Info, Check, X, Ban, Sparkles } from "lucide-react";
+import { AlertTriangle, AlertOctagon, Info, Check, X, Ban, Sparkles, MapPin } from "lucide-react";
 import type { LintIssue } from "../../types";
+
+const GRAPH_NODE_PREFIXES = ["entity:", "concept:", "source:"];
+
+function isGraphNodeLocation(location: string): boolean {
+  return GRAPH_NODE_PREFIXES.some((p) => location.startsWith(p));
+}
 
 const TYPE_LABELS: Record<string, string> = {
   provenance_missing: "Brak proweniencji",
@@ -62,16 +68,18 @@ interface LintIssueRowProps {
   onApply: (issueId: string, editPayload?: { description: string }) => void;
   onReject: (issueId: string) => void;
   onWontFix: (issueId: string) => void;
+  onLocationClick?: (location: string) => void;
   busy: boolean;
 }
 
-export function LintIssueRow({ issue, onApply, onReject, onWontFix, busy }: LintIssueRowProps) {
+export function LintIssueRow({ issue, onApply, onReject, onWontFix, onLocationClick, busy }: LintIssueRowProps) {
   const Icon = SEVERITY_ICON[issue.severity];
   const isEmptyDescriptionEdit = issue.type === "empty_description" && issue.auto_fixable;
   const isGenerateQuestions = issue.type === "empty_questions" && issue.auto_fixable;
   const [editText, setEditText] = useState("");
   const editValid = editText.trim().length >= 30;
   const closed = issue.status !== "open";
+  const locationClickable = !!onLocationClick && isGraphNodeLocation(issue.location);
 
   return (
     <div className="border border-border rounded-md p-3 flex flex-col gap-2 text-xs bg-card">
@@ -83,9 +91,20 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, busy }: Lint
               {TYPE_LABELS[issue.type] ?? issue.type}
             </span>
             <span className="text-[11px] text-muted-foreground">·</span>
-            <span className="text-[11px] text-muted-foreground truncate" title={issue.location}>
-              {formatLocation(issue.location)}
-            </span>
+            {locationClickable ? (
+              <button
+                onClick={() => onLocationClick!(issue.location)}
+                className="flex items-center gap-0.5 text-[11px] text-primary hover:underline truncate"
+                title={`Pokaż w Knowledge Map: ${issue.location}`}
+              >
+                <MapPin className="w-2.5 h-2.5 shrink-0" />
+                {formatLocation(issue.location)}
+              </button>
+            ) : (
+              <span className="text-[11px] text-muted-foreground truncate" title={issue.location}>
+                {formatLocation(issue.location)}
+              </span>
+            )}
             <span className={`ml-auto px-2 py-0.5 rounded text-[10px] uppercase ${STATUS_BADGE[issue.status]}`}>
               {issue.status}
             </span>

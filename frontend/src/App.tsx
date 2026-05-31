@@ -15,6 +15,12 @@ import { api } from "./api/client";
 export default function App() {
   const [activePanel, setActivePanel] = useState<Panel>("ingest");
   const [metrics, setMetrics] = useState<SessionMetrics | null>(null);
+  const [focusNode, setFocusNode] = useState<string | null>(null);
+
+  const goToNode = (nodeId: string) => {
+    setFocusNode(nodeId);
+    setActivePanel("knowledge_map");
+  };
 
   useEffect(() => {
     api.getSessionMetrics().then(setMetrics).catch(() => {});
@@ -35,8 +41,10 @@ export default function App() {
           {activePanel === "sources" && <SourcesPanel />}
           {activePanel === "ingest" && <IngestPipelinePanel />}
           {activePanel === "chat_trace" && <ChatWithTracePanel />}
-          {activePanel === "knowledge_map" && <KnowledgeMapPanel />}
-          {activePanel === "lint" && <LintPanel />}
+          {activePanel === "knowledge_map" && (
+            <KnowledgeMapPanel focusNode={focusNode} onFocusHandled={() => setFocusNode(null)} />
+          )}
+          {activePanel === "lint" && <LintPanel onLocationClick={goToNode} />}
         </main>
       </div>
       <Footer />

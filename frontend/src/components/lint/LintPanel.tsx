@@ -7,7 +7,11 @@ import { LintIssueRow } from "./LintIssueRow";
 type SeverityFilter = "all" | IssueSeverity;
 type StatusFilter = "all" | IssueStatus;
 
-export function LintPanel() {
+interface LintPanelProps {
+  onLocationClick?: (location: string) => void;
+}
+
+export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
   const [report, setReport] = useState<LintReport | null>(null);
   const [running, setRunning] = useState(false);
   const [busyIssueId, setBusyIssueId] = useState<string | null>(null);
@@ -175,6 +179,7 @@ export function LintPanel() {
             onApply={(id, payload) => applyAction(id, "apply", payload)}
             onReject={(id) => applyAction(id, "reject")}
             onWontFix={(id) => applyAction(id, "wontfix")}
+            onLocationClick={onLocationClick}
           />
         ))}
       </div>
