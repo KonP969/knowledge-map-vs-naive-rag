@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Upload, RefreshCw, FileText, Tag, Clock, Trash2, RotateCcw, Loader, CheckCircle, AlertCircle, ArrowUp, ArrowDown } from "lucide-react";
 import { api } from "../../api/client";
+import { SourceDetailDrawer } from "./SourceDetailDrawer";
 import type { WikiSource, IngestResult } from "../../types";
 
 type SortBy = "date" | "title";
@@ -18,6 +19,8 @@ export function SourcesPanel() {
 
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const [selectedSource, setSelectedSource] = useState<WikiSource | null>(null);
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -421,7 +424,10 @@ export function SourcesPanel() {
           {sortedSources.map((src) => (
             <div
               key={src.id}
-              className="border border-border rounded-md p-3 hover:bg-muted/50 transition-colors"
+              onClick={() => setSelectedSource(src)}
+              className={`border rounded-md p-3 hover:bg-muted/50 transition-colors cursor-pointer ${
+                selectedSource?.id === src.id ? "border-primary bg-primary/5" : "border-border"
+              }`}
             >
               <div className="flex items-start gap-2">
                 <FileText className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
@@ -429,7 +435,7 @@ export function SourcesPanel() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium truncate flex-1">{src.title}</p>
                     {confirmDelete === src.slug ? (
-                      <span className="flex items-center gap-1 shrink-0">
+                      <span className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <span className="text-xs text-muted-foreground">Usuń?</span>
                         <button
                           onClick={() => handleDelete(src.slug)}
@@ -447,7 +453,7 @@ export function SourcesPanel() {
                       </span>
                     ) : (
                       <button
-                        onClick={() => setConfirmDelete(src.slug)}
+                        onClick={(e) => { e.stopPropagation(); setConfirmDelete(src.slug); }}
                         disabled={deleting === src.slug}
                         className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-30"
                         title="Usuń źródło"
@@ -478,6 +484,9 @@ export function SourcesPanel() {
           ))}
         </div>
       </div>
+
+      {/* Detail drawer */}
+      <SourceDetailDrawer source={selectedSource} onClose={() => setSelectedSource(null)} />
     </div>
   );
 }
