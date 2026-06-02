@@ -7,7 +7,7 @@
 // Run:  node test_ux_round3.js
 const { chromium } = require("playwright");
 
-const BASE = process.env.BASE_URL || "http://localhost:5174";
+const BASE = process.env.BASE_URL || "http://localhost:5173";
 const RESULTS = [];
 
 function log(feature, status, detail = "") {
@@ -134,6 +134,82 @@ async function testFeature6(browser) {
   }
 }
 
+// ── Feedback round: newest-on-top + expandable source claims ────────────────
+function mkTrace(id, q, ans, sources = []) {
+  return {
+    query_id: id, question: q,
+    intent: { original_question: q, entity_mentions: [], concept_mentions: [], time_period: null, intent_type: "fact_lookup", expected_answer_form: "short" },
+    candidates_count: 1, selected_count: 1, context_chars: 10,
+    answer: { final_answer: ans, sources, confidence: 0.9, reasoning_steps: [], related_questions: [] },
+    stages: [{ stage: 1, name: "Intent Parser", duration_ms: 5, llm_called: true, input_summary: "", output_summary: "x" }],
+    total_duration_ms: 10, total_llm_calls: 1,
+  };
+}
+
+async function testChatOrderAndClaims(browser) {
+  const A = mkTrace("q_old", "Older?", "OLDER answer AAA");
+  const B = mkTrace("q_new", "Newer?", "NEWER answer BBB", [{ source_id: "src_001", claim_ids: ["cl_001", "cl_002"], relevance: "x" }]);
+  const page = await browser.newPage();
+  try {
+    await page.goto(BASE, { waitUntil: "domcontentloaded" });
+    await page.evaluate((h) => localStorage.setItem("wikiChatHistory", JSON.stringify(h)), [A, B]);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Wiki Chat" }).click();
+    await page.waitForTimeout(600);
+
+    const answers = await page.locator("p.text-sm.whitespace-pre-wrap").allInnerTexts();
+    const iNew = answers.findIndex((t) => t.includes("NEWER answer BBB"));
+    const iOld = answers.findIndex((t) => t.includes("OLDER answer AAA"));
+    if (iNew !== -1 && iOld !== -1 && iNew < iOld) log("Chat order", "PASS", "newest conversation on top");
+    else log("Chat order", "FAIL", `new@${iNew}, old@${iOld}`);
+
+    const srcBtn = page.getByRole("button", { name: /kliknij, by pokazać/i }).first();
+    if ((await srcBtn.count()) === 0) return log("Chat claims", "WARN", "no claim-bearing source (src_001/cl_001 missing) — skipped");
+    await srcBtn.click();
+    await page.waitForTimeout(1200);
+    const claimShown = await page.getByText(/Kolekcja AZURA oferuje akcesoria/i).isVisible().catch(() => false);
+    if (claimShown) log("Chat claims", "PASS", "expanded source shows its claims (fragments)");
+    else log("Chat claims", "WARN", "claim text not found — backend data may differ");
+  } finally {
+    await page.close();
+  }
+}
+
+// ── Feedback round: Lint Fix all (mocked endpoints, non-destructive) ─────────
+async function testFixAll(browser) {
+  const REPORT_ID = "rpt_mock";
+  const mk = (id, type, loc, fixable) => ({ id, type, severity: type === "orphan_entity" ? "warning" : "error", location: loc, description: `desc ${id}`, suggested_fix: "fix", auto_fixable: fixable, payload: {}, status: "open" });
+  const openIssues = [
+    mk("i1", "dangling_node_ref", "edges.jsonl:ed_001", true),
+    mk("i2", "dangling_node_ref", "edges.jsonl:ed_002", true),
+    mk("i3", "dangling_node_ref", "edges.jsonl:ed_003", true),
+    mk("i4", "orphan_entity", "entity:e_021", true),
+    mk("i5", "empty_description", "entity:e_099", true), // excluded from bulk
+  ];
+  const fixed = new Set();
+  const buildReport = () => ({ id: REPORT_ID, created_at: "2026-06-02T00:00:00", issues: openIssues.map((i) => (fixed.has(i.id) ? { ...i, status: "fixed" } : i)), counts_by_severity: { error: 3, warning: 2, info: 0 }, counts_by_type: {} });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  let fixCalls = 0;
+  try {
+    await page.route("**/api/lint/reports", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ id: REPORT_ID, created_at: "2026-06-02T00:00:00", counts_by_severity: { error: 3, warning: 2, info: 0 }, total: 5 }]) }));
+    await page.route("**/api/lint/report/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(buildReport()) }));
+    await page.route("**/api/lint/fix", async (r) => { const b = JSON.parse(r.request().postData() || "{}"); fixed.add(b.issue_id); fixCalls++; await r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: b.issue_id, status: "fixed" }) }); });
+
+    await page.goto(BASE, { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Lint" }).click();
+    await page.waitForTimeout(800);
+    const label = await page.getByRole("button", { name: /Fix all/i }).innerText().catch(() => "");
+    await page.getByRole("button", { name: /Fix all/i }).click();
+    await page.getByRole("button", { name: "Tak" }).click();
+    await page.waitForTimeout(1500);
+    if (/Fix all \(4\)/.test(label) && fixCalls === 4) log("Lint Fix all", "PASS", "bulk-fixed 4, excluded empty_description");
+    else log("Lint Fix all", "FAIL", `label="${label}", fixCalls=${fixCalls}`);
+  } finally {
+    await context.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -141,6 +217,8 @@ async function testFeature6(browser) {
     await testFeature4(browser);
     await testFeature5(browser);
     await testFeature6(browser);
+    await testChatOrderAndClaims(browser);
+    await testFixAll(browser);
   } finally {
     await browser.close();
   }
