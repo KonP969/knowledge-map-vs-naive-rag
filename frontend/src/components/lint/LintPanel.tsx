@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { Play, RefreshCw, ShieldCheck } from "lucide-react";
+import { Play, RefreshCw, ShieldCheck, Wand2 } from "lucide-react";
 import { api } from "../../api/client";
 import type { IssueSeverity, IssueStatus, LintReport } from "../../types";
 import { LintIssueRow } from "./LintIssueRow";
+
+// Types that need manual input (description) or a slow LLM call — excluded from bulk Fix all.
+const NON_BULK_TYPES = new Set(["empty_description", "empty_questions"]);
 
 type SeverityFilter = "all" | IssueSeverity;
 type StatusFilter = "all" | IssueStatus;
@@ -19,6 +22,9 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
   const [includeSemantic, setIncludeSemantic] = useState(false);
+  const [confirmFixAll, setConfirmFixAll] = useState(false);
+  const [fixingAll, setFixingAll] = useState(false);
+  const [fixAllProgress, setFixAllProgress] = useState({ current: 0, total: 0 });
 
   async function loadLatestReport() {
     try {
@@ -72,6 +78,38 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
     return true;
   });
 
+  const bulkFixable = issues.filter(
+    (i) => i.status === "open" && i.auto_fixable && !NON_BULK_TYPES.has(i.type),
+  );
+
+  async function fixAll() {
+    if (!report) return;
+    setConfirmFixAll(false);
+    setFixingAll(true);
+    setError(null);
+    const targets = bulkFixable;
+    setFixAllProgress({ current: 0, total: targets.length });
+    let done = 0;
+    let failures = 0;
+    for (const issue of targets) {
+      try {
+        await api.applyLintFix({ report_id: report.id, issue_id: issue.id, action: "apply" });
+      } catch {
+        failures++;
+      }
+      done++;
+      setFixAllProgress({ current: done, total: targets.length });
+    }
+    try {
+      const refreshed = await api.getLintReport(report.id);
+      setReport(refreshed);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    if (failures > 0) setError(`${failures} z ${targets.length} poprawek nie powiodło się.`);
+    setFixingAll(false);
+  }
+
   const sev = report?.counts_by_severity ?? { error: 0, warning: 0, info: 0 };
 
   return (
@@ -90,14 +128,44 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
           Semantic checks{" "}
           <span className="text-muted-foreground/60">(LLM, ~30–60s)</span>
         </label>
-        <button
-          onClick={runNow}
-          disabled={running}
-          className="flex items-center gap-1.5 ml-auto px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
-        >
-          {running ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-          {running ? "Running…" : "Run Now"}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {fixingAll ? (
+            <span className="flex items-center gap-1.5 text-xs text-primary">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              Naprawiam {fixAllProgress.current}/{fixAllProgress.total}…
+            </span>
+          ) : confirmFixAll ? (
+            <span className="flex items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground">Naprawić hurtem {bulkFixable.length}?</span>
+              <button onClick={fixAll} className="text-primary hover:underline font-medium px-1">
+                Tak
+              </button>
+              <button onClick={() => setConfirmFixAll(false)} className="text-muted-foreground hover:text-foreground px-1">
+                Nie
+              </button>
+            </span>
+          ) : (
+            bulkFixable.length > 0 && (
+              <button
+                onClick={() => setConfirmFixAll(true)}
+                disabled={running}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-primary/40 text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
+                title="Zastosuj hurtem wszystkie automatyczne poprawki (bez LLM i bez ręcznej edycji)"
+              >
+                <Wand2 className="w-3.5 h-3.5" />
+                Fix all ({bulkFixable.length})
+              </button>
+            )
+          )}
+          <button
+            onClick={runNow}
+            disabled={running || fixingAll}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
+          >
+            {running ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+            {running ? "Running…" : "Run Now"}
+          </button>
+        </div>
       </div>
 
       {/* Summary + filters */}
