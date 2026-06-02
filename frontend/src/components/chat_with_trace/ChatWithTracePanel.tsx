@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Brain, Filter, CheckSquare, Layers, Sparkles, Clock, AlertCircle, Trash2 } from "lucide-react";
+import { Send, Brain, Filter, CheckSquare, Layers, Sparkles, Clock, AlertCircle, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import { api } from "../../api/client";
-import type { QueryTrace, RetrievalStageTrace } from "../../types";
+import type { QueryTrace, RetrievalStageTrace, AnswerSource, NodeDetailClaim } from "../../types";
+
+const POLARITY_COLOR: Record<string, string> = {
+  asserts: "text-green-600 dark:text-green-400",
+  denies: "text-red-600 dark:text-red-400",
+};
 
 const STAGE_ICONS = [Brain, Filter, CheckSquare, Layers, Sparkles];
 const STAGE_COLORS: Record<string, string> = {
@@ -56,6 +61,30 @@ function ChatEntry({
   sourcesData: Record<string, { title: string; summary: string }>;
   onPickQuestion: (q: string) => void;
 }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [claimsBySource, setClaimsBySource] = useState<
+    Record<string, NodeDetailClaim[] | "loading" | "error">
+  >({});
+
+  async function toggleSource(s: AnswerSource) {
+    if (expanded === s.source_id) {
+      setExpanded(null);
+      return;
+    }
+    setExpanded(s.source_id);
+    if (claimsBySource[s.source_id]) return; // cached
+    setClaimsBySource((p) => ({ ...p, [s.source_id]: "loading" }));
+    try {
+      const nodeId = s.source_id.startsWith("source:") ? s.source_id : `source:${s.source_id}`;
+      const detail = await api.getWikiNodeDetail(nodeId);
+      const want = new Set(s.claim_ids);
+      const claims = detail.claims.filter((c) => want.has(c.id));
+      setClaimsBySource((p) => ({ ...p, [s.source_id]: claims }));
+    } catch {
+      setClaimsBySource((p) => ({ ...p, [s.source_id]: "error" }));
+    }
+  }
+
   return (
     <div className="space-y-4 pb-4 border-b border-border last:border-b-0">
       <div>
@@ -72,15 +101,50 @@ function ChatEntry({
           <div className="space-y-1.5">
             {trace.answer.sources.map((s) => {
               const src = sourcesData[s.source_id];
+              const isOpen = expanded === s.source_id;
+              const hasClaims = s.claim_ids.length > 0;
+              const claims = claimsBySource[s.source_id];
               return (
-                <div key={s.source_id} className="text-xs border border-border rounded-md px-3 py-2 space-y-0.5">
-                  <p className="font-medium text-foreground">{src?.title ?? s.source_id}</p>
-                  {src?.summary && (
-                    <p className="text-muted-foreground line-clamp-2">{src.summary}</p>
+                <div key={s.source_id} className="text-xs border border-border rounded-md overflow-hidden">
+                  <button
+                    onClick={() => hasClaims && toggleSource(s)}
+                    disabled={!hasClaims}
+                    className={`w-full text-left px-3 py-2 space-y-0.5 ${hasClaims ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"} transition-colors`}
+                  >
+                    <p className="font-medium text-foreground flex items-center gap-1">
+                      {hasClaims && (
+                        isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />
+                      )}
+                      {src?.title ?? s.source_id}
+                    </p>
+                    {src?.summary && !isOpen && (
+                      <p className="text-muted-foreground line-clamp-2">{src.summary}</p>
+                    )}
+                    <p className="text-muted-foreground/60 font-mono text-[10px]">
+                      {s.source_id} · {s.claim_ids.length} {hasClaims ? "fragment(ów) · kliknij, by pokazać" : "claim(s)"}
+                    </p>
+                  </button>
+                  {isOpen && (
+                    <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/20 space-y-1.5">
+                      {claims === "loading" && (
+                        <p className="text-muted-foreground animate-pulse py-1">Ładuję fragmenty…</p>
+                      )}
+                      {claims === "error" && (
+                        <p className="text-red-500 py-1">Nie udało się wczytać fragmentów.</p>
+                      )}
+                      {Array.isArray(claims) && claims.length === 0 && (
+                        <p className="text-muted-foreground py-1">Brak dopasowanych twierdzeń w tym źródle.</p>
+                      )}
+                      {Array.isArray(claims) && claims.map((c) => (
+                        <div key={c.id} className="border-l-2 border-primary/40 pl-2 py-0.5">
+                          <p className="text-foreground leading-snug">{c.text}</p>
+                          <p className={`text-[10px] ${POLARITY_COLOR[c.polarity] ?? "text-muted-foreground"}`}>
+                            {c.polarity} · {(c.confidence * 100).toFixed(0)}% · <span className="font-mono text-muted-foreground/60">{c.id}</span>
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  <p className="text-muted-foreground/60 font-mono text-[10px]">
-                    {s.source_id} · {s.claim_ids.length} claim(s)
-                  </p>
                 </div>
               );
             })}
@@ -170,10 +234,10 @@ export function ChatWithTracePanel() {
     return () => timeouts.forEach(clearTimeout);
   }, [latest]);
 
-  // Auto-scroll conversation to the newest entry
+  // Newest entry is rendered at the top → scroll the conversation back to top
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = 0;
     }
   }, [history, loading]);
 
@@ -261,7 +325,10 @@ export function ChatWithTracePanel() {
                   Wyczyść historię
                 </button>
               </div>
-              {history.map((t) => (
+              {loading && (
+                <p className="text-sm text-muted-foreground animate-pulse">Running retrieval pipeline…</p>
+              )}
+              {[...history].reverse().map((t) => (
                 <ChatEntry
                   key={t.query_id}
                   trace={t}
@@ -271,7 +338,7 @@ export function ChatWithTracePanel() {
               ))}
             </div>
           )}
-          {loading && (
+          {history.length === 0 && loading && (
             <p className="text-sm text-muted-foreground animate-pulse mt-4">Running retrieval pipeline…</p>
           )}
         </div>
