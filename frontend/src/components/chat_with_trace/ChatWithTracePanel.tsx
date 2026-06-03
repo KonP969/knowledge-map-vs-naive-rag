@@ -109,19 +109,22 @@ function ChatEntry({
                   <button
                     onClick={() => hasClaims && toggleSource(s)}
                     disabled={!hasClaims}
-                    className={`w-full text-left px-3 py-2 space-y-0.5 ${hasClaims ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"} transition-colors`}
+                    className={`w-full text-left px-3 py-2 space-y-1 ${hasClaims ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"} transition-colors`}
                   >
-                    <p className="font-medium text-foreground flex items-center gap-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground flex-1 truncate">{src?.title ?? s.source_id}</p>
                       {hasClaims && (
-                        isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />
+                        <span className="flex items-center gap-1 shrink-0 text-primary text-[11px] font-medium rounded px-1.5 py-0.5 bg-primary/10">
+                          {isOpen ? "Ukryj fragmenty" : `Pokaż ${s.claim_ids.length} ${s.claim_ids.length === 1 ? "fragment" : "fragmenty"}`}
+                          {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        </span>
                       )}
-                      {src?.title ?? s.source_id}
-                    </p>
+                    </div>
                     {src?.summary && !isOpen && (
                       <p className="text-muted-foreground line-clamp-2">{src.summary}</p>
                     )}
                     <p className="text-muted-foreground/60 font-mono text-[10px]">
-                      {s.source_id} · {s.claim_ids.length} {hasClaims ? "fragment(ów) · kliknij, by pokazać" : "claim(s)"}
+                      {s.source_id}{!hasClaims && " · brak fragmentów"}
                     </p>
                   </button>
                   {isOpen && (
