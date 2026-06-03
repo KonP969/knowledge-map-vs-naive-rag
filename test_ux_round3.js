@@ -165,11 +165,21 @@ async function testChatOrderAndClaims(browser) {
 
     const srcBtn = page.getByRole("button", { name: /Pokaż \d+ fragment/i }).first();
     if ((await srcBtn.count()) === 0) return log("Chat claims", "WARN", "no claim-bearing source (src_001/cl_001 missing) — skipped");
+
+    // Hover preview: popover with fragments appears before any click
+    await srcBtn.hover();
+    await page.waitForTimeout(1000);
+    const hoverPopover = await page.getByText(/Fragmenty cytowane w odpowiedzi/i).isVisible().catch(() => false);
+    const hoverClaim = await page.getByText(/Kolekcja AZURA oferuje akcesoria/i).isVisible().catch(() => false);
+    if (hoverPopover && hoverClaim) log("Chat claims (hover)", "PASS", "hover shows fragment popover");
+    else log("Chat claims (hover)", "WARN", `popover=${hoverPopover}, claim=${hoverClaim}`);
+
+    // Click pins the claims inline
     await srcBtn.click();
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(800);
     const claimShown = await page.getByText(/Kolekcja AZURA oferuje akcesoria/i).isVisible().catch(() => false);
-    if (claimShown) log("Chat claims", "PASS", "expanded source shows its claims (fragments)");
-    else log("Chat claims", "WARN", "claim text not found — backend data may differ");
+    if (claimShown) log("Chat claims (click)", "PASS", "click pins claims inline");
+    else log("Chat claims (click)", "WARN", "claim text not found — backend data may differ");
   } finally {
     await page.close();
   }

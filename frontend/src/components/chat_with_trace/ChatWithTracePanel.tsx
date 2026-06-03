@@ -62,17 +62,13 @@ function ChatEntry({
   onPickQuestion: (q: string) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const [claimsBySource, setClaimsBySource] = useState<
     Record<string, NodeDetailClaim[] | "loading" | "error">
   >({});
 
-  async function toggleSource(s: AnswerSource) {
-    if (expanded === s.source_id) {
-      setExpanded(null);
-      return;
-    }
-    setExpanded(s.source_id);
-    if (claimsBySource[s.source_id]) return; // cached
+  async function loadClaims(s: AnswerSource) {
+    if (claimsBySource[s.source_id]) return; // cached or in-flight
     setClaimsBySource((p) => ({ ...p, [s.source_id]: "loading" }));
     try {
       const nodeId = s.source_id.startsWith("source:") ? s.source_id : `source:${s.source_id}`;
@@ -83,6 +79,36 @@ function ChatEntry({
     } catch {
       setClaimsBySource((p) => ({ ...p, [s.source_id]: "error" }));
     }
+  }
+
+  function toggleSource(s: AnswerSource) {
+    if (expanded === s.source_id) {
+      setExpanded(null);
+      return;
+    }
+    setExpanded(s.source_id);
+    loadClaims(s);
+  }
+
+  function hoverSource(s: AnswerSource) {
+    setHovered(s.source_id);
+    loadClaims(s);
+  }
+
+  // Compact claim list shared by the hover popover and the expanded panel.
+  function renderClaims(claims: NodeDetailClaim[] | "loading" | "error" | undefined) {
+    if (claims === "loading") return <p className="text-muted-foreground animate-pulse py-0.5">Ładuję fragmenty…</p>;
+    if (claims === "error") return <p className="text-red-500 py-0.5">Nie udało się wczytać fragmentów.</p>;
+    if (Array.isArray(claims) && claims.length === 0) return <p className="text-muted-foreground py-0.5">Brak dopasowanych twierdzeń.</p>;
+    if (!Array.isArray(claims)) return null;
+    return claims.map((c) => (
+      <div key={c.id} className="border-l-2 border-primary/40 pl-2 py-0.5">
+        <p className="text-foreground leading-snug">{c.text}</p>
+        <p className={`text-[10px] ${POLARITY_COLOR[c.polarity] ?? "text-muted-foreground"}`}>
+          {c.polarity} · {(c.confidence * 100).toFixed(0)}% · <span className="font-mono text-muted-foreground/60">{c.id}</span>
+        </p>
+      </div>
+    ));
   }
 
   return (
@@ -105,11 +131,25 @@ function ChatEntry({
               const hasClaims = s.claim_ids.length > 0;
               const claims = claimsBySource[s.source_id];
               return (
-                <div key={s.source_id} className="text-xs border border-border rounded-md overflow-hidden">
+                <div
+                  key={s.source_id}
+                  className="relative text-xs border border-border rounded-md"
+                  onMouseEnter={() => hasClaims && hoverSource(s)}
+                  onMouseLeave={() => setHovered(null)}
+                >
+                  {/* Hover preview popover — quick peek at the fragments */}
+                  {hovered === s.source_id && !isOpen && hasClaims && (
+                    <div className="absolute z-30 left-0 right-0 bottom-full mb-1 p-2.5 rounded-md border border-border bg-popover shadow-lg space-y-1.5">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                        Fragmenty cytowane w odpowiedzi
+                      </p>
+                      {renderClaims(claims)}
+                    </div>
+                  )}
                   <button
                     onClick={() => hasClaims && toggleSource(s)}
                     disabled={!hasClaims}
-                    className={`w-full text-left px-3 py-2 space-y-1 ${hasClaims ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"} transition-colors`}
+                    className={`w-full text-left px-3 py-2 space-y-1 rounded-md ${hasClaims ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"} transition-colors`}
                   >
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-foreground flex-1 truncate">{src?.title ?? s.source_id}</p>
@@ -129,23 +169,7 @@ function ChatEntry({
                   </button>
                   {isOpen && (
                     <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/20 space-y-1.5">
-                      {claims === "loading" && (
-                        <p className="text-muted-foreground animate-pulse py-1">Ładuję fragmenty…</p>
-                      )}
-                      {claims === "error" && (
-                        <p className="text-red-500 py-1">Nie udało się wczytać fragmentów.</p>
-                      )}
-                      {Array.isArray(claims) && claims.length === 0 && (
-                        <p className="text-muted-foreground py-1">Brak dopasowanych twierdzeń w tym źródle.</p>
-                      )}
-                      {Array.isArray(claims) && claims.map((c) => (
-                        <div key={c.id} className="border-l-2 border-primary/40 pl-2 py-0.5">
-                          <p className="text-foreground leading-snug">{c.text}</p>
-                          <p className={`text-[10px] ${POLARITY_COLOR[c.polarity] ?? "text-muted-foreground"}`}>
-                            {c.polarity} · {(c.confidence * 100).toFixed(0)}% · <span className="font-mono text-muted-foreground/60">{c.id}</span>
-                          </p>
-                        </div>
-                      ))}
+                      {renderClaims(claims)}
                     </div>
                   )}
                 </div>
