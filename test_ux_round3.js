@@ -163,7 +163,7 @@ async function testChatOrderAndClaims(browser) {
     if (iNew !== -1 && iOld !== -1 && iNew < iOld) log("Chat order", "PASS", "newest conversation on top");
     else log("Chat order", "FAIL", `new@${iNew}, old@${iOld}`);
 
-    const srcBtn = page.getByRole("button", { name: /kliknij, by pokazać/i }).first();
+    const srcBtn = page.getByRole("button", { name: /Pokaż \d+ fragment/i }).first();
     if ((await srcBtn.count()) === 0) return log("Chat claims", "WARN", "no claim-bearing source (src_001/cl_001 missing) — skipped");
     await srcBtn.click();
     await page.waitForTimeout(1200);
