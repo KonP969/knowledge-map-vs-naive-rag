@@ -40,6 +40,28 @@ def _generate_questions(content: str, node_id: str, llm_client) -> list:
     return result.questions if result else []
 
 
+def _generate_description(content: str, node_id: str, llm_client) -> str:
+    model = os.getenv("CHAT_MODEL", "gpt-4o-mini")
+    resp = llm_client.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Write a concise, factual description (1-2 sentences, at least 30 characters) "
+                    "of this knowledge node, grounded only in the provided context. "
+                    "Return the description text only, with no preamble or quotes."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Node: {node_id}\n\nContext:\n{content}",
+            },
+        ],
+    )
+    return (resp.choices[0].message.content or "").strip()
+
+
 def apply_fix(
     store: WikiStore,
     issue: LintIssue,
@@ -79,9 +101,29 @@ def apply_fix(
         return
 
     if t == "empty_description":
-        if not edit_payload or "description" not in edit_payload:
-            raise FixError("empty_description fix requires edit_payload['description']")
-        new_text = edit_payload["description"]
+        manual = (edit_payload or {}).get("description")
+        if manual and manual.strip():
+            new_text = manual
+        else:
+            # No manual text → generate a description from the node's context (LLM).
+            if llm_client is None:
+                llm_client = _get_client()
+            node_id = p.get("node_id", issue.location)
+            facts = [c.text for c in store.read_all_claims() if c.subject_id == node_id][:10]
+            if p.get("kind") == "entity":
+                node = store.read_entity(p["slug"], p["entity_type"])
+                aliases = ", ".join(node.aliases) if node and node.aliases else "—"
+                ntype = node.type if node else ""
+                content = f"Name: {p['slug']}\nType: {ntype}\nAliases: {aliases}\n"
+            elif p.get("kind") == "concept":
+                content = f"Name: {p['slug']}\n"
+            else:
+                raise FixError(f"empty_description generation not implemented for kind={p.get('kind')}")
+            if facts:
+                content += "Known facts:\n" + "\n".join(f"- {x}" for x in facts)
+            new_text = _generate_description(content, node_id, llm_client)
+            if len(new_text.strip()) < 30:
+                raise FixError("LLM returned a too-short description")
         if p.get("kind") == "entity":
             store.update_entity_description(p["slug"], p["entity_type"], new_text)
         elif p.get("kind") == "concept":
