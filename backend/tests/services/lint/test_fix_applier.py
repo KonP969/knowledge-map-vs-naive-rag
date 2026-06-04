@@ -150,7 +150,8 @@ def test_apply_fix_provenance_missing_raises(store):
         apply_fix(store, issue)
 
 
-def test_apply_fix_empty_description_without_payload_raises(store):
+def test_apply_fix_empty_description_without_payload_generates_via_llm(store):
+    # No manual edit_payload → the fix now generates a description via the LLM.
     e = Entity(id="e_001", type="Place", aliases=[], description="short",
                mentions_count=0, questions=["q?"], tags=[])
     store.write_entity(e, slug="e_001")
@@ -160,8 +161,8 @@ def test_apply_fix_empty_description_without_payload_raises(store):
         description="x", suggested_fix="Edit description inline", auto_fixable=True,
         payload={"node_id": "entity:e_001", "kind": "entity", "slug": "e_001", "entity_type": "Place"},
     )
-    with pytest.raises(FixError):
-        apply_fix(store, issue)
+    apply_fix(store, issue, llm_client=_mock_description_llm("A clearly long-enough generated description."))
+    assert store.read_entity("e_001", "Place").description == "A clearly long-enough generated description."
 
 
 from unittest.mock import MagicMock
@@ -213,6 +214,70 @@ def test_fix_empty_questions_concept(tmp_path):
     apply_fix(store, issue, llm_client=_mock_questions_llm(["Q1?", "Q2?"]))
     reloaded = store.read_concept("my-concept")
     assert reloaded.questions == ["Q1?", "Q2?"]
+
+
+def _mock_description_llm(text="An auto-generated factual description of this node."):
+    client = MagicMock()
+    resp = MagicMock()
+    resp.choices[0].message.content = text
+    client.chat.completions.create.return_value = resp
+    return client
+
+
+def test_fix_empty_description_generates_via_llm_when_no_manual_text(tmp_path):
+    store = WikiStore(root=tmp_path)
+    ent = Entity(id="e_001", type="Product", description="x", questions=[], tags=[], aliases=["Azura"])
+    store.write_entity(ent, "azura")
+    issue = LintIssue(
+        id="empty_description:entity:e_001",
+        type="empty_description",
+        severity="warning",
+        location="entity:e_001",
+        description="Entity e_001 description is shorter than 30 chars",
+        auto_fixable=True,
+        payload={"node_id": "entity:e_001", "kind": "entity", "slug": "azura", "entity_type": "Product"},
+    )
+    apply_fix(
+        store, issue,
+        llm_client=_mock_description_llm("Azura is a modern collection of door and furniture accessories."),
+    )
+    reloaded = store.read_entity("azura", "Product")
+    assert reloaded.description == "Azura is a modern collection of door and furniture accessories."
+
+
+def test_fix_empty_description_rejects_too_short_generated_text(tmp_path):
+    store = WikiStore(root=tmp_path)
+    ent = Entity(id="e_003", type="Person", description="x", questions=[], tags=[])
+    store.write_entity(ent, "jan")
+    issue = LintIssue(
+        id="empty_description:entity:e_003",
+        type="empty_description",
+        severity="warning",
+        location="entity:e_003",
+        description="short",
+        auto_fixable=True,
+        payload={"node_id": "entity:e_003", "kind": "entity", "slug": "jan", "entity_type": "Person"},
+    )
+    with pytest.raises(FixError):
+        apply_fix(store, issue, llm_client=_mock_description_llm("too short"))
+
+
+def test_fix_empty_description_manual_text_still_works(tmp_path):
+    store = WikiStore(root=tmp_path)
+    ent = Entity(id="e_002", type="Person", description="x", questions=[], tags=[])
+    store.write_entity(ent, "jan2")
+    issue = LintIssue(
+        id="empty_description:entity:e_002",
+        type="empty_description",
+        severity="warning",
+        location="entity:e_002",
+        description="short",
+        auto_fixable=True,
+        payload={"node_id": "entity:e_002", "kind": "entity", "slug": "jan2", "entity_type": "Person"},
+    )
+    apply_fix(store, issue, edit_payload={"description": "Jan is a well-documented historical figure."})
+    reloaded = store.read_entity("jan2", "Person")
+    assert reloaded.description == "Jan is a well-documented historical figure."
 
 
 def test_fix_unmarked_contradiction_appends_edge(tmp_path):

@@ -79,6 +79,7 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, onLocationCl
   const [editText, setEditText] = useState("");
   const editValid = editText.trim().length >= 30;
   const closed = issue.status !== "open";
+  const entitySlug = typeof issue.payload?.slug === "string" ? issue.payload.slug : "";
   const locationClickable = !!onLocationClick && isGraphNodeLocation(issue.location);
 
   return (
@@ -117,25 +118,41 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, onLocationCl
       </div>
 
       {!closed && isEmptyDescriptionEdit && (
-        <textarea
-          value={editText}
-          onChange={(e) => setEditText(e.target.value)}
-          placeholder="Replacement description (≥30 chars)…"
-          rows={2}
-          className="w-full px-2 py-1 text-xs border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
-        />
+        <div className="space-y-1">
+          <p className="text-[11px] text-muted-foreground">
+            {entitySlug ? <>Opisz: <span className="font-medium text-foreground">{entitySlug}</span>. </> : null}
+            Wygeneruj opis automatycznie (AI) lub wpisz własny (≥30 znaków).
+          </p>
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            placeholder="Własny opis (≥30 znaków)…"
+            rows={2}
+            className="w-full px-2 py-1 text-xs border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </div>
       )}
 
       {!closed && (
         <div className="flex gap-2 flex-wrap">
           {isEmptyDescriptionEdit ? (
-            <button
-              disabled={busy || !editValid}
-              onClick={() => onApply(issue.id, { description: editText.trim() })}
-              className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Check className="w-3 h-3" /> Save
-            </button>
+            <>
+              <button
+                disabled={busy}
+                onClick={() => onApply(issue.id)}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-violet-600 text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+                title="Wygeneruj opis na podstawie kontekstu encji (LLM)"
+              >
+                <Sparkles className="w-3 h-3" /> Wygeneruj opis (AI)
+              </button>
+              <button
+                disabled={busy || !editValid}
+                onClick={() => onApply(issue.id, { description: editText.trim() })}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Check className="w-3 h-3" /> Zapisz mój opis
+              </button>
+            </>
           ) : isGenerateQuestions ? (
             <button
               disabled={busy}
