@@ -280,6 +280,11 @@ class WikiStore:
         removed = self._rewrite_jsonl_skipping(path, lambda d: d.get("id") != claim_id)
         return removed > 0
 
+    def delete_claims_by_source(self, source_id: str) -> int:
+        """Delete all claims belonging to a source. Returns the number removed."""
+        path = self._claims_path()
+        return self._rewrite_jsonl_skipping(path, lambda d: d.get("source_id") != source_id)
+
     def delete_edge(self, edge_id: str) -> bool:
         path = self._edges_path()
         removed = self._rewrite_jsonl_skipping(path, lambda d: d.get("id") != edge_id)

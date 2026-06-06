@@ -13,7 +13,13 @@ Given an article or document, extract:
 4. 2-5 key takeaways.
 5. Named entity mentions (Person, Org, Product, Place, Event) with their span positions in the TEXT.
 6. Concept mentions (abstract ideas, design principles, techniques) with their span positions.
-7. Factual claims — atomic statements with subject, confidence (0-1), and polarity (asserts/denies).
+7. Factual claims — be EXHAUSTIVE. Extract every distinct factual statement the document
+   makes, not just the highlights. Each claim is ONE atomic fact (a single subject + a single
+   assertion); split compound sentences into separate claims. Aim for roughly one claim per
+   1-2 sentences of substantive content — a typical article yields about 8-25 claims; a short
+   note may yield only a few. Cover facts about every entity and concept you identified.
+   Each claim has a subject, confidence (0-1), and polarity (asserts/denies), and must be
+   grounded in a span of the source text.
 
 For spans: start/end are character offsets into the DOCUMENT TEXT. text is the exact substring.
 For entities and concepts: canonical name only — no duplicates.
