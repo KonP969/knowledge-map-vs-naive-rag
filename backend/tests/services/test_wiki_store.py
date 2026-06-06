@@ -256,6 +256,30 @@ def test_delete_claim_returns_false_for_missing_id(tmp_path):
     assert store.delete_claim("cl_999") is False
 
 
+def test_delete_claims_by_source_removes_only_that_source(tmp_path):
+    store = WikiStore(root=tmp_path)
+    a1 = Claim(id="cl_001", text="a1", subject_id="entity:e_001", source_id="src_001",
+               span=Span(start=0, end=1, text="a"), confidence=0.9, polarity="asserts")
+    a2 = Claim(id="cl_002", text="a2", subject_id="entity:e_001", source_id="src_001",
+               span=Span(start=0, end=1, text="b"), confidence=0.9, polarity="asserts")
+    b1 = Claim(id="cl_003", text="b1", subject_id="entity:e_002", source_id="src_002",
+               span=Span(start=0, end=1, text="c"), confidence=0.9, polarity="asserts")
+    store.append_claim(a1)
+    store.append_claim(a2)
+    store.append_claim(b1)
+
+    removed = store.delete_claims_by_source("src_001")
+    assert removed == 2
+
+    remaining = store.read_all_claims()
+    assert [c.id for c in remaining] == ["cl_003"]
+
+
+def test_delete_claims_by_source_no_match_returns_zero(tmp_path):
+    store = WikiStore(root=tmp_path)
+    assert store.delete_claims_by_source("src_999") == 0
+
+
 def test_delete_edge_removes_line(tmp_path):
     store = WikiStore(root=tmp_path)
     e1 = Edge(id="ed_001", **{"from": "entity:a"}, to="entity:b",
