@@ -220,6 +220,45 @@ async function testFixAll(browser) {
   }
 }
 
+// ── Raw text preview modal (#1) ─────────────────────────────────────────────
+async function testRawPreview(browser) {
+  const page = await browser.newPage();
+  try {
+    await page.goto(BASE, { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Sources" }).click();
+    await page.waitForTimeout(700);
+
+    const card = page.locator("p.text-sm.font-medium.truncate.flex-1").first();
+    if ((await card.count()) === 0) return log("Raw preview", "WARN", "no sources ingested — skipped");
+    await card.click();
+    await page.waitForTimeout(400);
+
+    const rawBtn = page.getByRole("button", { name: /Pokaż oryginał/i });
+    if (!(await rawBtn.isVisible().catch(() => false)))
+      return log("Raw preview", "FAIL", '"Pokaż oryginał" button not visible in drawer');
+    await rawBtn.click();
+    await page.waitForTimeout(800);
+
+    const badge = await page.getByText(/Raw text/i).first().isVisible().catch(() => false);
+    const pre = page.locator("pre.whitespace-pre-wrap").first();
+    const preText = (await pre.innerText().catch(() => "")).trim();
+    // Modal must render non-trivial original text (backend tests prove content correctness).
+    if (badge && preText.length > 50) {
+      log("Raw preview", "PASS", `modal shows raw text (${preText.length} chars)`);
+    } else {
+      log("Raw preview", "FAIL", `badge=${badge}, rawLen=${preText.length}`);
+    }
+
+    // Escape closes the modal.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    const closed = !(await page.locator("pre.whitespace-pre-wrap").first().isVisible().catch(() => false));
+    if (!closed) log("Raw preview (close)", "WARN", "modal did not close on Escape");
+  } finally {
+    await page.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -229,6 +268,7 @@ async function testFixAll(browser) {
     await testFeature6(browser);
     await testChatOrderAndClaims(browser);
     await testFixAll(browser);
+    await testRawPreview(browser);
   } finally {
     await browser.close();
   }

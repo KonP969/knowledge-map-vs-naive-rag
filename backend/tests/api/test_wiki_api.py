@@ -121,6 +121,60 @@ def test_get_wiki_edges_shape(client, tmp_path):
     assert data[0]["confidence"] == 0.8
 
 
+def test_get_source_raw_returns_text(client, tmp_path):
+    from unittest.mock import patch
+
+    store = WikiStore(root=tmp_path)
+    src = Source(
+        id="src_001", title="Test Source", type="txt",
+        raw_path="raw/test-source/parsed.md",
+        ingested_at=datetime(2026, 4, 29, 10, 0, 0),
+        summary="A short summary.", key_takeaways=[], questions=[], tags=[],
+    )
+    store.write_source(src, slug="test-source")
+    raw_file = store.root / "raw" / "test-source" / "parsed.md"
+    raw_file.parent.mkdir(parents=True, exist_ok=True)
+    full_text = "# Full article\n\nMuch longer original text than the summary."
+    raw_file.write_text(full_text, encoding="utf-8")
+
+    with patch("api.wiki._get_store", return_value=store):
+        response = client.get("/api/wiki/source-raw?slug=test-source")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["slug"] == "test-source"
+    assert data["title"] == "Test Source"
+    assert data["raw_text"] == full_text
+
+
+def test_get_source_raw_missing_source_returns_404(client, tmp_path):
+    from unittest.mock import patch
+
+    store = WikiStore(root=tmp_path)
+    with patch("api.wiki._get_store", return_value=store):
+        response = client.get("/api/wiki/source-raw?slug=nonexistent")
+
+    assert response.status_code == 404
+
+
+def test_get_source_raw_missing_raw_file_returns_404(client, tmp_path):
+    from unittest.mock import patch
+
+    store = WikiStore(root=tmp_path)
+    src = Source(
+        id="src_001", title="Test Source", type="txt",
+        raw_path="raw/test-source/parsed.md",
+        ingested_at=datetime(2026, 4, 29, 10, 0, 0),
+        summary="A short summary.", key_takeaways=[], questions=[], tags=[],
+    )
+    store.write_source(src, slug="test-source")  # no raw file created
+
+    with patch("api.wiki._get_store", return_value=store):
+        response = client.get("/api/wiki/source-raw?slug=test-source")
+
+    assert response.status_code == 404
+
+
 def test_get_wiki_node_detail_invalid_id_returns_400(client):
     response = client.get("/api/wiki/node-detail?id=invalidnoprefix")
     assert response.status_code == 400
