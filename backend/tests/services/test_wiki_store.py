@@ -49,6 +49,27 @@ def test_list_sources_after_writes(store, sample_source):
     assert sorted(slugs) == ["a", "b"]
 
 
+# ── raw text ─────────────────────────────────────────────────────────────────
+
+def test_read_raw_text_missing_source_returns_none(store):
+    assert store.read_raw_text("nonexistent") is None
+
+
+def test_read_raw_text_source_without_raw_file_returns_none(store, sample_source):
+    store.write_source(sample_source, slug="skandynawska-sypialnia")
+    # source exists but the raw parsed.md file was never created
+    assert store.read_raw_text("skandynawska-sypialnia") is None
+
+
+def test_read_raw_text_returns_file_content(store, sample_source):
+    store.write_source(sample_source, slug="skandynawska-sypialnia")
+    raw_file = store.root / "raw" / "skandynawska-sypialnia" / "parsed.md"
+    raw_file.parent.mkdir(parents=True, exist_ok=True)
+    full_text = "# Pełny artykuł\n\nDługa treść źródła, znacznie dłuższa niż streszczenie."
+    raw_file.write_text(full_text, encoding="utf-8")
+    assert store.read_raw_text("skandynawska-sypialnia") == full_text
+
+
 # ── entity / concept / claim / edge ──────────────────────────────────────────
 
 @pytest.fixture

@@ -71,6 +71,21 @@ class WikiStore:
             tags=post.get("tags", []),
         )
 
+    def read_raw_text(self, slug: str) -> Optional[str]:
+        """Read the original raw text (parsed.md) for a source, or None if absent."""
+        src = self.read_source(slug)
+        if src is None:
+            return None
+        candidates = [
+            Path(src.raw_path),                          # cwd-relative or absolute (real data)
+            self.root / src.raw_path,                    # relative to store root (fixtures)
+            self.root / "raw" / slug / "parsed.md",      # reconstructed fallback
+        ]
+        for c in candidates:
+            if c.exists() and c.is_file():
+                return c.read_text(encoding="utf-8")
+        return None
+
     def list_sources(self) -> List[str]:
         d = self.root / "wiki" / SOURCES_DIR
         return [p.stem for p in d.glob("*.md")]

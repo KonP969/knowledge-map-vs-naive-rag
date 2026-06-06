@@ -1,5 +1,7 @@
-import { X, Tag, HelpCircle, Lightbulb, ExternalLink, Clock } from "lucide-react";
+import { useState } from "react";
+import { X, Tag, HelpCircle, Lightbulb, ExternalLink, Clock, FileText } from "lucide-react";
 import type { WikiSource } from "../../types";
+import { SourceRawModal } from "./SourceRawModal";
 
 interface SourceDetailDrawerProps {
   source: WikiSource | null;
@@ -7,6 +9,7 @@ interface SourceDetailDrawerProps {
 }
 
 export function SourceDetailDrawer({ source, onClose }: SourceDetailDrawerProps) {
+  const [showRaw, setShowRaw] = useState(false);
   if (!source) return null;
 
   return (
@@ -100,7 +103,20 @@ export function SourceDetailDrawer({ source, onClose }: SourceDetailDrawerProps)
           !source.summary && (
             <p className="text-muted-foreground text-center py-2">No extra details for this source.</p>
           )}
+
+        {/* Raw text */}
+        <button
+          onClick={() => setShowRaw(true)}
+          className="mt-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+        >
+          <FileText className="w-3.5 h-3.5" />
+          Pokaż oryginał
+        </button>
       </div>
+
+      {showRaw && (
+        <SourceRawModal slug={source.slug} title={source.title} onClose={() => setShowRaw(false)} />
+      )}
     </div>
   );
 }

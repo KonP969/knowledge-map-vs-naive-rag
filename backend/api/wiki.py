@@ -112,6 +112,19 @@ def delete_wiki_source(slug: str):
     return {"slug": slug, "source_id": source_id, "deleted": True}
 
 
+@router.get("/source-raw", response_model=Dict[str, Any])
+def get_source_raw(slug: str):
+    """Return the original raw text (parsed.md) for a source."""
+    store = _get_store()
+    src = store.read_source(slug)
+    if src is None:
+        raise HTTPException(status_code=404, detail=f"Source '{slug}' not found")
+    raw_text = store.read_raw_text(slug)
+    if raw_text is None:
+        raise HTTPException(status_code=404, detail=f"Raw text for source '{slug}' not found")
+    return {"slug": slug, "title": src.title, "raw_text": raw_text}
+
+
 @router.get("/node-detail", response_model=Dict[str, Any])
 def get_wiki_node_detail(id: str):
     """

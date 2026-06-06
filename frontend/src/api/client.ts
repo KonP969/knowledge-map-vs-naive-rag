@@ -1,4 +1,4 @@
-const BASE = "http://127.0.0.1:8000/api";
+const BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, options);
@@ -59,6 +59,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+
+  // Source raw text
+  getSourceRaw: (slug: string) =>
+    request<{ slug: string; title: string; raw_text: string }>(
+      `/wiki/source-raw?slug=${encodeURIComponent(slug)}`
+    ),
 
   // Source deletion
   deleteSource: (slug: string) =>
