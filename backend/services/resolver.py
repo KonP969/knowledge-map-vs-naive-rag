@@ -13,9 +13,15 @@ def resolve_classification(
     classification: SourceClassification,
     source_id: str,
     store: WikiStore,
+    overwrite_existing: bool = True,
 ) -> Dict[str, Any]:
     """
     Stage 3 (deterministic). Maps SourceClassification -> WikiStore objects.
+
+    When overwrite_existing is False, entities/concepts that already exist are left
+    exactly as they are (no merge of description/aliases/tags) — used by claim backfill
+    to enrich claims without clobbering manually edited node content. Missing nodes are
+    still created so that claims can link to real graph nodes.
 
     Returns dict with keys:
         entities_created, entities_merged,
@@ -30,25 +36,26 @@ def resolve_classification(
 
     entity_count = _count_existing_entities(store)
     concept_count = _count_existing_concepts(store)
-    claim_count = len(store.read_all_claims())
-    edge_count = len(store.read_all_edges())
+    claim_count = _max_id_number(store.read_all_claims(), "cl_")
+    edge_count = _max_id_number(store.read_all_edges(), "ed_")
 
     slug_to_entity: Dict[str, Entity] = {}
 
     for em in classification.entity_mentions:
         slug = slugify(em.name)
         if store.entity_exists(slug, em.type):
-            existing_entity = store.read_entity(slug, em.type)
-            new_entity = Entity(
-                id=existing_entity.id,
-                type=em.type,
-                aliases=em.aliases,
-                description=em.description,
-                mentions_count=1,
-                questions=classification.questions,
-                tags=classification.tags,
-            )
-            store.merge_entity(new_entity, slug)
+            if overwrite_existing:
+                existing_entity = store.read_entity(slug, em.type)
+                new_entity = Entity(
+                    id=existing_entity.id,
+                    type=em.type,
+                    aliases=em.aliases,
+                    description=em.description,
+                    mentions_count=1,
+                    questions=classification.questions,
+                    tags=classification.tags,
+                )
+                store.merge_entity(new_entity, slug)
             entities_merged += 1
         else:
             entity_count += 1
@@ -71,16 +78,17 @@ def resolve_classification(
     for cm in classification.concept_mentions:
         slug = slugify(cm.name)
         if store.concept_exists(slug):
-            existing_concept = store.read_concept(slug)
-            new_concept = Concept(
-                id=existing_concept.id,
-                definition=cm.definition,
-                examples=[],
-                related=[],
-                questions=classification.questions,
-                tags=classification.tags,
-            )
-            store.merge_concept(new_concept, slug)
+            if overwrite_existing:
+                existing_concept = store.read_concept(slug)
+                new_concept = Concept(
+                    id=existing_concept.id,
+                    definition=cm.definition,
+                    examples=[],
+                    related=[],
+                    questions=classification.questions,
+                    tags=classification.tags,
+                )
+                store.merge_concept(new_concept, slug)
             concepts_merged += 1
         else:
             concept_count += 1
@@ -168,6 +176,17 @@ def resolve_classification(
         "entity_map": slug_to_entity,
         "concept_map": slug_to_concept,
     }
+
+
+def _max_id_number(items: List[Any], prefix: str) -> int:
+    """Highest numeric suffix among ids like '<prefix>NNN' (robust to deletions/gaps)."""
+    max_n = 0
+    pat = re.compile(rf"{re.escape(prefix)}(\d+)")
+    for it in items:
+        m = pat.match(it.id)
+        if m:
+            max_n = max(max_n, int(m.group(1)))
+    return max_n
 
 
 def _count_existing_entities(store: WikiStore) -> int:

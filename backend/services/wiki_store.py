@@ -290,6 +290,11 @@ class WikiStore:
         removed = self._rewrite_jsonl_skipping(path, lambda d: d.get("id") != edge_id)
         return removed > 0
 
+    def delete_edges_by_source(self, source_id: str) -> int:
+        """Delete all edges belonging to a source. Returns the number removed."""
+        path = self._edges_path()
+        return self._rewrite_jsonl_skipping(path, lambda d: d.get("source_id") != source_id)
+
     def delete_jsonl_line(self, path: Path, line_no: int) -> None:
         """Remove the 1-indexed line, preserve a `.bak` copy of the original file.
 

@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from models.ingest_models import ClaimExtraction, EntityMention, SourceClassification
+from models.ingest_models import ClaimExtraction, ConceptMention, EntityMention, SourceClassification
 from models.wiki_models import Claim, Entity, Source, Span
 from services.claim_backfill import reextract_claims_all, reextract_claims_for_source
 from services.wiki_store import WikiStore
@@ -119,6 +119,34 @@ def test_reextract_all_returns_one_result_per_source(tmp_path, fake_classify):
     assert {r.slug for r in results} == {"azura-a", "azura-b"}
     assert all(r.new_count == 2 and r.applied is False for r in results)
     assert store.read_all_claims() == []  # dry-run wrote nothing
+
+
+def test_apply_creates_missing_concept_and_links_claim(tmp_path):
+    """Regression guard: concept-claims must link to a real concept node, not a dangling slug."""
+    store = WikiStore(root=tmp_path)
+    _seed_source_with_raw(store)  # src_001 / azura-src, no concepts in graph yet
+
+    def classify(_text):
+        return SourceClassification(
+            title="t", description="d", tags=["t"], questions=["q?"], key_takeaways=["k"],
+            entity_mentions=[],
+            concept_mentions=[ConceptMention(
+                name="Boho style", definition="A free-spirited interior style.",
+                span=Span(start=0, end=4, text="Boho"))],
+            claims=[ClaimExtraction(
+                text="Boho style uses natural materials.", subject_name="Boho style",
+                subject_type="concept", span=Span(start=0, end=10, text="Boho style"),
+                confidence=0.9, polarity="asserts")],
+        )
+
+    result = reextract_claims_for_source("azura-src", store, apply=True, classify_fn=classify)
+
+    assert result.applied is True
+    assert store.concept_exists("boho-style")  # missing concept was created
+    concept = store.read_concept("boho-style")
+    claims = [c for c in store.read_all_claims() if c.source_id == "src_001"]
+    assert len(claims) == 1
+    assert claims[0].subject_id == f"concept:{concept.id}"  # linked to real node, not slug
 
 
 def test_missing_raw_text_is_skipped(tmp_path, fake_classify):

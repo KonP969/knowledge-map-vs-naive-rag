@@ -112,6 +112,54 @@ def test_resolve_merges_existing_entity(store, simple_classification):
     assert "room" in entity.aliases
 
 
+def test_resolve_claim_id_seeds_from_max_not_count(store, simple_classification):
+    # A gap in the claim sequence (only cl_005 present) must not cause id reuse.
+    from models.wiki_models import Claim, Span
+    store.append_claim(Claim(
+        id="cl_005", text="x", subject_id="entity:e_001", source_id="src_000",
+        span=Span(start=0, end=1, text="x"), confidence=0.9, polarity="asserts",
+    ))
+    result = resolve_classification(
+        classification=simple_classification, source_id="src_001", store=store,
+    )
+    new_ids = [c.id for c in result["claims"]]
+    assert "cl_005" not in new_ids       # no collision
+    assert new_ids == ["cl_006"]         # max(5)+1, not len(1)+1
+
+
+def test_resolve_no_overwrite_preserves_existing_entity(store, simple_classification):
+    existing = Entity(
+        id="e_001", type="Place", aliases=["room"],
+        description="Manually edited description.",
+        questions=[], tags=["old"],
+    )
+    store.write_entity(existing, slug="sypialnia")
+
+    result = resolve_classification(
+        classification=simple_classification,
+        source_id="src_001",
+        store=store,
+        overwrite_existing=False,
+    )
+
+    entity = store.read_entity("sypialnia", "Place")
+    assert entity.description == "Manually edited description."  # preserved, not overwritten
+    assert entity.aliases == ["room"]                            # not merged
+    # claim still links to the existing entity's id
+    assert result["claims"][0].subject_id == "entity:e_001"
+
+
+def test_resolve_no_overwrite_still_creates_missing_concept(store, simple_classification):
+    # The concept does not exist yet; it MUST be created so concept-claims can link.
+    resolve_classification(
+        classification=simple_classification,
+        source_id="src_001",
+        store=store,
+        overwrite_existing=False,
+    )
+    assert store.concept_exists("neutral-palette")
+
+
 def test_resolve_merges_existing_concept(store, simple_classification):
     existing = Concept(
         id="c_001",

@@ -1,17 +1,17 @@
-"""Re-extract claims for already-ingested sources, without touching entities/concepts.
+"""Re-extract claims for already-ingested sources, without clobbering manual edits.
 
 The original raw text of every source is preserved on disk (Source.raw_path). This module
-re-runs claim extraction over that raw text and replaces only the CLAIMS for each source,
-leaving entities, concepts, their descriptions, edges, and summaries untouched. This lets us
-enrich a thin knowledge graph (more/atomic claims) without a destructive full re-ingest.
+re-runs claim extraction over that raw text and replaces only the CLAIMS (and the source's
+mention edges) for each source. Entities and concepts that already exist keep their content
+(descriptions, aliases, tags) untouched; missing entities/concepts are created so that the
+new claims link to real graph nodes. This enriches a thin knowledge graph without a
+destructive full re-ingest.
 """
-import re
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 
-from models.ingest_models import ClaimExtraction, SourceClassification
-from models.wiki_models import Claim
-from services._slug import slugify
+from models.ingest_models import SourceClassification
+from services.resolver import resolve_classification
 from services.source_classifier import classify_source
 from services.wiki_store import WikiStore
 
@@ -24,41 +24,6 @@ class BackfillResult:
     new_count: int
     applied: bool
     skipped_reason: Optional[str] = None
-
-
-def _next_claim_number(store: WikiStore) -> int:
-    max_n = 0
-    for c in store.read_all_claims():
-        m = re.match(r"cl_(\d+)", c.id)
-        if m:
-            max_n = max(max_n, int(m.group(1)))
-    return max_n + 1
-
-
-def _resolve_subject_id(
-    ce: ClaimExtraction, classification: SourceClassification, store: WikiStore
-) -> str:
-    """Map a claim's subject to an EXISTING graph node. Never creates or merges nodes.
-
-    Falls back to a slug-based ref (e.g. 'entity:azura') when the subject is not yet
-    in the graph — lint can surface such dangling references afterwards.
-    """
-    name = ce.subject_name
-    if ce.subject_type == "entity":
-        for em in classification.entity_mentions:
-            if em.name.lower() == name.lower():
-                slug = slugify(em.name)
-                if store.entity_exists(slug, em.type):
-                    return f"entity:{store.read_entity(slug, em.type).id}"
-                break
-    elif ce.subject_type == "concept":
-        for cm in classification.concept_mentions:
-            if cm.name.lower() == name.lower():
-                slug = slugify(cm.name)
-                if store.concept_exists(slug):
-                    return f"concept:{store.read_concept(slug).id}"
-                break
-    return f"{ce.subject_type}:{slugify(name)}"
 
 
 def reextract_claims_for_source(
@@ -81,28 +46,24 @@ def reextract_claims_for_source(
                               skipped_reason="no raw text")
 
     classification = classify_fn(raw)
-
-    start = _next_claim_number(store)
-    new_claims: List[Claim] = []
-    for i, ce in enumerate(classification.claims):
-        new_claims.append(Claim(
-            id=f"cl_{start + i:03d}",
-            text=ce.text,
-            subject_id=_resolve_subject_id(ce, classification, store),
-            source_id=source_id,
-            span=ce.span,
-            confidence=ce.confidence,
-            polarity=ce.polarity,
-        ))
-    new_count = len(new_claims)
+    new_count = len(classification.claims)
 
     if not apply:
         return BackfillResult(slug, source_id, old_count, new_count, applied=False)
 
+    # Replace this source's claims and mention edges, then re-resolve. Deleting first keeps
+    # id numbering clean; overwrite_existing=False protects manually edited node content.
     store.delete_claims_by_source(source_id)
-    for c in new_claims:
-        store.append_claim(c)
-    return BackfillResult(slug, source_id, old_count, new_count, applied=True)
+    store.delete_edges_by_source(source_id)
+    resolved = resolve_classification(
+        classification, source_id, store, overwrite_existing=False,
+    )
+    for claim in resolved["claims"]:
+        store.append_claim(claim)
+    for edge in resolved["edges"]:
+        store.append_edge(edge)
+
+    return BackfillResult(slug, source_id, old_count, len(resolved["claims"]), applied=True)
 
 
 def reextract_claims_all(
