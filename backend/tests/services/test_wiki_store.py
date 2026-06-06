@@ -280,6 +280,22 @@ def test_delete_claims_by_source_no_match_returns_zero(tmp_path):
     assert store.delete_claims_by_source("src_999") == 0
 
 
+def test_delete_edges_by_source_removes_only_that_source(tmp_path):
+    store = WikiStore(root=tmp_path)
+    e1 = Edge(id="ed_001", **{"from": "source:src_001"}, to="entity:e_001",
+              relation="mentions", source_id="src_001",
+              span=Span(start=0, end=1, text="x"), confidence=1.0)
+    e2 = Edge(id="ed_002", **{"from": "source:src_002"}, to="entity:e_002",
+              relation="mentions", source_id="src_002",
+              span=Span(start=0, end=1, text="y"), confidence=1.0)
+    store.append_edge(e1)
+    store.append_edge(e2)
+
+    removed = store.delete_edges_by_source("src_001")
+    assert removed == 1
+    assert [e.id for e in store.read_all_edges()] == ["ed_002"]
+
+
 def test_delete_edge_removes_line(tmp_path):
     store = WikiStore(root=tmp_path)
     e1 = Edge(id="ed_001", **{"from": "entity:a"}, to="entity:b",
