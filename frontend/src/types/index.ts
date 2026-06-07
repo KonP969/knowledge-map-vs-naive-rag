@@ -42,6 +42,7 @@ export interface WikiSource {
   summary: string;
   key_takeaways: string[];
   source_url?: string | null;
+  folder?: string | null;
 }
 
 export interface WikiEntity {

@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, RefreshCw, FileText, Tag, Clock, Trash2, RotateCcw, Loader, CheckCircle, AlertCircle, ArrowUp, ArrowDown } from "lucide-react";
+import { Upload, RefreshCw, FileText, Tag, Clock, Trash2, RotateCcw, Loader, CheckCircle, AlertCircle, ArrowUp, ArrowDown, Folder, FolderPlus, Square, CheckSquare, X } from "lucide-react";
 import { api } from "../../api/client";
 import { SourceDetailDrawer } from "./SourceDetailDrawer";
 import type { WikiSource, IngestResult } from "../../types";
 
 type SortBy = "date" | "title";
 type SortDir = "asc" | "desc";
+
+// Folder filter: "all" = show everything, null = sources without a folder, string = a specific folder.
+type FolderFilter = "all" | null | string;
+const NO_FOLDER = "__none__"; // sentinel for the "Bez folderu" chip key
 
 export function SourcesPanel() {
   const [sources, setSources] = useState<WikiSource[]>([]);
@@ -21,6 +25,12 @@ export function SourcesPanel() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const [selectedSource, setSelectedSource] = useState<WikiSource | null>(null);
+
+  // Folder organization (view-only)
+  const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
+  const [selectedSlugs, setSelectedSlugs] = useState<Set<string>>(new Set());
+  const [folderInput, setFolderInput] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -154,15 +164,55 @@ export function SourcesPanel() {
 
   const isMultiFile = uploading && uploadProgress.total > 1;
 
-  const sortedSources = [...sources].sort((a, b) => {
-    let cmp: number;
-    if (sortBy === "title") {
-      cmp = a.title.localeCompare(b.title);
-    } else {
-      cmp = new Date(a.ingested_at).getTime() - new Date(b.ingested_at).getTime();
+  // Folders are implicit: derived from the sources themselves (no registry).
+  const folderNames = Array.from(
+    new Set(sources.map((s) => s.folder).filter((f): f is string => !!f))
+  ).sort((a, b) => a.localeCompare(b));
+  const noFolderCount = sources.filter((s) => !s.folder).length;
+
+  const matchesFilter = (s: WikiSource) =>
+    folderFilter === "all" ? true : folderFilter === null ? !s.folder : s.folder === folderFilter;
+
+  const sortedSources = [...sources]
+    .filter(matchesFilter)
+    .sort((a, b) => {
+      let cmp: number;
+      if (sortBy === "title") {
+        cmp = a.title.localeCompare(b.title);
+      } else {
+        cmp = new Date(a.ingested_at).getTime() - new Date(b.ingested_at).getTime();
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+  function toggleSelected(slug: string) {
+    setSelectedSlugs((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedSlugs(new Set());
+    setFolderInput("");
+  }
+
+  async function handleAssignFolder(folder: string | null) {
+    if (selectedSlugs.size === 0) return;
+    setAssigning(true);
+    setError(null);
+    try {
+      await api.setSourcesFolder(Array.from(selectedSlugs), folder);
+      clearSelection();
+      await fetchSources();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Nie udało się przypisać folderu.");
+    } finally {
+      setAssigning(false);
     }
-    return sortDir === "asc" ? cmp : -cmp;
-  });
+  }
 
   function toggleSort(field: SortBy) {
     if (sortBy === field) {
@@ -412,6 +462,84 @@ export function SourcesPanel() {
           </div>
         </div>
 
+        {/* Folder filter chips (implicit folders, with counts) */}
+        {sources.length > 0 && (folderNames.length > 0 || noFolderCount < sources.length) && (
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            {(() => {
+              const chip = (key: string, label: string, count: number, value: FolderFilter, icon?: boolean) => {
+                const active = (folderFilter === "all" && value === "all")
+                  || (folderFilter === null && value === null)
+                  || folderFilter === value;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setFolderFilter(value)}
+                    className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                      active
+                        ? "border-primary bg-primary/10 text-foreground font-medium"
+                        : "border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    {icon && <Folder className="w-3 h-3" />}
+                    {label}
+                    <span className="text-[10px] opacity-70">{count}</span>
+                  </button>
+                );
+              };
+              return (
+                <>
+                  {chip("all", "Wszystkie", sources.length, "all")}
+                  {folderNames.map((f) =>
+                    chip(`f-${f}`, f, sources.filter((s) => s.folder === f).length, f, true)
+                  )}
+                  {noFolderCount > 0 && chip(NO_FOLDER, "Bez folderu", noFolderCount, null)}
+                </>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Multi-select action bar */}
+        {selectedSlugs.size > 0 && (
+          <div className="flex items-center gap-2 mb-3 p-2 rounded-md border border-primary/40 bg-primary/5 flex-wrap">
+            <span className="text-xs font-medium shrink-0">{selectedSlugs.size} zaznaczono</span>
+            <input
+              list="folder-suggestions"
+              value={folderInput}
+              onChange={(e) => setFolderInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && folderInput.trim()) handleAssignFolder(folderInput.trim()); }}
+              placeholder="Nazwa folderu…"
+              className="flex-1 min-w-[120px] text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+            <datalist id="folder-suggestions">
+              {folderNames.map((f) => <option key={f} value={f} />)}
+            </datalist>
+            <button
+              onClick={() => handleAssignFolder(folderInput.trim())}
+              disabled={!folderInput.trim() || assigning}
+              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
+            >
+              <FolderPlus className="w-3 h-3" />
+              {assigning ? "Przypisuję…" : "Przypisz"}
+            </button>
+            <button
+              onClick={() => handleAssignFolder(null)}
+              disabled={assigning}
+              className="text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+              title="Usuń zaznaczone z folderu"
+            >
+              Wyczyść folder
+            </button>
+            <button
+              onClick={clearSelection}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title="Odznacz wszystko"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
 
         {!loading && sources.length === 0 && (
@@ -426,10 +554,21 @@ export function SourcesPanel() {
               key={src.id}
               onClick={() => setSelectedSource(src)}
               className={`border rounded-md p-3 hover:bg-muted/50 transition-colors cursor-pointer ${
-                selectedSource?.id === src.id ? "border-primary bg-primary/5" : "border-border"
+                selectedSlugs.has(src.slug)
+                  ? "border-primary bg-primary/5"
+                  : selectedSource?.id === src.id ? "border-primary bg-primary/5" : "border-border"
               }`}
             >
               <div className="flex items-start gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleSelected(src.slug); }}
+                  className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                  title={selectedSlugs.has(src.slug) ? "Odznacz" : "Zaznacz"}
+                >
+                  {selectedSlugs.has(src.slug)
+                    ? <CheckSquare className="w-4 h-4 text-primary" />
+                    : <Square className="w-4 h-4" />}
+                </button>
                 <FileText className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -464,6 +603,12 @@ export function SourcesPanel() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{src.summary}</p>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    {src.folder && (
+                      <span className="inline-flex items-center gap-0.5 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                        <Folder className="w-2.5 h-2.5" />
+                        {src.folder}
+                      </span>
+                    )}
                     {src.tags.slice(0, 4).map((tag) => (
                       <span
                         key={tag}
