@@ -17,6 +17,84 @@ def test_get_wiki_sources_returns_list(client):
     assert isinstance(response.json(), list)
 
 
+def _make_source(store, slug, src_id, folder=None):
+    src = Source(
+        id=src_id, title=f"Title {src_id}", type="txt",
+        raw_path=f"raw/{slug}/parsed.md",
+        ingested_at=datetime(2026, 4, 29, 10, 0, 0),
+        summary="A test.", key_takeaways=[], questions=[], tags=[],
+        folder=folder,
+    )
+    store.write_source(src, slug=slug)
+
+
+def test_get_wiki_sources_includes_folder(client, tmp_path):
+    from unittest.mock import patch
+
+    store = WikiStore(root=tmp_path)
+    _make_source(store, "with-folder", "src_001", folder="Praca")
+    _make_source(store, "no-folder", "src_002")
+
+    with patch("api.wiki._get_store", return_value=store):
+        response = client.get("/api/wiki/sources")
+
+    data = sorted(response.json(), key=lambda d: d["id"])
+    assert data[0]["folder"] == "Praca"
+    assert data[1]["folder"] is None
+
+
+def test_set_sources_folder_bulk_assigns(client, tmp_path):
+    from unittest.mock import patch
+
+    store = WikiStore(root=tmp_path)
+    _make_source(store, "a", "src_001")
+    _make_source(store, "b", "src_002")
+    _make_source(store, "c", "src_003")
+
+    with patch("api.wiki._get_store", return_value=store):
+        response = client.post(
+            "/api/wiki/sources/folder",
+            json={"slugs": ["a", "b"], "folder": "Wnętrza"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["updated"] == 2
+    assert store.read_source("a").folder == "Wnętrza"
+    assert store.read_source("b").folder == "Wnętrza"
+    assert store.read_source("c").folder is None
+
+
+def test_set_sources_folder_null_clears(client, tmp_path):
+    from unittest.mock import patch
+
+    store = WikiStore(root=tmp_path)
+    _make_source(store, "a", "src_001", folder="Wnętrza")
+
+    with patch("api.wiki._get_store", return_value=store):
+        response = client.post(
+            "/api/wiki/sources/folder",
+            json={"slugs": ["a"], "folder": None},
+        )
+
+    assert response.status_code == 200
+    assert store.read_source("a").folder is None
+
+
+def test_set_sources_folder_unknown_slug_returns_404(client, tmp_path):
+    from unittest.mock import patch
+
+    store = WikiStore(root=tmp_path)
+    _make_source(store, "a", "src_001")
+
+    with patch("api.wiki._get_store", return_value=store):
+        response = client.post(
+            "/api/wiki/sources/folder",
+            json={"slugs": ["a", "ghost"], "folder": "X"},
+        )
+
+    assert response.status_code == 404
+
+
 def test_get_wiki_entities_returns_list(client):
     response = client.get("/api/wiki/entities")
     assert response.status_code == 200

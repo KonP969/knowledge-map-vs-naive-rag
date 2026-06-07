@@ -1,8 +1,9 @@
 import os
 import json as _json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from services.wiki_store import WikiStore, ENTITIES_DIR, CONCEPTS_DIR
 
 router = APIRouter(prefix="/api/wiki", tags=["wiki"])
@@ -32,8 +33,27 @@ def list_wiki_sources():
                 "summary": src.summary,
                 "key_takeaways": src.key_takeaways,
                 "source_url": src.source_url,
+                "folder": src.folder,
             })
     return result
+
+
+class SetFolderRequest(BaseModel):
+    slugs: List[str]
+    folder: Optional[str] = None
+
+
+@router.post("/sources/folder", response_model=Dict[str, Any])
+def set_sources_folder(req: SetFolderRequest):
+    """Bulk-assign (or clear, with folder=null) the view-only folder of sources."""
+    store = _get_store()
+    known = set(store.list_sources())
+    missing = [s for s in req.slugs if s not in known]
+    if missing:
+        raise HTTPException(status_code=404, detail=f"Sources not found: {missing}")
+    for slug in req.slugs:
+        store.set_source_folder(slug, req.folder)
+    return {"updated": len(req.slugs), "folder": req.folder}
 
 
 @router.get("/entities", response_model=List[Dict[str, Any]])

@@ -70,6 +70,53 @@ def test_read_raw_text_returns_file_content(store, sample_source):
     assert store.read_raw_text("skandynawska-sypialnia") == full_text
 
 
+# ── source folder (UX Round 3 #2) ────────────────────────────────────────────
+
+def test_source_folder_defaults_to_none(store, sample_source):
+    store.write_source(sample_source, slug="skandynawska-sypialnia")
+    loaded = store.read_source("skandynawska-sypialnia")
+    assert loaded.folder is None
+
+
+def test_read_source_backward_compat_without_folder_field(store, sample_source):
+    # A source file written before the `folder` field existed has no folder key.
+    store.write_source(sample_source, slug="skandynawska-sypialnia")
+    path = store._source_path("skandynawska-sypialnia")
+    text = path.read_text(encoding="utf-8")
+    assert "folder" not in text  # write must not emit folder when None
+    loaded = store.read_source("skandynawska-sypialnia")
+    assert loaded.folder is None
+
+
+def test_set_source_folder_persists(store, sample_source):
+    store.write_source(sample_source, slug="skandynawska-sypialnia")
+    store.set_source_folder("skandynawska-sypialnia", "Wnętrza")
+    loaded = store.read_source("skandynawska-sypialnia")
+    assert loaded.folder == "Wnętrza"
+
+
+def test_set_source_folder_none_clears(store, sample_source):
+    store.write_source(sample_source, slug="skandynawska-sypialnia")
+    store.set_source_folder("skandynawska-sypialnia", "Wnętrza")
+    store.set_source_folder("skandynawska-sypialnia", None)
+    loaded = store.read_source("skandynawska-sypialnia")
+    assert loaded.folder is None
+
+
+def test_set_source_folder_preserves_other_fields(store, sample_source):
+    store.write_source(sample_source, slug="skandynawska-sypialnia")
+    store.set_source_folder("skandynawska-sypialnia", "Wnętrza")
+    loaded = store.read_source("skandynawska-sypialnia")
+    assert loaded.title == sample_source.title
+    assert loaded.questions == sample_source.questions
+    assert loaded.tags == sample_source.tags
+
+
+def test_set_source_folder_raises_when_missing(store):
+    with pytest.raises(FileNotFoundError):
+        store.set_source_folder("nonexistent", "Wnętrza")
+
+
 # ── entity / concept / claim / edge ──────────────────────────────────────────
 
 @pytest.fixture
