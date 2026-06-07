@@ -66,6 +66,14 @@ export const api = {
       `/wiki/source-raw?slug=${encodeURIComponent(slug)}`
     ),
 
+  // Source folders (view-only organization)
+  setSourcesFolder: (slugs: string[], folder: string | null) =>
+    request<{ updated: number; folder: string | null }>("/wiki/sources/folder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slugs, folder }),
+    }),
+
   // Source deletion
   deleteSource: (slug: string) =>
     request<{ slug: string; source_id: string; deleted: boolean }>(
