@@ -30,6 +30,7 @@ class Source(BaseModel):
     key_takeaways: List[str]
     questions: List[str]
     tags: List[str]
+    folder: Optional[str] = None
 
 
 class Entity(BaseModel):

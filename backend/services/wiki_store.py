@@ -36,7 +36,7 @@ class WikiStore:
         return self.root / "wiki" / SOURCES_DIR / f"{slug}.md"
 
     def _source_frontmatter(self, source: Source) -> dict:
-        return {
+        fm = {
             "id": source.id,
             "title": source.title,
             "type": source.type,
@@ -47,6 +47,10 @@ class WikiStore:
             "questions": source.questions,
             "tags": source.tags,
         }
+        # `folder` is omitted when None so pre-folder source files stay byte-identical.
+        if source.folder is not None:
+            fm["folder"] = source.folder
+        return fm
 
     def write_source(self, source: Source, slug: str) -> None:
         path = self._source_path(slug)
@@ -69,7 +73,15 @@ class WikiStore:
             key_takeaways=post.get("key_takeaways", []),
             questions=post.get("questions", []),
             tags=post.get("tags", []),
+            folder=post.get("folder"),
         )
+
+    def set_source_folder(self, slug: str, folder: Optional[str]) -> None:
+        """Assign (or clear, with folder=None) the view-only folder of a source."""
+        src = self.read_source(slug)
+        if src is None:
+            raise FileNotFoundError(f"Source not found: {slug}")
+        self.write_source(src.model_copy(update={"folder": folder}), slug)
 
     def read_raw_text(self, slug: str) -> Optional[str]:
         """Read the original raw text (parsed.md) for a source, or None if absent."""
