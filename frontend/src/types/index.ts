@@ -176,12 +176,19 @@ export interface WikiEdge {
   confidence: number;
 }
 
+export interface ClaimSpan {
+  start: number;
+  end: number;
+  text: string;
+}
+
 export interface NodeDetailClaim {
   id: string;
   text: string;
   confidence: number;
   polarity: "asserts" | "denies";
   source_id: string;
+  span?: ClaimSpan;
 }
 
 export interface NodeDetailEdge {

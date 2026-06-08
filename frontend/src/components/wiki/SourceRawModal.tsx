@@ -1,17 +1,39 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, FileText, Loader2 } from "lucide-react";
 import { api } from "../../api/client";
+
+interface RawHighlight {
+  start: number;
+  end: number;
+  text: string;
+}
 
 interface SourceRawModalProps {
   slug: string;
   title: string;
   onClose: () => void;
+  highlight?: RawHighlight;
 }
 
-export function SourceRawModal({ slug, title, onClose }: SourceRawModalProps) {
+// Locate the fragment to highlight: trust the offsets when they actually match the
+// verbatim text, otherwise fall back to searching for the literal text (offsets can
+// drift if the raw file was re-parsed). Returns null when nothing matches.
+function resolveHighlightRange(raw: string, hl: RawHighlight): { start: number; end: number } | null {
+  if (raw.slice(hl.start, hl.end) === hl.text && hl.text.length > 0) {
+    return { start: hl.start, end: hl.end };
+  }
+  if (hl.text) {
+    const idx = raw.indexOf(hl.text);
+    if (idx >= 0) return { start: idx, end: idx + hl.text.length };
+  }
+  return null;
+}
+
+export function SourceRawModal({ slug, title, onClose, highlight }: SourceRawModalProps) {
   const [rawText, setRawText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const markRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,6 +64,15 @@ export function SourceRawModal({ slug, title, onClose }: SourceRawModalProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Scroll the highlighted fragment into view once the text is rendered
+  useEffect(() => {
+    if (rawText !== null && highlight && markRef.current) {
+      markRef.current.scrollIntoView({ block: "center" });
+    }
+  }, [rawText, highlight]);
+
+  const range = rawText !== null && highlight ? resolveHighlightRange(rawText, highlight) : null;
 
   return (
     <div
@@ -85,7 +116,20 @@ export function SourceRawModal({ slug, title, onClose }: SourceRawModalProps) {
           )}
           {rawText !== null && !loading && (
             <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground font-mono">
-              {rawText}
+              {range ? (
+                <>
+                  {rawText.slice(0, range.start)}
+                  <mark
+                    ref={markRef}
+                    className="bg-primary/25 text-foreground rounded-sm px-0.5"
+                  >
+                    {rawText.slice(range.start, range.end)}
+                  </mark>
+                  {rawText.slice(range.end)}
+                </>
+              ) : (
+                rawText
+              )}
             </pre>
           )}
         </div>
