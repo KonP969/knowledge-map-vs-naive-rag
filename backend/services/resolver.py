@@ -3,10 +3,28 @@ from typing import Any, Dict, List
 
 import frontmatter as fm
 
+from typing import Optional
+
 from models.ingest_models import SourceClassification
-from models.wiki_models import Claim, Concept, Edge, Entity
+from models.wiki_models import Claim, Concept, Edge, Entity, Span
 from services._slug import slugify
 from services.wiki_store import CONCEPTS_DIR, ENTITIES_DIR, WikiStore
+
+
+def _ground_span(span: Span, source_text: Optional[str]) -> Span:
+    """Recompute a span's offsets by locating its verbatim text in the source.
+
+    LLMs reliably copy short substrings but cannot count character offsets, so the
+    start/end they return are untrustworthy. When the span's text is found verbatim in
+    the source we replace the offsets with the real position; otherwise the span is left
+    untouched (no source_text, empty text, or a paraphrase that isn't present verbatim).
+    """
+    if not source_text or not span.text:
+        return span
+    idx = source_text.find(span.text)
+    if idx < 0:
+        return span
+    return Span(start=idx, end=idx + len(span.text), text=span.text)
 
 
 def resolve_classification(
@@ -14,9 +32,14 @@ def resolve_classification(
     source_id: str,
     store: WikiStore,
     overwrite_existing: bool = True,
+    source_text: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Stage 3 (deterministic). Maps SourceClassification -> WikiStore objects.
+
+    When source_text is provided, every span's offsets are re-grounded against it
+    (see _ground_span) so claim/edge provenance points to the real document position
+    instead of the LLM's hallucinated offsets.
 
     When overwrite_existing is False, entities/concepts that already exist are left
     exactly as they are (no merge of description/aliases/tags) — used by claim backfill
@@ -126,7 +149,7 @@ def resolve_classification(
             text=ce.text,
             subject_id=subject_id,
             source_id=source_id,
-            span=ce.span,
+            span=_ground_span(ce.span, source_text),
             confidence=ce.confidence,
             polarity=ce.polarity,
         )
@@ -145,7 +168,7 @@ def resolve_classification(
             to=f"entity:{entity.id}",
             relation="mentions",
             source_id=source_id,
-            span=em.span,
+            span=_ground_span(em.span, source_text),
             confidence=1.0,
         )
         edges.append(edge)
@@ -161,7 +184,7 @@ def resolve_classification(
             to=f"concept:{concept.id}",
             relation="mentions",
             source_id=source_id,
-            span=cm.span,
+            span=_ground_span(cm.span, source_text),
             confidence=1.0,
         )
         edges.append(edge)

@@ -56,7 +56,7 @@ def reextract_claims_for_source(
     store.delete_claims_by_source(source_id)
     store.delete_edges_by_source(source_id)
     resolved = resolve_classification(
-        classification, source_id, store, overwrite_existing=False,
+        classification, source_id, store, overwrite_existing=False, source_text=raw,
     )
     for claim in resolved["claims"]:
         store.append_claim(claim)

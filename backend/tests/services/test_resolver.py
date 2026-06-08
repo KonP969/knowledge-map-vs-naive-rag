@@ -49,6 +49,47 @@ def simple_classification():
     )
 
 
+# ── deterministic span grounding (offsets recomputed from verbatim text) ──────
+
+def test_resolve_grounds_claim_span_offsets_from_source_text(store, simple_classification):
+    # The LLM returned correct verbatim text but bogus offsets (start=999/end=1000).
+    bad = simple_classification.model_copy(deep=True)
+    bad.claims[0].span = Span(start=999, end=1000, text="Sypialnia uses neutral palette")
+    source_text = "Intro line.\nSypialnia uses neutral palette here."
+
+    result = resolve_classification(
+        classification=bad, source_id="src_001", store=store, source_text=source_text,
+    )
+
+    span = result["claims"][0].span
+    assert source_text[span.start:span.end] == "Sypialnia uses neutral palette"
+    assert span.start == source_text.index("Sypialnia uses neutral palette")
+    assert span.text == "Sypialnia uses neutral palette"
+
+
+def test_resolve_leaves_span_when_text_not_in_source(store, simple_classification):
+    bad = simple_classification.model_copy(deep=True)
+    bad.claims[0].span = Span(start=5, end=12, text="NOT PRESENT VERBATIM")
+    source_text = "Completely different document content."
+
+    result = resolve_classification(
+        classification=bad, source_id="src_001", store=store, source_text=source_text,
+    )
+
+    span = result["claims"][0].span
+    assert span.start == 5 and span.end == 12  # unchanged
+    assert span.text == "NOT PRESENT VERBATIM"
+
+
+def test_resolve_without_source_text_leaves_span_unchanged(store, simple_classification):
+    # Backward compatible: no source_text passed → spans pass through verbatim.
+    result = resolve_classification(
+        classification=simple_classification, source_id="src_001", store=store,
+    )
+    span = result["claims"][0].span
+    assert span.start == 0 and span.end == 30
+
+
 def test_resolve_creates_new_entity(store, simple_classification):
     result = resolve_classification(
         classification=simple_classification,

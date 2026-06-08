@@ -21,7 +21,12 @@ Given an article or document, extract:
    Each claim has a subject, confidence (0-1), and polarity (asserts/denies), and must be
    grounded in a span of the source text.
 
-For spans: start/end are character offsets into the DOCUMENT TEXT. text is the exact substring.
+For spans: `text` MUST be copied VERBATIM from the document — character-for-character,
+same casing, accents and punctuation, no paraphrasing, summarizing, or re-capitalizing.
+For a claim, prefer the FULL sentence (or minimal clause) that actually states the fact, so
+the quote stands on its own as evidence — not just an entity name. start/end are character
+offsets but may be approximate; the exact `text` is what matters and will be re-located in the
+source automatically.
 For entities and concepts: canonical name only — no duplicates.
 """
 
