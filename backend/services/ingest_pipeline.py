@@ -51,6 +51,7 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
             classification=classification,
             source_id=source_id,
             store=store,
+            source_text=text,
         )
 
         # Stage 4: Conflict Detection (conditional LLM)
