@@ -161,6 +161,7 @@ def get_wiki_node_detail(id: str):
         {
             "id": c.id, "text": c.text, "confidence": c.confidence,
             "polarity": c.polarity, "source_id": c.source_id,
+            "span": {"start": c.span.start, "end": c.span.end, "text": c.span.text},
         }
         for c in store.read_all_claims()
         if c.subject_id == id or (prefix == "source" and c.source_id == inner_id)

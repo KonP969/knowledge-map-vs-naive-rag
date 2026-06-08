@@ -361,5 +361,7 @@ def test_get_wiki_node_detail_includes_claims_and_edges(client, tmp_path):
     data = response.json()
     assert len(data["claims"]) == 1
     assert data["claims"][0]["id"] == "cl_001"
+    # Variant #2: claim carries its verbatim span (offsets + literal text into raw source)
+    assert data["claims"][0]["span"] == {"start": 0, "end": 14, "text": "Room is neutral."}
     assert len(data["edges"]) == 1
     assert data["edges"][0]["id"] == "edge_001"

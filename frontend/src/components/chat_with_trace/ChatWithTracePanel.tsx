@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Brain, Filter, CheckSquare, Layers, Sparkles, Clock, AlertCircle, Trash2, ChevronRight, ChevronDown } from "lucide-react";
+import { Send, Brain, Filter, CheckSquare, Layers, Sparkles, Clock, AlertCircle, Trash2, ChevronRight, ChevronDown, FileSearch } from "lucide-react";
 import { api } from "../../api/client";
-import type { QueryTrace, RetrievalStageTrace, AnswerSource, NodeDetailClaim } from "../../types";
+import { SourceRawModal } from "../wiki/SourceRawModal";
+import type { QueryTrace, RetrievalStageTrace, AnswerSource, NodeDetailClaim, ClaimSpan } from "../../types";
 
 const POLARITY_COLOR: Record<string, string> = {
   asserts: "text-green-600 dark:text-green-400",
@@ -66,6 +67,9 @@ function ChatEntry({
   const [claimsBySource, setClaimsBySource] = useState<
     Record<string, NodeDetailClaim[] | "loading" | "error">
   >({});
+  const [slugBySource, setSlugBySource] = useState<Record<string, string>>({});
+  // Open raw-text modal scrolled+highlighted to a specific claim's fragment.
+  const [rawModal, setRawModal] = useState<{ slug: string; title: string; highlight: ClaimSpan } | null>(null);
 
   async function loadClaims(s: AnswerSource) {
     if (claimsBySource[s.source_id]) return; // cached or in-flight
@@ -76,8 +80,16 @@ function ChatEntry({
       const want = new Set(s.claim_ids);
       const claims = detail.claims.filter((c) => want.has(c.id));
       setClaimsBySource((p) => ({ ...p, [s.source_id]: claims }));
+      if (detail.slug) setSlugBySource((p) => ({ ...p, [s.source_id]: detail.slug! }));
     } catch {
       setClaimsBySource((p) => ({ ...p, [s.source_id]: "error" }));
+    }
+  }
+
+  function openDoc(s: AnswerSource, claim: NodeDetailClaim, title: string) {
+    const slug = slugBySource[s.source_id];
+    if (slug && claim.span) {
+      setRawModal({ slug, title, highlight: claim.span });
     }
   }
 
@@ -96,7 +108,12 @@ function ChatEntry({
   }
 
   // Compact claim list shared by the hover popover and the expanded panel.
-  function renderClaims(claims: NodeDetailClaim[] | "loading" | "error" | undefined) {
+  // onOpenDoc is only passed in the expanded panel (the hover popover is transient,
+  // so its "jump to document" button would be unreachable).
+  function renderClaims(
+    claims: NodeDetailClaim[] | "loading" | "error" | undefined,
+    onOpenDoc?: (c: NodeDetailClaim) => void,
+  ) {
     if (claims === "loading") return <p className="text-muted-foreground animate-pulse py-0.5">Ładuję fragmenty…</p>;
     if (claims === "error") return <p className="text-red-500 py-0.5">Nie udało się wczytać fragmentów.</p>;
     if (Array.isArray(claims) && claims.length === 0) return <p className="text-muted-foreground py-0.5">Brak dopasowanych twierdzeń.</p>;
@@ -104,9 +121,23 @@ function ChatEntry({
     return claims.map((c) => (
       <div key={c.id} className="border-l-2 border-primary/40 pl-2 py-0.5">
         <p className="text-foreground leading-snug">{c.text}</p>
-        <p className={`text-[10px] ${POLARITY_COLOR[c.polarity] ?? "text-muted-foreground"}`}>
+        {c.span?.text && (
+          <p className="text-xs italic text-foreground/90 border-l-2 border-amber-400/50 pl-2 mt-1 leading-snug">
+            „{c.span.text}"
+          </p>
+        )}
+        <p className={`text-[10px] mt-0.5 ${POLARITY_COLOR[c.polarity] ?? "text-muted-foreground"}`}>
           {c.polarity} · {(c.confidence * 100).toFixed(0)}% · <span className="font-mono text-muted-foreground/60">{c.id}</span>
         </p>
+        {onOpenDoc && c.span && (
+          <button
+            onClick={() => onOpenDoc(c)}
+            className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary border border-primary/35 rounded px-1.5 py-0.5 hover:bg-primary/10 transition-colors"
+          >
+            <FileSearch className="w-3 h-3" />
+            Pokaż w dokumencie
+          </button>
+        )}
       </div>
     ));
   }
@@ -169,7 +200,7 @@ function ChatEntry({
                   </button>
                   {isOpen && (
                     <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/20 space-y-1.5">
-                      {renderClaims(claims)}
+                      {renderClaims(claims, (c) => openDoc(s, c, src?.title ?? s.source_id))}
                     </div>
                   )}
                 </div>
@@ -211,6 +242,14 @@ function ChatEntry({
         <span>{trace.total_llm_calls} LLM calls</span>
         <span>{trace.candidates_count} candidates → {trace.selected_count} selected</span>
       </div>
+      {rawModal && (
+        <SourceRawModal
+          slug={rawModal.slug}
+          title={rawModal.title}
+          highlight={rawModal.highlight}
+          onClose={() => setRawModal(null)}
+        />
+      )}
     </div>
   );
 }
