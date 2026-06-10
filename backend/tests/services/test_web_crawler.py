@@ -43,29 +43,46 @@ def test_filter_dedupes_and_strips_query_fragment():
 import services.web_crawler as wc
 
 
-def test_discovery_uses_sitemap_when_it_yields_two_or_more(monkeypatch):
+def test_discovery_uses_listing_order_newest_first(monkeypatch):
+    # The listing page lists newest-first; when it has enough, sitemap/feed are not needed.
     listing = "https://b.com/blog"
-    monkeypatch.setattr(wc, "_fetch_sitemap_urls",
-                        lambda u: ["https://b.com/blog/article-alpha", "https://b.com/blog/article-bravo"])
-    monkeypatch.setattr(wc, "_fetch_feed_urls", lambda u: (_ for _ in ()).throw(AssertionError("feed should not run")))
-    monkeypatch.setattr(wc, "_scrape_listing_links", lambda u: (_ for _ in ()).throw(AssertionError("scrape should not run")))
-    out = wc._discover_article_urls(listing, max_articles=10)
-    assert out == ["https://b.com/blog/article-alpha", "https://b.com/blog/article-bravo"]
-
-
-def test_discovery_falls_back_to_feed_then_scrape(monkeypatch):
-    listing = "https://b.com/blog"
-    monkeypatch.setattr(wc, "_fetch_sitemap_urls", lambda u: ["https://b.com/blog"])      # 0 after filter
-    monkeypatch.setattr(wc, "_fetch_feed_urls", lambda u: ["https://b.com/services"])     # 0 after filter
     monkeypatch.setattr(wc, "_scrape_listing_links",
+                        lambda u: ["https://b.com/blog/newest-post", "https://b.com/blog/older-post"])
+    monkeypatch.setattr(wc, "_fetch_sitemap_urls", lambda u: (_ for _ in ()).throw(AssertionError("sitemap should not run")))
+    monkeypatch.setattr(wc, "_fetch_feed_urls", lambda u: (_ for _ in ()).throw(AssertionError("feed should not run")))
+    out = wc._discover_article_urls(listing, max_articles=2)
+    assert out == ["https://b.com/blog/newest-post", "https://b.com/blog/older-post"]
+
+
+def test_discovery_supplements_from_sitemap_preserving_listing_prefix(monkeypatch):
+    # Listing yields fewer than requested -> supplement from sitemap, listing order first, deduped.
+    listing = "https://b.com/blog"
+    monkeypatch.setattr(wc, "_scrape_listing_links",
+                        lambda u: ["https://b.com/blog/newest-post", "https://b.com/blog/second-post"])
+    monkeypatch.setattr(wc, "_fetch_sitemap_urls",
+                        lambda u: ["https://b.com/blog/second-post", "https://b.com/blog/archive-post"])
+    monkeypatch.setattr(wc, "_fetch_feed_urls", lambda u: [])
+    out = wc._discover_article_urls(listing, max_articles=4)
+    assert out == [
+        "https://b.com/blog/newest-post",
+        "https://b.com/blog/second-post",
+        "https://b.com/blog/archive-post",
+    ]
+
+
+def test_discovery_falls_back_to_sitemap_when_listing_empty(monkeypatch):
+    listing = "https://b.com/blog"
+    monkeypatch.setattr(wc, "_scrape_listing_links", lambda u: [])                         # JS-rendered page
+    monkeypatch.setattr(wc, "_fetch_sitemap_urls",
                         lambda u: ["https://b.com/blog/article-xray", "https://b.com/blog/article-yankee"])
+    monkeypatch.setattr(wc, "_fetch_feed_urls", lambda u: [])
     out = wc._discover_article_urls(listing, max_articles=10)
     assert out == ["https://b.com/blog/article-xray", "https://b.com/blog/article-yankee"]
 
 
 def test_discovery_caps_at_max_articles(monkeypatch):
     listing = "https://b.com/blog"
-    monkeypatch.setattr(wc, "_fetch_sitemap_urls",
+    monkeypatch.setattr(wc, "_scrape_listing_links",
                         lambda u: [f"https://b.com/blog/post-{i}" for i in range(10)])
     out = wc._discover_article_urls(listing, max_articles=3)
     assert len(out) == 3
@@ -73,9 +90,9 @@ def test_discovery_caps_at_max_articles(monkeypatch):
 
 def test_discovery_layer_errors_are_non_fatal(monkeypatch):
     listing = "https://b.com/blog"
-    monkeypatch.setattr(wc, "_fetch_sitemap_urls", lambda u: (_ for _ in ()).throw(RuntimeError("boom")))
-    monkeypatch.setattr(wc, "_fetch_feed_urls", lambda u: [])
-    monkeypatch.setattr(wc, "_scrape_listing_links",
+    monkeypatch.setattr(wc, "_scrape_listing_links", lambda u: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(wc, "_fetch_sitemap_urls",
                         lambda u: ["https://b.com/blog/article-xray", "https://b.com/blog/article-yankee"])
+    monkeypatch.setattr(wc, "_fetch_feed_urls", lambda u: [])
     out = wc._discover_article_urls(listing, max_articles=10)
     assert out == ["https://b.com/blog/article-xray", "https://b.com/blog/article-yankee"]
