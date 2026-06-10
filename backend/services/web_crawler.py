@@ -90,20 +90,28 @@ def _safe_layer(fetch) -> list[str]:
 
 
 def _discover_article_urls(listing_url: str, max_articles: int) -> list[str]:
-    """Layered discovery: sitemap -> feed -> link-scrape. Each layer is filtered; the first
-    layer yielding >=2 filtered articles wins, else the largest non-empty filtered set."""
-    best: list[str] = []
+    """Discover article URLs newest-first.
+
+    A blog listing page lists its articles in display order (newest first), so it is the
+    primary, ordered source. The sitemap/feed (complete but unordered) only supplement the
+    listing when it yields fewer than requested, or stand in as a fallback when the listing
+    has no usable links (e.g. JS-rendered pages). Listing order is always preserved first."""
+    ordered = _filter_article_urls(_safe_layer(lambda: _scrape_listing_links(listing_url)), listing_url)
+    if len(ordered) >= max_articles:
+        return ordered[:max_articles]
+
+    supplement: list[str] = []
     for fetch in (
         lambda: _fetch_sitemap_urls(listing_url),
         lambda: _fetch_feed_urls(listing_url),
-        lambda: _scrape_listing_links(listing_url),
     ):
-        filtered = _filter_article_urls(_safe_layer(fetch), listing_url)
-        if len(filtered) >= 2:
-            return filtered[:max_articles]
-        if len(filtered) > len(best):
-            best = filtered
-    return best[:max_articles]
+        supplement = _filter_article_urls(_safe_layer(fetch), listing_url)
+        if supplement:
+            break
+
+    seen = set(ordered)
+    combined = ordered + [u for u in supplement if u not in seen]
+    return combined[:max_articles]
 
 
 def _detect_failure_cause(raw: Optional[str]) -> str:
