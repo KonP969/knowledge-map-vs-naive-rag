@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 
 import lxml.html as lxhtml
 import trafilatura
+from trafilatura import feeds as _tf_feeds
+from trafilatura import sitemaps as _tf_sitemaps
 
 _BLOCKED_SEGMENTS = frozenset({
     "tag", "category", "author", "wp-admin", "feed",
@@ -18,60 +20,90 @@ _BLOCKED_EXTENSIONS = frozenset({
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{3,}$")  # min 5 chars total
 
 
-def _is_article_url(url: str, base_netloc: str) -> bool:
-    """True if URL looks like a blog article (heuristic)."""
-    parsed = urlparse(url)
-    if parsed.netloc != base_netloc:
-        return False
-    path = parsed.path.rstrip("/")
-    if not path:
-        return False
-    segments = [s for s in path.split("/") if s]
-    if not segments or len(segments) > 2:
-        return False
-    if any(s in _BLOCKED_SEGMENTS for s in segments):
-        return False
-    _, ext = os.path.splitext(segments[-1])
-    if ext.lower() in _BLOCKED_EXTENSIONS:
-        return False
-    if not _SLUG_RE.match(segments[-1]):
-        return False
-    return True
+def _filter_article_urls(candidates: list[str], listing_url: str) -> list[str]:
+    """Keep only same-domain URLs strictly under the listing path prefix that look like
+    articles (slug last segment, no blocked segment/extension). Dedupes, strips query/frag."""
+    parsed_listing = urlparse(listing_url)
+    base_netloc = parsed_listing.netloc
+    listing_path = parsed_listing.path.rstrip("/")
+    prefix = listing_path + "/"
 
-
-def _collect_urls(start_url: str, max_articles: int) -> list[str]:
-    """Collect article URLs from blog listing page(s). Uses trafilatura.fetch_url."""
-    parsed_start = urlparse(start_url)
-    base_netloc = parsed_start.netloc
+    kept: list[str] = []
     seen: set[str] = set()
-    collected: list[str] = []
+    for cand in candidates:
+        clean = str(cand).split("?")[0].split("#")[0].rstrip("/")
+        parsed = urlparse(clean)
+        if parsed.netloc != base_netloc:
+            continue
+        path = parsed.path.rstrip("/")
+        if not path or path == listing_path or not path.startswith(prefix):
+            continue
+        segments = [s for s in path.split("/") if s]
+        if any(s in _BLOCKED_SEGMENTS for s in segments):
+            continue
+        _, ext = os.path.splitext(segments[-1])
+        if ext.lower() in _BLOCKED_EXTENSIONS:
+            continue
+        if not _SLUG_RE.match(segments[-1]):
+            continue
+        if clean not in seen:
+            seen.add(clean)
+            kept.append(clean)
+    return kept
 
-    raw = trafilatura.fetch_url(start_url)
+
+def _fetch_sitemap_urls(listing_url: str) -> list[str]:
+    return _tf_sitemaps.sitemap_search(listing_url) or []
+
+
+def _fetch_feed_urls(listing_url: str) -> list[str]:
+    return _tf_feeds.find_feed_urls(listing_url) or []
+
+
+def _scrape_listing_links(listing_url: str) -> list[str]:
+    """Absolute <a href> links from the listing page (raw, unfiltered)."""
+    raw = trafilatura.fetch_url(listing_url)
     if not raw:
         return []
-
-    # Parse links from the page
     try:
         tree = lxhtml.fromstring(raw.encode() if isinstance(raw, str) else raw)
     except Exception:
         return []
-
+    parsed = urlparse(listing_url)
+    out: list[str] = []
     for href in tree.xpath("//a/@href"):
-        clean = str(href).split("?")[0].split("#")[0].rstrip("/")
+        clean = str(href)
         if not clean.startswith("http"):
-            # Make relative URL absolute
             if clean.startswith("/"):
-                clean = f"{parsed_start.scheme}://{base_netloc}{clean}"
+                clean = f"{parsed.scheme}://{parsed.netloc}{clean}"
             else:
                 continue
-        clean = clean.rstrip("/")
-        if clean not in seen and _is_article_url(clean, base_netloc):
-            seen.add(clean)
-            collected.append(clean)
-            if len(collected) >= max_articles:
-                break
+        out.append(clean)
+    return out
 
-    return collected
+
+def _safe_layer(fetch) -> list[str]:
+    try:
+        return fetch() or []
+    except Exception:
+        return []
+
+
+def _discover_article_urls(listing_url: str, max_articles: int) -> list[str]:
+    """Layered discovery: sitemap -> feed -> link-scrape. Each layer is filtered; the first
+    layer yielding >=2 filtered articles wins, else the largest non-empty filtered set."""
+    best: list[str] = []
+    for fetch in (
+        lambda: _fetch_sitemap_urls(listing_url),
+        lambda: _fetch_feed_urls(listing_url),
+        lambda: _scrape_listing_links(listing_url),
+    ):
+        filtered = _filter_article_urls(_safe_layer(fetch), listing_url)
+        if len(filtered) >= 2:
+            return filtered[:max_articles]
+        if len(filtered) > len(best):
+            best = filtered
+    return best[:max_articles]
 
 
 def _detect_failure_cause(raw: Optional[str]) -> str:
@@ -104,7 +136,7 @@ def crawl_url(url: str, max_articles: int = 5) -> dict:
         return {"articles": [], "error": "Nie udało się nawiązać połączenia ze stroną."}
 
     # Collect article URLs
-    urls = _collect_urls(url, max_articles)
+    urls = _discover_article_urls(url, max_articles)
     if not urls:
         # Maybe the URL itself IS an article (single page)
         text = trafilatura.extract(raw, output_format="markdown", include_comments=False, include_tables=True)
