@@ -40,6 +40,7 @@ export function SourcesPanel() {
   // URL crawl states
   const [crawlUrl, setCrawlUrl] = useState("");
   const [crawlMax, setCrawlMax] = useState(5);
+  const [crawlFolder, setCrawlFolder] = useState("");
   const [crawling, setCrawling] = useState(false);
 
   type CrawlItem = { index: number; title: string; url: string; status: "pending" | "ok" | "error"; slug?: string; error?: string };
@@ -154,7 +155,7 @@ export function SourcesPanel() {
         } else if (evt.event === "done") {
           setCrawlSummary({ ingested: evt.ingested, failed: evt.failed });
         }
-      });
+      }, crawlFolder.trim() || null);
     } catch (e: unknown) {
       setCrawlFatalError(e instanceof Error ? e.message : "Błąd połączenia");
     } finally {
@@ -306,13 +307,29 @@ export function SourcesPanel() {
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground shrink-0">Maks. artykułów:</label>
               <input
-                type="number"
+                type="range"
                 min={1}
-                max={20}
+                max={100}
                 value={crawlMax}
                 onChange={(e) => setCrawlMax(Number(e.target.value))}
-                className="w-16 text-xs border border-border rounded px-2 py-1 bg-background"
+                className="flex-1 accent-primary"
               />
+              <span className="text-xs font-medium w-7 text-right tabular-nums">{crawlMax}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground shrink-0">Folder na wyniki:</label>
+              <input
+                list="crawl-folder-options"
+                value={crawlFolder}
+                onChange={(e) => setCrawlFolder(e.target.value)}
+                placeholder="(opcjonalnie) nowy lub istniejący"
+                className="flex-1 min-w-0 text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+              />
+              <datalist id="crawl-folder-options">
+                {Array.from(new Set(sources.map((s) => s.folder).filter((f): f is string => !!f)))
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((f) => <option key={f} value={f} />)}
+              </datalist>
             </div>
             <button
               onClick={handleCrawl}

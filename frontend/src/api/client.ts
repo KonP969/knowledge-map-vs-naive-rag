@@ -86,11 +86,12 @@ export const api = {
     url: string,
     maxArticles: number,
     onEvent: (event: import("../types").CrawlSSEEvent) => void,
+    folder?: string | null,
   ): Promise<void> => {
     const res = await fetch(`${BASE}/crawl/ingest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, max_articles: maxArticles }),
+      body: JSON.stringify({ url, max_articles: maxArticles, folder: folder || null }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
