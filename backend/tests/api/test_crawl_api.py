@@ -66,6 +66,19 @@ def test_crawl_folder_assignment_failure_is_non_fatal(client, tmp_path):
     assert '"status": "ok"' in body  # article still reported ok despite folder failure
 
 
+def test_crawl_articles_found_reports_discovered_count(client, tmp_path):
+    store = WikiStore(root=tmp_path)
+    fake_crawl = {"articles": [{"title": "A", "url": "http://x/a", "text": "body " * 50}],
+                  "discovered": 12, "error": None}
+    with patch("api.crawl.crawl_url", return_value=fake_crawl), \
+         patch("api.crawl._get_store", return_value=store), \
+         patch("api.crawl.ingest_source", side_effect=_fake_ingest_factory(store)):
+        resp = client.post("/api/crawl/ingest", json={"url": "http://x/blog", "max_articles": 12})
+        body = resp.text
+    assert '"discovered": 12' in body
+    assert '"count": 1' in body  # extracted-articles count (progress-bar denominator)
+
+
 def test_crawl_max_articles_accepts_100_rejects_101(client):
     with patch("api.crawl.crawl_url", return_value={"articles": [], "error": "stop"}):
         ok = client.post("/api/crawl/ingest", json={"url": "http://x/blog", "max_articles": 100})

@@ -37,7 +37,11 @@ def _generate_crawl_events(req: CrawlRequest) -> Iterator[str]:
         return
 
     articles = crawl_result["articles"]
-    yield _sse({"event": "articles_found", "count": len(articles)})
+    yield _sse({
+        "event": "articles_found",
+        "count": len(articles),
+        "discovered": crawl_result.get("discovered", len(articles)),
+    })
 
     store = _get_store()
     ingested = 0

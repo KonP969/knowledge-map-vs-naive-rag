@@ -270,7 +270,7 @@ export interface LintFixRequest {
 // ── Crawl SSE types ────────────────────────────────────────────────────────
 
 export type CrawlSSEEvent =
-  | { event: "articles_found"; count: number }
+  | { event: "articles_found"; count: number; discovered?: number }
   | { event: "article_start"; index: number; title: string; url: string }
   | { event: "article_done"; index: number; title: string; status: "ok" | "error"; slug?: string; error?: string }
   | { event: "done"; ingested: number; failed: number }
