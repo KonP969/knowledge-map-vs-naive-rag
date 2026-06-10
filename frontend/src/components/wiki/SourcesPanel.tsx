@@ -46,6 +46,7 @@ export function SourcesPanel() {
   type CrawlItem = { index: number; title: string; url: string; status: "pending" | "ok" | "error"; slug?: string; error?: string };
   const [crawlItems, setCrawlItems] = useState<CrawlItem[]>([]);
   const [crawlTotal, setCrawlTotal] = useState(0);
+  const [crawlDiscovered, setCrawlDiscovered] = useState(0);
   const [crawlSummary, setCrawlSummary] = useState<{ ingested: number; failed: number } | null>(null);
   const [crawlFatalError, setCrawlFatalError] = useState<string | null>(null);
 
@@ -133,6 +134,7 @@ export function SourcesPanel() {
     setCrawling(true);
     setCrawlItems([]);
     setCrawlTotal(0);
+    setCrawlDiscovered(0);
     setCrawlSummary(null);
     setCrawlFatalError(null);
     try {
@@ -141,6 +143,7 @@ export function SourcesPanel() {
           setCrawlFatalError(evt.error);
         } else if (evt.event === "articles_found") {
           setCrawlTotal(evt.count);
+          setCrawlDiscovered(evt.discovered ?? evt.count);
         } else if (evt.event === "article_start") {
           setCrawlItems((prev) => [...prev, { index: evt.index, title: evt.title, url: evt.url, status: "pending" }]);
         } else if (evt.event === "article_done") {
@@ -373,7 +376,7 @@ export function SourcesPanel() {
                 </div>
                 {crawlSummary && (
                   <p className={`text-xs font-medium ${crawlSummary.failed > 0 ? "text-yellow-600" : "text-green-700"}`}>
-                    Zaimportowano {crawlSummary.ingested}/{crawlTotal}
+                    Odkryto {crawlDiscovered} · treść {crawlTotal} · zapisano {crawlSummary.ingested}
                     {crawlSummary.failed > 0 ? ` (${crawlSummary.failed} błędów)` : ""}
                   </p>
                 )}

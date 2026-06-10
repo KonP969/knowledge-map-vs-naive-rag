@@ -136,12 +136,12 @@ def crawl_url(url: str, max_articles: int = 5) -> dict:
     """
     parsed = urlparse(url)
     if not parsed.netloc:
-        return {"articles": [], "error": "Nieprawidłowy URL."}
+        return {"articles": [], "discovered": 0, "error": "Nieprawidłowy URL."}
 
     # Probe first
     raw = trafilatura.fetch_url(url)
     if not raw:
-        return {"articles": [], "error": "Nie udało się nawiązać połączenia ze stroną."}
+        return {"articles": [], "discovered": 0, "error": "Nie udało się nawiązać połączenia ze stroną."}
 
     # Collect article URLs
     urls = _discover_article_urls(url, max_articles)
@@ -151,9 +151,9 @@ def crawl_url(url: str, max_articles: int = 5) -> dict:
         if text and len(text.strip()) >= 100:
             title = trafilatura.extract(raw, output_format="txt", include_comments=False) or url
             title = title.split("\n")[0][:100]
-            return {"articles": [{"url": url, "title": title, "text": text, "word_count": len(text.split())}], "error": None}
+            return {"articles": [{"url": url, "title": title, "text": text, "word_count": len(text.split())}], "discovered": 1, "error": None}
         cause = _detect_failure_cause(raw)
-        return {"articles": [], "error": cause}
+        return {"articles": [], "discovered": 0, "error": cause}
 
     # Extract each article
     articles = []
@@ -176,6 +176,6 @@ def crawl_url(url: str, max_articles: int = 5) -> dict:
         })
 
     if not articles:
-        return {"articles": [], "error": _detect_failure_cause(raw)}
+        return {"articles": [], "discovered": len(urls), "error": _detect_failure_cause(raw)}
 
-    return {"articles": articles, "error": None}
+    return {"articles": articles, "discovered": len(urls), "error": None}
