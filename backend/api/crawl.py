@@ -2,7 +2,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Optional
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -21,7 +21,8 @@ def _get_store() -> WikiStore:
 
 class CrawlRequest(BaseModel):
     url: str
-    max_articles: int = Field(default=5, ge=1, le=20)
+    max_articles: int = Field(default=5, ge=1, le=100)
+    folder: Optional[str] = None
 
 
 def _sse(data: dict) -> str:
@@ -64,6 +65,11 @@ def _generate_crawl_events(req: CrawlRequest) -> Iterator[str]:
                 })
             else:
                 ingested += 1
+                if req.folder:
+                    try:
+                        store.set_source_folder(ingest_result.slug, req.folder)
+                    except Exception:
+                        pass  # non-fatal: source is ingested, just unfiled
                 yield _sse({
                     "event": "article_done", "index": i,
                     "title": article["title"], "status": "ok",
