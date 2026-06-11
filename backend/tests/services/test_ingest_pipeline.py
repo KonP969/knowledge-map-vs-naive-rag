@@ -65,14 +65,14 @@ def _mock_classify(text: str, model=None):
 
 
 def test_pipeline_returns_ingest_result(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         result = run_ingest(txt_file, store)
     assert isinstance(result, IngestResult)
     assert result.status == "ok"
 
 
 def test_pipeline_creates_source_in_store(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         result = run_ingest(txt_file, store)
     source = store.read_source(result.slug)
     assert source is not None
@@ -80,21 +80,21 @@ def test_pipeline_creates_source_in_store(txt_file, store):
 
 
 def test_pipeline_creates_entity_in_store(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         run_ingest(txt_file, store)
     entity = store.read_entity("sypialnia", "Place")
     assert entity is not None
 
 
 def test_pipeline_creates_concept_in_store(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         run_ingest(txt_file, store)
     concept = store.read_concept("neutral-palette")
     assert concept is not None
 
 
 def test_pipeline_appends_claim(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         result = run_ingest(txt_file, store)
     claims = store.read_all_claims()
     assert len(claims) == result.claims_added
@@ -102,7 +102,7 @@ def test_pipeline_appends_claim(txt_file, store):
 
 
 def test_pipeline_appends_edges(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         result = run_ingest(txt_file, store)
     edges = store.read_all_edges()
     assert len(edges) >= 1
@@ -110,7 +110,7 @@ def test_pipeline_appends_edges(txt_file, store):
 
 
 def test_pipeline_writes_log_entry(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         result = run_ingest(txt_file, store)
     log_path = store.root / "wiki" / "log.md"
     assert log_path.exists()
@@ -119,7 +119,7 @@ def test_pipeline_writes_log_entry(txt_file, store):
 
 
 def test_pipeline_regenerates_index(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         run_ingest(txt_file, store)
     index_path = store.root / "wiki" / "00-Index" / "index.json"
     assert index_path.exists()
@@ -128,7 +128,7 @@ def test_pipeline_regenerates_index(txt_file, store):
 
 
 def test_pipeline_result_counts_match(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         result = run_ingest(txt_file, store)
     assert result.entities_created == 1
     assert result.concepts_created == 1
@@ -136,14 +136,14 @@ def test_pipeline_result_counts_match(txt_file, store):
 
 
 def test_pipeline_parsed_md_exists(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         result = run_ingest(txt_file, store)
     parsed_md = store.root / "raw" / result.slug / "parsed.md"
     assert parsed_md.exists()
 
 
 def test_pipeline_duration_ms_positive(txt_file, store):
-    with patch("services.ingest_pipeline.classify_source", side_effect=_mock_classify):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
         result = run_ingest(txt_file, store)
     assert result.duration_ms > 0
 

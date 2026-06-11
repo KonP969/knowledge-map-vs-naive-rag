@@ -6,7 +6,8 @@ from models.ingest_models import IngestResult
 from models.wiki_models import Source
 from services._slug import slugify, ensure_unique
 from services.parser import parse_source
-from services.source_classifier import classify_source
+from services.source_classifier import classify_source_chunked
+from services.chunking import chunk_text
 from services.resolver import resolve_classification
 from services.conflict_detector import detect_conflicts
 from services.wiki_store import WikiStore
@@ -42,9 +43,11 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
         source_count = len(existing_slugs) + 1
         source_id = f"src_{source_count:03d}"
 
-        # Stage 2: Classify (LLM)
-        classification = classify_source(text)
-        llm_calls += 1
+        # Stage 2: Classify (LLM). Large documents are chunked so extraction stays dense;
+        # one LLM call per chunk.
+        n_chunks = len(chunk_text(text))
+        classification = classify_source_chunked(text)
+        llm_calls += n_chunks
 
         # Stage 3: Resolve (deterministic)
         resolved = resolve_classification(
