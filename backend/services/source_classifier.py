@@ -1,6 +1,8 @@
 import os
+from typing import Callable, Optional
 from openai import OpenAI
 from models.ingest_models import SourceClassification
+from services.chunking import chunk_text, merge_classifications
 
 _client: OpenAI = None
 
@@ -59,3 +61,22 @@ def classify_source(text: str, model: str = None) -> SourceClassification:
     if result is None:
         raise ValueError("LLM returned no structured output (possible refusal or content filter)")
     return result
+
+
+def classify_source_chunked(
+    text: str,
+    *,
+    max_chars: int = 5000,
+    classify_fn: Optional[Callable[[str], SourceClassification]] = None,
+) -> SourceClassification:
+    """Classify a source, chunking large documents so extraction stays dense.
+
+    One LLM call over a very large document produces sparse, summary-level extraction;
+    splitting into ~max_chars chunks and merging keeps entity/concept/claim density high.
+    Returns a single merged SourceClassification regardless of how many chunks were used.
+    """
+    fn = classify_fn or classify_source
+    chunks = chunk_text(text, max_chars=max_chars)
+    if len(chunks) == 1:
+        return fn(text)
+    return merge_classifications([fn(c) for c in chunks])
