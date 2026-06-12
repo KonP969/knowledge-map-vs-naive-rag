@@ -63,6 +63,29 @@ def classify_source(text: str, model: str = None) -> SourceClassification:
     return result
 
 
+def _classify_with_split_retry(
+    fn: Callable[[str], SourceClassification],
+    chunk: str,
+    depth: int = 2,
+) -> list:
+    """Classify one chunk; on failure split it in half and retry each half.
+
+    Dense chunks (e.g. product/price tables) can blow the model's completion cap
+    (LengthFinishReasonError) — halving the input roughly halves the output, which gets
+    back under the cap. Persistent failures (bad key, quota) exhaust the depth budget and
+    re-raise instead of being silently swallowed."""
+    try:
+        return [fn(chunk)]
+    except Exception:
+        if depth <= 0 or len(chunk) < 1000:
+            raise
+        mid = len(chunk) // 2
+        return (
+            _classify_with_split_retry(fn, chunk[:mid], depth - 1)
+            + _classify_with_split_retry(fn, chunk[mid:], depth - 1)
+        )
+
+
 def classify_source_chunked(
     text: str,
     *,
@@ -73,10 +96,12 @@ def classify_source_chunked(
 
     One LLM call over a very large document produces sparse, summary-level extraction;
     splitting into ~max_chars chunks and merging keeps entity/concept/claim density high.
-    Returns a single merged SourceClassification regardless of how many chunks were used.
-    """
+    A chunk that fails (typically the completion-length cap on dense tables) is split in
+    half and retried rather than failing the whole document. Returns a single merged
+    SourceClassification regardless of how many chunks were used."""
     fn = classify_fn or classify_source
     chunks = chunk_text(text, max_chars=max_chars)
-    if len(chunks) == 1:
-        return fn(text)
-    return merge_classifications([fn(c) for c in chunks])
+    parts: list = []
+    for c in chunks:
+        parts.extend(_classify_with_split_retry(fn, c))
+    return merge_classifications(parts)
