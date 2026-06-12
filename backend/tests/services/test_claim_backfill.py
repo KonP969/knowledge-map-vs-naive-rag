@@ -48,6 +48,31 @@ def _existing_entity(store):
     )
 
 
+def test_reextract_all_isolates_failing_source(tmp_path):
+    # One source whose classification blows up must not kill the others.
+    store = WikiStore(root=tmp_path)
+    _seed_source_with_raw(store, slug="good-src", source_id="src_001", text="Azura is gold.")
+    _seed_source_with_raw(store, slug="bad-src", source_id="src_002", text="BOOM trigger text")
+    _existing_entity(store)
+
+    def classify(text):
+        if "BOOM" in text:
+            raise RuntimeError("connection lost")
+        return _classification([
+            ClaimExtraction(text="Azura is available in gold.", subject_name="Azura",
+                            subject_type="entity", span=Span(start=0, end=14, text="Azura is gold"),
+                            confidence=0.9, polarity="asserts"),
+        ])
+
+    results = reextract_claims_all(store, apply=True, classify_fn=classify)
+    by_slug = {r.slug: r for r in results}
+    assert by_slug["good-src"].applied is True
+    assert by_slug["bad-src"].applied is False
+    assert "connection lost" in (by_slug["bad-src"].skipped_reason or "")
+    # good source's claims actually landed
+    assert any(c.source_id == "src_001" for c in store.read_all_claims())
+
+
 @pytest.fixture
 def fake_classify():
     claims = [

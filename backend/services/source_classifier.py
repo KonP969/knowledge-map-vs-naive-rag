@@ -1,6 +1,7 @@
 import os
+import time
 from typing import Callable, Optional
-from openai import OpenAI
+from openai import APIConnectionError, OpenAI
 from models.ingest_models import SourceClassification
 from services.chunking import chunk_text, merge_classifications
 
@@ -63,6 +64,23 @@ def classify_source(text: str, model: str = None) -> SourceClassification:
     return result
 
 
+_NETWORK_ATTEMPTS = 4
+
+
+def _call_with_network_retry(fn: Callable[[str], SourceClassification], chunk: str) -> SourceClassification:
+    """Retry the same chunk on connection errors with growing backoff (flaky networks).
+    Splitting would not help here, so the chunk is retried as-is; after the attempt
+    budget the error propagates."""
+    for attempt in range(_NETWORK_ATTEMPTS):
+        try:
+            return fn(chunk)
+        except APIConnectionError:
+            if attempt == _NETWORK_ATTEMPTS - 1:
+                raise
+            time.sleep(5 * (attempt + 1))
+    raise AssertionError("unreachable")
+
+
 def _classify_with_split_retry(
     fn: Callable[[str], SourceClassification],
     chunk: str,
@@ -72,10 +90,14 @@ def _classify_with_split_retry(
 
     Dense chunks (e.g. product/price tables) can blow the model's completion cap
     (LengthFinishReasonError) — halving the input roughly halves the output, which gets
-    back under the cap. Persistent failures (bad key, quota) exhaust the depth budget and
+    back under the cap. Connection errors are retried in place (see
+    _call_with_network_retry) and re-raised when exhausted — splitting won't fix the
+    network. Other persistent failures (bad key, quota) exhaust the depth budget and
     re-raise instead of being silently swallowed."""
     try:
-        return [fn(chunk)]
+        return [_call_with_network_retry(fn, chunk)]
+    except APIConnectionError:
+        raise
     except Exception:
         if depth <= 0 or len(chunk) < 1000:
             raise
