@@ -89,6 +89,49 @@ def test_classify_chunked_splits_failing_chunk_and_recovers():
     assert any(c > 3000 for c in calls) and sum(1 for c in calls if c <= 3000) == 2
 
 
+def test_classify_chunked_retries_connection_errors_with_backoff(monkeypatch):
+    # Flaky network: APIConnectionError is retried in place (no splitting), then succeeds.
+    import httpx
+    from openai import APIConnectionError
+    import services.source_classifier as sc
+    from services.source_classifier import classify_source_chunked
+
+    sleeps = []
+    monkeypatch.setattr(sc.time, "sleep", lambda s: sleeps.append(s))
+    state = {"fails": 2}
+
+    def flaky(t):
+        if state["fails"] > 0:
+            state["fails"] -= 1
+            raise APIConnectionError(request=httpx.Request("POST", "http://api"))
+        return _cls("D", ["E1"], [], ["c1"])
+
+    out = classify_source_chunked("short text", max_chars=5000, classify_fn=flaky)
+    assert len(out.claims) == 1
+    assert len(sleeps) == 2  # two backoff sleeps before success
+
+
+def test_classify_chunked_connection_error_exhausts_and_raises(monkeypatch):
+    import httpx
+    from openai import APIConnectionError
+    import services.source_classifier as sc
+    from services.source_classifier import classify_source_chunked
+
+    monkeypatch.setattr(sc.time, "sleep", lambda s: None)
+    calls = []
+
+    def dead(t):
+        calls.append(1)
+        raise APIConnectionError(request=httpx.Request("POST", "http://api"))
+
+    try:
+        classify_source_chunked("short text", max_chars=5000, classify_fn=dead)
+        assert False, "expected APIConnectionError"
+    except APIConnectionError:
+        pass
+    assert len(calls) == 4  # bounded attempts, no infinite loop, no splitting
+
+
 def test_classify_chunked_persistent_failure_still_raises():
     from services.source_classifier import classify_source_chunked
 

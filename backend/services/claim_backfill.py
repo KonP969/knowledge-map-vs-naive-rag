@@ -72,10 +72,15 @@ def reextract_claims_all(
     apply: bool = False,
     classify_fn: Callable[[str], SourceClassification] = classify_source_chunked,
 ) -> List[BackfillResult]:
-    results = [
-        reextract_claims_for_source(slug, store, apply=apply, classify_fn=classify_fn)
-        for slug in store.list_sources()
-    ]
+    results: List[BackfillResult] = []
+    for slug in store.list_sources():
+        try:
+            results.append(
+                reextract_claims_for_source(slug, store, apply=apply, classify_fn=classify_fn)
+            )
+        except Exception as exc:  # one source failing must not kill the whole run
+            results.append(BackfillResult(slug, None, 0, 0, applied=False,
+                                          skipped_reason=f"error: {exc}"))
     if apply:
         from services.wiki_index import regenerate_index
         regenerate_index(store)
