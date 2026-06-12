@@ -71,6 +71,37 @@ def test_classify_chunked_single_call_for_small_text():
     assert [e.name for e in out.entity_mentions] == ["E1"]
 
 
+def test_classify_chunked_splits_failing_chunk_and_recovers():
+    # A dense chunk can blow the model's completion cap (LengthFinishReasonError).
+    # The orchestrator must split that chunk and retry instead of failing the document.
+    from services.source_classifier import classify_source_chunked
+    calls = []
+
+    def fake(t):
+        calls.append(len(t))
+        if len(t) > 3000:
+            raise ValueError("length limit reached")
+        return _cls("D", [f"E{len(calls)}"], [], [f"claim-{len(calls)}"])
+
+    text = "A" * 5000  # one 5000-char chunk -> fails -> split into 2x2500 -> both succeed
+    out = classify_source_chunked(text, max_chars=5000, classify_fn=fake)
+    assert len(out.claims) == 2
+    assert any(c > 3000 for c in calls) and sum(1 for c in calls if c <= 3000) == 2
+
+
+def test_classify_chunked_persistent_failure_still_raises():
+    from services.source_classifier import classify_source_chunked
+
+    def always_fail(t):
+        raise ValueError("api key invalid")
+
+    try:
+        classify_source_chunked("B" * 5000, max_chars=5000, classify_fn=always_fail)
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
+
 def test_classify_chunked_merges_multiple_chunks():
     from services.source_classifier import classify_source_chunked
 
