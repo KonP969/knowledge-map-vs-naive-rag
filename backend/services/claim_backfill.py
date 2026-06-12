@@ -12,7 +12,7 @@ from typing import Callable, List, Optional
 
 from models.ingest_models import SourceClassification
 from services.resolver import resolve_classification
-from services.source_classifier import classify_source
+from services.source_classifier import classify_source_chunked
 from services.wiki_store import WikiStore
 
 
@@ -31,7 +31,7 @@ def reextract_claims_for_source(
     store: WikiStore,
     *,
     apply: bool = False,
-    classify_fn: Callable[[str], SourceClassification] = classify_source,
+    classify_fn: Callable[[str], SourceClassification] = classify_source_chunked,
 ) -> BackfillResult:
     src = store.read_source(slug)
     if src is None:
@@ -70,7 +70,7 @@ def reextract_claims_all(
     store: WikiStore,
     *,
     apply: bool = False,
-    classify_fn: Callable[[str], SourceClassification] = classify_source,
+    classify_fn: Callable[[str], SourceClassification] = classify_source_chunked,
 ) -> List[BackfillResult]:
     results = [
         reextract_claims_for_source(slug, store, apply=apply, classify_fn=classify_fn)
