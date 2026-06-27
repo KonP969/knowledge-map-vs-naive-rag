@@ -29,6 +29,9 @@ class Candidate(BaseModel):
     questions: List[str]
     tags: List[str]
     description_preview: str
+    # Claims that made this candidate semantically relevant (empty for purely lexical hits).
+    # Context assembly leads with these claims' verbatim text.
+    claim_ids: List[str] = Field(default_factory=list)
 
 
 class SelectedArtifact(BaseModel):
