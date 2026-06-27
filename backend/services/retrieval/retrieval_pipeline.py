@@ -4,6 +4,8 @@ from models.retrieval_models import QueryTrace, StageTrace, Selection
 from services.wiki_store import WikiStore
 from services.retrieval.intent_parser import parse_intent
 from services.retrieval.candidate_filter import filter_candidates
+from services.retrieval.semantic_retrieval import semantic_candidates, merge_candidates
+from services.semantic_index import load_claim_index
 from services.retrieval.selection import select_candidates
 from services.retrieval.context_assembly import assemble_context
 from services.retrieval.answer_generator import generate_answer
@@ -40,14 +42,24 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
         ),
     ))
 
-    # Stage 2
+    # Stage 2 — hybrid: lexical structural scoring + semantic claim recall (when an
+    # embedding index exists), merged. Semantic recall is what lets natural-language and
+    # partial-name queries find the right node and carry the relevant claims.
     t = time.time()
-    candidates = filter_candidates(intent, store)
+    lexical = filter_candidates(intent, store)
+    vs = load_claim_index(store)
+    n_semantic = 0
+    if vs is not None and len(vs) > 0:
+        semantic = semantic_candidates(question, store, vector_store=vs)
+        n_semantic = len(semantic)
+        candidates = merge_candidates(lexical, semantic)[:20]
+    else:
+        candidates = lexical
     stages.append(StageTrace(
         stage=2, name="Candidate Filter",
         duration_ms=(time.time() - t) * 1000, llm_called=False,
         input_summary=f"intent_type={intent.intent_type}",
-        output_summary=f"{len(candidates)} candidates scored",
+        output_summary=f"{len(candidates)} candidates ({n_semantic} semantic + {len(lexical)} lexical)",
     ))
 
     if not candidates:

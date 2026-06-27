@@ -119,3 +119,21 @@ def test_assemble_context_char_count_matches_len(store, selection_with_source, c
     from services.retrieval.context_assembly import assemble_context
     context, char_count = assemble_context("Q", selection_with_source, candidates, store)
     assert char_count == len(context)
+
+
+def test_assemble_context_leads_with_semantic_claim_ids(store):
+    from services.retrieval.context_assembly import assemble_context
+    cand = Candidate(
+        artifact_id="entity:e_001", artifact_type="entity", slug="sypialnia",
+        title="Place: sypialnia", score=10, score_breakdown={"semantic": 10},
+        questions=[], tags=[], description_preview="A Scandinavian bedroom.",
+        claim_ids=["cl_001"],
+    )
+    sel = Selection(
+        selected=[SelectedArtifact(artifact_id="entity:e_001", relevance_score=0.9, reasoning="x")],
+        confidence=0.9, reasoning="x",
+    )
+    context, _ = assemble_context("colors?", sel, [cand], store)
+    assert "cl_001" in context and "neutral colors" in context
+    # the verbatim claim leads; the generic node description is demoted below it
+    assert context.index("neutral colors") < context.index("A Scandinavian bedroom")
