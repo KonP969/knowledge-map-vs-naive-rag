@@ -110,3 +110,20 @@ def semantic_candidates(
     ]
     candidates.sort(key=lambda c: c.score, reverse=True)
     return candidates
+
+
+def merge_candidates(lexical: List[Candidate], semantic: List[Candidate]) -> List[Candidate]:
+    """Hybrid merge: union by artifact_id, summing scores. Semantic hits seed the entry so
+    their claim_ids (and description) win; the lexical score is added on top."""
+    by_id: "OrderedDict[str, Candidate]" = OrderedDict()
+    for c in list(semantic) + list(lexical):
+        existing = by_id.get(c.artifact_id)
+        if existing is None:
+            by_id[c.artifact_id] = c.model_copy(deep=True)
+        else:
+            existing.score += c.score
+            if not existing.claim_ids and c.claim_ids:
+                existing.claim_ids = list(c.claim_ids)
+    out = list(by_id.values())
+    out.sort(key=lambda c: c.score, reverse=True)
+    return out

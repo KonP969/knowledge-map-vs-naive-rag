@@ -18,23 +18,26 @@ def assemble_context(
 
     all_claims = store.read_all_claims()
     all_edges = store.read_all_edges()
+    claims_by_id = {cl.id: cl for cl in all_claims}
 
     sections = [f"# Context for: {question}\n"]
 
     for cand in selected_candidates:
-        parts = [
-            f"## {cand.artifact_type.capitalize()}: {cand.title} [{cand.artifact_id}]",
-            cand.description_preview,
-        ]
+        parts = [f"## {cand.artifact_type.capitalize()}: {cand.title} [{cand.artifact_id}]"]
 
-        relevant_claims = [
-            cl for cl in all_claims
-            if cl.subject_id == cand.artifact_id
-            or cl.source_id == cand.artifact_id.split(":", 1)[-1]
-        ]
+        # Lead with the semantically-relevant claims (verbatim) when the candidate carries
+        # them; otherwise fall back to claims linked by subject/source. The generic node
+        # description is demoted below the facts so the LLM answers from real claim text.
+        relevant_claims = [claims_by_id[cid] for cid in cand.claim_ids if cid in claims_by_id]
+        if not relevant_claims:
+            relevant_claims = [
+                cl for cl in all_claims
+                if cl.subject_id == cand.artifact_id
+                or cl.source_id == cand.artifact_id.split(":", 1)[-1]
+            ]
         if relevant_claims:
-            parts.append("\n### Claims:")
-            for cl in relevant_claims[:5]:
+            parts.append("### Facts (claims):")
+            for cl in relevant_claims[:8]:
                 parts.append(
                     f"- [claim:{cl.id}] ({cl.polarity}) {cl.text} "
                     f"(confidence: {cl.confidence:.2f})"
@@ -52,6 +55,9 @@ def assemble_context(
 
         if cand.questions:
             parts.append(f"\n### Answers questions: {', '.join(cand.questions[:3])}")
+
+        if cand.description_preview:
+            parts.append(f"\n(node summary: {cand.description_preview})")
 
         sections.append("\n".join(parts))
 

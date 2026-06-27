@@ -1,10 +1,33 @@
 from datetime import datetime
 
 from models.wiki_models import Claim, Entity, Source, Span
+from models.retrieval_models import Candidate
 from services.wiki_store import WikiStore
 from services.wiki_index import regenerate_index
 from services.semantic_index import build_claim_index
-from services.retrieval.semantic_retrieval import semantic_candidates
+from services.retrieval.semantic_retrieval import semantic_candidates, merge_candidates
+
+
+def _cand(art_id, score, claim_ids=None):
+    return Candidate(artifact_id=art_id, artifact_type="entity", slug="s", title="t",
+                     score=score, score_breakdown={}, questions=[], tags=[],
+                     description_preview="", claim_ids=claim_ids or [])
+
+
+def test_merge_unions_sums_scores_and_keeps_semantic_claim_ids():
+    lexical = [_cand("entity:e_001", 3), _cand("source:src_001", 1)]
+    semantic = [_cand("entity:e_001", 10, ["cl_1"]), _cand("concept:c_002", 8, ["cl_2"])]
+    merged = merge_candidates(lexical, semantic)
+    by_id = {c.artifact_id: c for c in merged}
+    assert by_id["entity:e_001"].score == 13            # summed across both paths
+    assert by_id["entity:e_001"].claim_ids == ["cl_1"]  # semantic claim_ids preserved
+    assert "concept:c_002" in by_id and "source:src_001" in by_id
+    assert merged[0].artifact_id == "entity:e_001"      # sorted by score desc
+
+
+def test_merge_with_empty_semantic_is_lexical():
+    lexical = [_cand("entity:e_001", 3)]
+    assert [c.artifact_id for c in merge_candidates(lexical, [])] == ["entity:e_001"]
 
 
 def _embed(batch):
