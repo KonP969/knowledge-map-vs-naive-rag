@@ -29,3 +29,16 @@ def load_claim_index(store: WikiStore) -> Optional[VectorStore]:
     if not path.exists():
         return None
     return VectorStore.load(path)
+
+
+def add_claims_to_index(store: WikiStore, claims, *, embed_fn: Optional[EmbedFn] = None) -> VectorStore:
+    """Incrementally embed and append new claims to the (possibly absent) index.
+    Claims already present are skipped, so it is safe to call with overlapping sets."""
+    vs = load_claim_index(store) or VectorStore()
+    existing = set(vs.ids)
+    new = [c for c in claims if c.id not in existing]
+    if new:
+        vectors = embed_texts([c.text for c in new], embed_fn=embed_fn)
+        vs.add([c.id for c in new], vectors)
+        vs.save(claim_index_path(store))
+    return vs
