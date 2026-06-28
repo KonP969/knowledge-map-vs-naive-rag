@@ -9,6 +9,9 @@ _client: OpenAI = None
 
 _SYSTEM_PROMPT = """You are a knowledge extraction engine for a structured wiki.
 
+Write the title, description, tags, questions and key_takeaways in the SAME LANGUAGE as the
+document (a Polish document → Polish title/description/questions/etc.). Do not mix languages.
+
 Given an article or document, extract:
 1. A clean title and short description.
 2. Tags (3-10 lowercase keywords).
