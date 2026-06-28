@@ -41,6 +41,10 @@ export const api = {
   listWikiEdges: () => request<import("../types").WikiEdge[]>("/wiki/edges"),
   getWikiNodeDetail: (id: string) =>
     request<import("../types").NodeDetail>(`/wiki/node-detail?id=${encodeURIComponent(id)}`),
+  getClaimsByIds: (ids: string[]) =>
+    request<import("../types").NodeDetailClaim[]>(
+      `/wiki/claims-by-id?ids=${encodeURIComponent(ids.join(","))}`
+    ),
 
   // Lint
   runLint: (includeSemantic = false) =>
