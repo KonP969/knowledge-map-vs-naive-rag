@@ -59,7 +59,7 @@ function ChatEntry({
   onPickQuestion,
 }: {
   trace: QueryTrace;
-  sourcesData: Record<string, { title: string; summary: string }>;
+  sourcesData: Record<string, { title: string; summary: string; slug: string }>;
   onPickQuestion: (q: string) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -67,27 +67,28 @@ function ChatEntry({
   const [claimsBySource, setClaimsBySource] = useState<
     Record<string, NodeDetailClaim[] | "loading" | "error">
   >({});
-  const [slugBySource, setSlugBySource] = useState<Record<string, string>>({});
   // Open raw-text modal scrolled+highlighted to a specific claim's fragment.
   const [rawModal, setRawModal] = useState<{ slug: string; title: string; highlight: ClaimSpan } | null>(null);
 
   async function loadClaims(s: AnswerSource) {
     if (claimsBySource[s.source_id]) return; // cached or in-flight
+    if (s.claim_ids.length === 0) {
+      setClaimsBySource((p) => ({ ...p, [s.source_id]: [] }));
+      return;
+    }
     setClaimsBySource((p) => ({ ...p, [s.source_id]: "loading" }));
     try {
-      const nodeId = s.source_id.startsWith("source:") ? s.source_id : `source:${s.source_id}`;
-      const detail = await api.getWikiNodeDetail(nodeId);
-      const want = new Set(s.claim_ids);
-      const claims = detail.claims.filter((c) => want.has(c.id));
+      // Fetch exactly the cited claims by id (not a source's first-N window), so claims
+      // cited beyond the node-detail cap still show up.
+      const claims = await api.getClaimsByIds(s.claim_ids);
       setClaimsBySource((p) => ({ ...p, [s.source_id]: claims }));
-      if (detail.slug) setSlugBySource((p) => ({ ...p, [s.source_id]: detail.slug! }));
     } catch {
       setClaimsBySource((p) => ({ ...p, [s.source_id]: "error" }));
     }
   }
 
   function openDoc(s: AnswerSource, claim: NodeDetailClaim, title: string) {
-    const slug = slugBySource[s.source_id];
+    const slug = sourcesData[s.source_id]?.slug;
     if (slug && claim.span) {
       setRawModal({ slug, title, highlight: claim.span });
     }
@@ -259,7 +260,7 @@ export function ChatWithTracePanel() {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<QueryTrace[]>(loadHistory);
   const [error, setError] = useState<string | null>(null);
-  const [sourcesData, setSourcesData] = useState<Record<string, { title: string; summary: string }>>({});
+  const [sourcesData, setSourcesData] = useState<Record<string, { title: string; summary: string; slug: string }>>({});
   const [revealedStages, setRevealedStages] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -278,8 +279,8 @@ export function ChatWithTracePanel() {
   // Load source data on mount
   useEffect(() => {
     api.listWikiSources().then((sources) => {
-      const map: Record<string, { title: string; summary: string }> = {};
-      for (const s of sources) map[s.id] = { title: s.title, summary: s.summary ?? "" };
+      const map: Record<string, { title: string; summary: string; slug: string }> = {};
+      for (const s of sources) map[s.id] = { title: s.title, summary: s.summary ?? "", slug: s.slug };
       setSourcesData(map);
     }).catch(() => {
       // Non-fatal: fall back to raw IDs
