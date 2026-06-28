@@ -253,6 +253,33 @@ def test_get_source_raw_missing_raw_file_returns_404(client, tmp_path):
     assert response.status_code == 404
 
 
+def test_get_claims_by_id_returns_requested_claims_with_span(client, tmp_path):
+    from unittest.mock import patch
+    from models.wiki_models import Claim, Span
+
+    store = WikiStore(root=tmp_path)
+    store.append_claim(Claim(id="cl_001", text="A fact.", subject_id="entity:e_001", source_id="src_001",
+                             span=Span(start=2, end=5, text="fac"), confidence=0.9, polarity="asserts"))
+    store.append_claim(Claim(id="cl_002", text="B fact.", subject_id="entity:e_002", source_id="src_001",
+                             span=Span(start=0, end=1, text="B"), confidence=0.8, polarity="denies"))
+
+    with patch("api.wiki._get_store", return_value=store):
+        resp = client.get("/api/wiki/claims-by-id?ids=cl_002,cl_999")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1  # cl_999 missing -> skipped
+    assert data[0]["id"] == "cl_002"
+    assert data[0]["span"] == {"start": 0, "end": 1, "text": "B"}
+    assert data[0]["polarity"] == "denies"
+
+
+def test_get_claims_by_id_empty_returns_empty(client):
+    resp = client.get("/api/wiki/claims-by-id?ids=")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
 def test_get_wiki_node_detail_invalid_id_returns_400(client):
     response = client.get("/api/wiki/node-detail?id=invalidnoprefix")
     assert response.status_code == 400

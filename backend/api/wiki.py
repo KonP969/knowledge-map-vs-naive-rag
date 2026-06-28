@@ -145,6 +145,29 @@ def get_source_raw(slug: str):
     return {"slug": slug, "title": src.title, "raw_text": raw_text}
 
 
+@router.get("/claims-by-id", response_model=List[Dict[str, Any]])
+def get_claims_by_id(ids: str = ""):
+    """Return the exact claims for the comma-separated ids (with span), preserving request
+    order. Missing ids are skipped. Used by the chat 'Pokaż fragmenty' view so it can show the
+    precisely cited claims even when they fall outside a source's first-N node-detail window."""
+    store = _get_store()
+    wanted = [i.strip() for i in ids.split(",") if i.strip()]
+    if not wanted:
+        return []
+    wanted_set = set(wanted)
+    by_id = {c.id: c for c in store.read_all_claims() if c.id in wanted_set}
+    result: List[Dict[str, Any]] = []
+    for cid in wanted:
+        c = by_id.get(cid)
+        if c:
+            result.append({
+                "id": c.id, "text": c.text, "confidence": c.confidence,
+                "polarity": c.polarity, "source_id": c.source_id,
+                "span": {"start": c.span.start, "end": c.span.end, "text": c.span.text},
+            })
+    return result
+
+
 @router.get("/node-detail", response_model=Dict[str, Any])
 def get_wiki_node_detail(id: str):
     """
