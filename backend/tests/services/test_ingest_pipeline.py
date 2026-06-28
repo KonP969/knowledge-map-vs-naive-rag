@@ -9,6 +9,12 @@ from models.ingest_models import (
 from models.wiki_models import Span
 
 
+@pytest.fixture(autouse=True)
+def _no_embed(monkeypatch):
+    # ingest now updates the semantic index; keep these unit tests offline/fast.
+    monkeypatch.setattr("services.ingest_pipeline.add_claims_to_index", lambda *a, **k: None)
+
+
 @pytest.fixture
 def store(tmp_path):
     return WikiStore(root=tmp_path)

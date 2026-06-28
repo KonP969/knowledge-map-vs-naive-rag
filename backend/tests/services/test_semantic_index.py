@@ -1,6 +1,8 @@
 from models.wiki_models import Claim, Span
 from services.wiki_store import WikiStore
-from services.semantic_index import build_claim_index, load_claim_index, claim_index_path
+from services.semantic_index import (
+    build_claim_index, load_claim_index, claim_index_path, add_claims_to_index,
+)
 
 
 def _claim(cid, text):
@@ -49,3 +51,27 @@ def test_build_empty_graph_is_safe(tmp_path):
     vs = build_claim_index(WikiStore(root=tmp_path), embed_fn=_fake_embed)
     assert len(vs) == 0
     assert load_claim_index(WikiStore(root=tmp_path)).ids == []
+
+
+def test_add_claims_appends_to_existing_index(tmp_path):
+    store = WikiStore(root=tmp_path)
+    store.append_claim(_claim("cl_001", "alpha"))
+    build_claim_index(store, embed_fn=_fake_embed)
+    new = _claim("cl_002", "beta")
+    store.append_claim(new)
+    add_claims_to_index(store, [new], embed_fn=_fake_embed)
+    assert sorted(load_claim_index(store).ids) == ["cl_001", "cl_002"]
+
+
+def test_add_claims_creates_index_when_absent(tmp_path):
+    store = WikiStore(root=tmp_path)
+    add_claims_to_index(store, [_claim("cl_001", "alpha")], embed_fn=_fake_embed)
+    assert load_claim_index(store).ids == ["cl_001"]
+
+
+def test_add_claims_skips_already_indexed(tmp_path):
+    store = WikiStore(root=tmp_path)
+    c = _claim("cl_001", "alpha")
+    add_claims_to_index(store, [c], embed_fn=_fake_embed)
+    add_claims_to_index(store, [c], embed_fn=_fake_embed)
+    assert load_claim_index(store).ids == ["cl_001"]  # no duplicate

@@ -13,6 +13,7 @@ from services.conflict_detector import detect_conflicts
 from services.wiki_store import WikiStore
 from services.wiki_index import regenerate_index
 from services.wiki_log import append_log_entry
+from services.semantic_index import add_claims_to_index
 
 
 def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
@@ -109,6 +110,13 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
         )
 
         regenerate_index(store)
+
+        # Keep the semantic index in sync with this source's new claims (non-fatal:
+        # ingest must still succeed if embedding is unavailable).
+        try:
+            add_claims_to_index(store, resolved["claims"])
+        except Exception:
+            pass
 
         return IngestResult(
             source_id=source_id,
