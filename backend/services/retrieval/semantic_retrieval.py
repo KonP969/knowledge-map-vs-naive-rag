@@ -69,6 +69,7 @@ def semantic_candidates(
     claims_by_id = {c.id: c for c in store.read_all_claims()}
     index = _load_index(store)
     ent_by_id = {e["id"]: e for e in index.get("entities", [])}
+    ent_by_slug = {e["slug"]: e for e in index.get("entities", [])}
     con_by_id = {c["id"]: c for c in index.get("concepts", [])}
     con_by_slug = {c["slug"]: c for c in index.get("concepts", [])}
     src_by_id = {s["id"]: s for s in index.get("sources", [])}
@@ -83,8 +84,9 @@ def semantic_candidates(
         kind, node = None, None
         if subj.startswith("entity:"):
             inner = subj.split(":", 1)[1]
-            if inner in ent_by_id:
-                kind, node = "entity", ent_by_id[inner]
+            node = ent_by_id.get(inner) or ent_by_slug.get(inner)  # id, or slug (dangling-by-id)
+            if node:
+                kind = "entity"
         elif subj.startswith("concept:"):
             inner = subj.split(":", 1)[1]
             node = con_by_id.get(inner) or con_by_slug.get(inner)

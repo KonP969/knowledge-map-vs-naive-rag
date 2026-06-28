@@ -72,6 +72,30 @@ def test_semantic_recall_returns_subject_entity_with_claim_ids(tmp_path):
     assert all("e_002" not in c.artifact_id for c in cands)
 
 
+def test_subject_matching_entity_slug_resolves_to_entity(tmp_path):
+    # Claims whose subject_id is the entity SLUG (dangling-by-id) must still anchor to the
+    # real entity, not fall back to the source.
+    store = WikiStore(root=tmp_path)
+    store.write_source(Source(
+        id="src_001", title="Catalog", type="pdf", raw_path="raw/c/parsed.md",
+        ingested_at=datetime(2026, 6, 1), summary="S", key_takeaways=[], questions=[], tags=[],
+    ), slug="catalog")
+    store.write_entity(Entity(
+        id="e_077", type="Product", aliases=[], description="A door model.",
+        mentions_count=1, questions=[], tags=[],
+    ), slug="porta-vector-premium")
+    store.append_claim(Claim(
+        id="cl_001", text="Porta Vector Premium has an aluminum frame.",
+        subject_id="entity:porta-vector-premium", source_id="src_001",
+        span=Span(start=0, end=5, text="Porta"), confidence=0.9, polarity="asserts",
+    ))
+    regenerate_index(store)
+    vs = build_claim_index(store, embed_fn=_embed)
+    cands = semantic_candidates("frame", store, vector_store=vs, embed_fn=_embed, top_k_claims=1)
+    assert cands[0].artifact_id == "entity:e_077"
+    assert "cl_001" in cands[0].claim_ids
+
+
 def test_dangling_subject_falls_back_to_source(tmp_path):
     store = WikiStore(root=tmp_path)
     store.write_source(Source(
