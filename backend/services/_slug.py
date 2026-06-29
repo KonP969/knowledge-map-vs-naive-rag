@@ -1,6 +1,10 @@
 import re
 import unicodedata
 
+# Cap slug length so raw/<slug>/parsed.md stays under the Windows MAX_PATH (260) limit —
+# long PDF filenames (e.g. book titles) otherwise produce 150+ char slugs that fail to write.
+_MAX_SLUG_LEN = 80
+
 _CHAR_MAP = str.maketrans({
     "Ł": "l", "ł": "l",
     "Ø": "o", "ø": "o",
@@ -25,6 +29,12 @@ def slugify(text: str) -> str:
 
     if not collapsed:
         raise ValueError(f"Slugification of {text!r} produced empty result")
+
+    if len(collapsed) > _MAX_SLUG_LEN:
+        truncated = collapsed[:_MAX_SLUG_LEN]
+        if "-" in truncated:
+            truncated = truncated.rsplit("-", 1)[0]  # cut back to the last whole word
+        collapsed = truncated.strip("-") or collapsed[:_MAX_SLUG_LEN].strip("-")
     return collapsed
 
 
