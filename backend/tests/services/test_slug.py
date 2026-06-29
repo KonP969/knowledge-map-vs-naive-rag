@@ -1,4 +1,14 @@
 import pytest
+
+
+def test_slugify_caps_long_filenames_at_word_boundary():
+    from services._slug import slugify
+    long_name = ("Atomic Habits The life-changing million copy bestseller -- James Clear "
+                 "-- 2018 -- Random House Business -- 9781473537804 -- annas-archive")
+    s = slugify(long_name)
+    assert len(s) <= 80          # short enough to keep the raw/<slug>/ path under Windows MAX_PATH
+    assert not s.endswith("-") and not s.startswith("-")
+    assert s.startswith("atomic-habits")
 from services._slug import slugify, ensure_unique
 
 
