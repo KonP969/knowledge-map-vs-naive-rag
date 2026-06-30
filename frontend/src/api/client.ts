@@ -45,6 +45,10 @@ export const api = {
     request<import("../types").NodeDetailClaim[]>(
       `/wiki/claims-by-id?ids=${encodeURIComponent(ids.join(","))}`
     ),
+  getClaimContext: (claimId: string, window = 400) =>
+    request<import("../types").ClaimContext>(
+      `/wiki/claim-context?id=${encodeURIComponent(claimId)}&window=${window}`
+    ),
 
   // Lint
   runLint: (includeSemantic = false) =>
