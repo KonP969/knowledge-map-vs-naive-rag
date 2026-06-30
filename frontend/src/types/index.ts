@@ -182,6 +182,17 @@ export interface ClaimSpan {
   text: string;
 }
 
+export interface ClaimContext {
+  claim_id: string;
+  source_id: string;
+  slug: string | null;
+  source_title: string | null;
+  before: string;
+  match: string;
+  after: string;
+  located: boolean;
+}
+
 export interface NodeDetailClaim {
   id: string;
   text: string;

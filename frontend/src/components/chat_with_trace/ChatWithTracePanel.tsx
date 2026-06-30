@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Brain, Filter, CheckSquare, Layers, Sparkles, Clock, AlertCircle, Trash2, ChevronRight, ChevronDown, FileSearch } from "lucide-react";
+import { Send, Brain, Filter, CheckSquare, Layers, Sparkles, Clock, AlertCircle, Trash2, ChevronRight, ChevronDown, FileSearch, X } from "lucide-react";
 import { api } from "../../api/client";
-import { SourceRawModal } from "../wiki/SourceRawModal";
-import type { QueryTrace, RetrievalStageTrace, AnswerSource, NodeDetailClaim, ClaimSpan } from "../../types";
+import type { QueryTrace, RetrievalStageTrace, AnswerSource, NodeDetailClaim, ClaimContext } from "../../types";
 
 const POLARITY_COLOR: Record<string, string> = {
   asserts: "text-green-600 dark:text-green-400",
@@ -67,8 +66,8 @@ function ChatEntry({
   const [claimsBySource, setClaimsBySource] = useState<
     Record<string, NodeDetailClaim[] | "loading" | "error">
   >({});
-  // Open raw-text modal scrolled+highlighted to a specific claim's fragment.
-  const [rawModal, setRawModal] = useState<{ slug: string; title: string; highlight: ClaimSpan } | null>(null);
+  // Fragment-in-context snippet (not the whole document).
+  const [snippet, setSnippet] = useState<(ClaimContext & { title: string }) | null>(null);
 
   async function loadClaims(s: AnswerSource) {
     if (claimsBySource[s.source_id]) return; // cached or in-flight
@@ -87,10 +86,12 @@ function ChatEntry({
     }
   }
 
-  function openDoc(s: AnswerSource, claim: NodeDetailClaim, title: string) {
-    const slug = sourcesData[s.source_id]?.slug;
-    if (slug && claim.span) {
-      setRawModal({ slug, title, highlight: claim.span });
+  async function openDoc(claim: NodeDetailClaim, title: string) {
+    try {
+      const ctx = await api.getClaimContext(claim.id);
+      setSnippet({ ...ctx, title });
+    } catch {
+      // ignore — button just won't open
     }
   }
 
@@ -201,7 +202,7 @@ function ChatEntry({
                   </button>
                   {isOpen && (
                     <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/20 space-y-1.5">
-                      {renderClaims(claims, (c) => openDoc(s, c, src?.title ?? s.source_id))}
+                      {renderClaims(claims, (c) => openDoc(c, src?.title ?? s.source_id))}
                     </div>
                   )}
                 </div>
@@ -243,13 +244,37 @@ function ChatEntry({
         <span>{trace.total_llm_calls} LLM calls</span>
         <span>{trace.candidates_count} candidates → {trace.selected_count} selected</span>
       </div>
-      {rawModal && (
-        <SourceRawModal
-          slug={rawModal.slug}
-          title={rawModal.title}
-          highlight={rawModal.highlight}
-          onClose={() => setRawModal(null)}
-        />
+      {snippet && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setSnippet(null)}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[70vh] flex flex-col rounded-lg border border-border bg-card shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+              <span className="text-sm font-medium truncate" title={snippet.title}>
+                Fragment w dokumencie: {snippet.title}
+              </span>
+              <button onClick={() => setSnippet(null)} className="ml-2 text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              {!snippet.located && (
+                <p className="text-xs text-amber-500 mb-2">
+                  Nie udało się dokładnie zlokalizować fragmentu w oryginale (artefakty PDF) — pokazuję wyodrębniony fragment.
+                </p>
+              )}
+              <p className="text-xs leading-relaxed whitespace-pre-wrap break-words font-mono text-foreground">
+                {snippet.located && <span className="text-muted-foreground/60">…{snippet.before}</span>}
+                <mark className="bg-primary/25 text-foreground rounded-sm px-0.5">{snippet.match}</mark>
+                {snippet.located && <span className="text-muted-foreground/60">{snippet.after}…</span>}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
