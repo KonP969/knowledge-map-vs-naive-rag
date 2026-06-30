@@ -280,6 +280,42 @@ def test_get_claims_by_id_empty_returns_empty(client):
     assert resp.json() == []
 
 
+def test_get_claim_context_returns_window_around_fragment(client, tmp_path):
+    from unittest.mock import patch
+    from models.wiki_models import Claim, Span
+
+    store = WikiStore(root=tmp_path)
+    src = Source(id="src_001", title="Book", type="pdf", raw_path="raw/book/parsed.md",
+                 ingested_at=datetime(2026, 6, 1), summary="S", key_takeaways=[], questions=[], tags=[])
+    store.write_source(src, slug="book")
+    raw_file = store.root / "raw" / "book" / "parsed.md"
+    raw_file.parent.mkdir(parents=True, exist_ok=True)
+    # PDF artifact "Pe nguin" — locate must still find the clean span text
+    raw_file.write_text("AAAA Pe nguin supports copyright. BBBB", encoding="utf-8")
+    store.append_claim(Claim(id="cl_001", text="...", subject_id="entity:e_001", source_id="src_001",
+                             span=Span(start=999, end=1000, text="Penguin supports copyright"),
+                             confidence=0.9, polarity="asserts"))
+
+    with patch("api.wiki._get_store", return_value=store):
+        resp = client.get("/api/wiki/claim-context?id=cl_001&window=5")
+
+    assert resp.status_code == 200
+    d = resp.json()
+    assert d["located"] is True
+    assert d["match"].replace(" ", "") == "Penguinsupportscopyright"
+    assert d["source_title"] == "Book"
+    assert d["slug"] == "book"
+    assert "AAAA" in d["before"]
+
+
+def test_get_claim_context_missing_claim_returns_404(client, tmp_path):
+    from unittest.mock import patch
+    store = WikiStore(root=tmp_path)
+    with patch("api.wiki._get_store", return_value=store):
+        resp = client.get("/api/wiki/claim-context?id=cl_999")
+    assert resp.status_code == 404
+
+
 def test_get_wiki_node_detail_invalid_id_returns_400(client):
     response = client.get("/api/wiki/node-detail?id=invalidnoprefix")
     assert response.status_code == 400

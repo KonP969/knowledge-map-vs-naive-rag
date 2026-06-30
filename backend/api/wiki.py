@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.wiki_store import WikiStore, ENTITIES_DIR, CONCEPTS_DIR
+from services.span_locate import locate_span
 
 router = APIRouter(prefix="/api/wiki", tags=["wiki"])
 
@@ -164,6 +165,41 @@ def get_claims_by_id(ids: str = ""):
                 "id": c.id, "text": c.text, "confidence": c.confidence,
                 "polarity": c.polarity, "source_id": c.source_id,
                 "span": {"start": c.span.start, "end": c.span.end, "text": c.span.text},
+            })
+    return result
+
+
+@router.get("/claim-context", response_model=Dict[str, Any])
+def get_claim_context(id: str, window: int = 400):
+    """Return the cited claim's fragment WITH a small window of surrounding raw text, instead
+    of the whole document. `located` is False (match = the clean span text) when the fragment
+    can't be found in the raw (e.g. heavy PDF artifacts)."""
+    store = _get_store()
+    claim = next((c for c in store.read_all_claims() if c.id == id), None)
+    if claim is None:
+        raise HTTPException(status_code=404, detail=f"Claim '{id}' not found")
+
+    slug = title = None
+    for s in store.list_sources():
+        src = store.read_source(s)
+        if src and src.id == claim.source_id:
+            slug, title = s, src.title
+            break
+
+    result: Dict[str, Any] = {
+        "claim_id": id, "source_id": claim.source_id, "slug": slug, "source_title": title,
+        "before": "", "match": claim.span.text, "after": "", "located": False,
+    }
+    raw = store.read_raw_text(slug) if slug else None
+    if raw:
+        loc = locate_span(raw, claim.span.text)
+        if loc:
+            s0, e0 = loc
+            result.update({
+                "located": True,
+                "before": raw[max(0, s0 - window):s0],
+                "match": raw[s0:e0],
+                "after": raw[e0:e0 + window],
             })
     return result
 
