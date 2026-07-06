@@ -10,8 +10,8 @@ from trafilatura import feeds as _tf_feeds
 from trafilatura import sitemaps as _tf_sitemaps
 
 _BLOCKED_SEGMENTS = frozenset({
-    "tag", "category", "author", "wp-admin", "feed",
-    "search", "cart", "shop", "page",
+    "tag", "tags", "category", "author", "wp-admin", "feed", "atom", "rss",
+    "search", "cart", "shop", "page", "about",
 })
 _BLOCKED_EXTENSIONS = frozenset({
     ".pdf", ".jpg", ".jpeg", ".png", ".gif",
@@ -126,6 +126,16 @@ def _detect_failure_cause(raw: Optional[str]) -> str:
     return "Nie udało się pobrać treści artykułów. Sprawdź URL lub spróbuj później."
 
 
+def _extract_page_as_article(url: str, raw: str) -> Optional[dict]:
+    """Extract an already-fetched page as a single article, or None if too thin."""
+    text = trafilatura.extract(raw, output_format="markdown", include_comments=False, include_tables=True)
+    if not text or len(text.strip()) < 100:
+        return None
+    title = trafilatura.extract(raw, output_format="txt", include_comments=False) or url
+    title = title.split("\n")[0][:100]
+    return {"url": url, "title": title, "text": text, "word_count": len(text.split())}
+
+
 def crawl_url(url: str, max_articles: int = 5) -> dict:
     """
     Crawl a blog URL and return extracted articles.
@@ -147,11 +157,9 @@ def crawl_url(url: str, max_articles: int = 5) -> dict:
     urls = _discover_article_urls(url, max_articles)
     if not urls:
         # Maybe the URL itself IS an article (single page)
-        text = trafilatura.extract(raw, output_format="markdown", include_comments=False, include_tables=True)
-        if text and len(text.strip()) >= 100:
-            title = trafilatura.extract(raw, output_format="txt", include_comments=False) or url
-            title = title.split("\n")[0][:100]
-            return {"articles": [{"url": url, "title": title, "text": text, "word_count": len(text.split())}], "discovered": 1, "error": None}
+        single = _extract_page_as_article(url, raw)
+        if single:
+            return {"articles": [single], "discovered": 1, "error": None}
         cause = _detect_failure_cause(raw)
         return {"articles": [], "discovered": 0, "error": cause}
 
@@ -176,6 +184,11 @@ def crawl_url(url: str, max_articles: int = 5) -> dict:
         })
 
     if not articles:
+        # Discovered links can all be bogus (nav anchors, image sub-pages) while the
+        # URL itself is a perfectly good article — fall back to extracting the page.
+        single = _extract_page_as_article(url, raw)
+        if single:
+            return {"articles": [single], "discovered": len(urls), "error": None}
         return {"articles": [], "discovered": len(urls), "error": _detect_failure_cause(raw)}
 
     return {"articles": articles, "discovered": len(urls), "error": None}

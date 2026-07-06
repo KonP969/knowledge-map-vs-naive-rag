@@ -168,3 +168,21 @@ def test_pipeline_returns_error_on_parse_failure(store):
 def run_ingest(file_path, store):
     from services.ingest_pipeline import ingest_source
     return ingest_source(file_path=file_path, store=store)
+
+
+def test_pipeline_logs_warning_when_semantic_index_update_fails(txt_file, store, monkeypatch, caplog):
+    # The embed hook is non-fatal, but it must not fail silently: a swallowed
+    # exception left the semantic index stale with no trace (blog-ingest regression).
+    import logging
+
+    def _boom(*a, **k):
+        raise RuntimeError("embedding backend down")
+
+    monkeypatch.setattr("services.ingest_pipeline.add_claims_to_index", _boom)
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
+        with caplog.at_level(logging.WARNING):
+            from services.ingest_pipeline import ingest_source
+            result = ingest_source(file_path=txt_file, store=store)
+
+    assert result.status == "ok"  # still non-fatal
+    assert any("semantic index" in r.message.lower() for r in caplog.records)

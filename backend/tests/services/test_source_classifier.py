@@ -165,3 +165,46 @@ def test_classify_source_claims_present():
 
     assert len(result.claims) == 1
     assert result.claims[0].polarity == "asserts"
+
+
+# ── document language detection ───────────────────────────────────────────────
+# English blog articles were getting Polish takeaways: the prompt-only "same
+# language" instruction is ignored, so the language must be detected and named
+# explicitly in the message sent to the model.
+
+from services.source_classifier import detect_document_language, _build_messages
+
+_EN_TEXT = (
+    "This is a brief guide to the new project. The model learns patterns from the "
+    "data and generates names. It was trained with a small budget and the code is "
+    "available on GitHub for anyone who wants to study how it works."
+)
+_PL_TEXT = (
+    "To jest krótki przewodnik po nowym projekcie. Model uczy się wzorców z danych "
+    "i generuje imiona. Został wytrenowany niewielkim kosztem, a kod jest dostępny "
+    "na GitHubie dla każdego, kto chce zobaczyć jak działa."
+)
+
+
+def test_detects_english_document():
+    assert detect_document_language(_EN_TEXT) == "English"
+
+
+def test_detects_polish_document():
+    assert detect_document_language(_PL_TEXT) == "Polish"
+
+
+def test_unknown_language_returns_none():
+    assert detect_document_language("42 108 7 xyzzy qwfp 9") is None
+
+
+def test_messages_name_detected_language_explicitly():
+    messages = _build_messages(_EN_TEXT)
+    joined = " ".join(m["content"] for m in messages)
+    assert "English" in joined
+
+
+def test_messages_for_polish_document_name_polish():
+    messages = _build_messages(_PL_TEXT)
+    joined = " ".join(m["content"] for m in messages)
+    assert "Polish" in joined

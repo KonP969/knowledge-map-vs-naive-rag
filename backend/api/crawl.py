@@ -6,6 +6,7 @@ from typing import Iterator, Optional
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from services._slug import slugify
 from services.web_crawler import crawl_url
 from services.ingest_pipeline import ingest_source
 from services.wiki_store import WikiStore
@@ -51,14 +52,18 @@ def _generate_crawl_events(req: CrawlRequest) -> Iterator[str]:
         yield _sse({"event": "article_start", "index": i, "title": article["title"], "url": article["url"]})
 
         try:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".txt", delete=False, encoding="utf-8"
-            ) as tmp:
-                tmp.write(f"# {article['title']}\n\n{article['text']}")
-                tmp_path = Path(tmp.name)
-
-            ingest_result = ingest_source(file_path=tmp_path, store=store)
-            tmp_path.unlink(missing_ok=True)
+            # The ingested filename drives the source slug — derive it from the
+            # article title (a NamedTemporaryFile name gives slugs like 'tmpek833q').
+            try:
+                filename = slugify(article["title"])[:80] + ".txt"
+            except ValueError:
+                filename = "article.txt"
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_path = Path(tmp_dir) / filename
+                tmp_path.write_text(
+                    f"# {article['title']}\n\n{article['text']}", encoding="utf-8"
+                )
+                ingest_result = ingest_source(file_path=tmp_path, store=store)
 
             if ingest_result.status == "error":
                 failed += 1
