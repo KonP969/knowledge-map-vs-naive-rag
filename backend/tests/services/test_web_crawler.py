@@ -40,7 +40,58 @@ def test_filter_dedupes_and_strips_query_fragment():
     assert _filter_article_urls(candidates, listing) == ["https://b.com/blog/post-one"]
 
 
+def test_filter_excludes_feed_urls():
+    # /atom/... and /rss/... are feeds, not articles (simonwillison.net regression)
+    listing = "https://simonwillison.net"
+    candidates = [
+        "https://simonwillison.net/atom/everything",
+        "https://simonwillison.net/rss/entries",
+        "https://simonwillison.net/2026/some-real-post",
+    ]
+    kept = _filter_article_urls(candidates, listing)
+    assert kept == ["https://simonwillison.net/2026/some-real-post"]
+
+
+def test_filter_excludes_tags_and_about_pages():
+    listing = "https://simonwillison.net"
+    candidates = [
+        "https://simonwillison.net/tags/prompt-injection",
+        "https://simonwillison.net/about",
+        "https://simonwillison.net/2026/some-real-post",
+    ]
+    kept = _filter_article_urls(candidates, listing)
+    assert kept == ["https://simonwillison.net/2026/some-real-post"]
+
+
 import services.web_crawler as wc
+
+
+def test_crawl_falls_back_to_page_itself_when_discovered_links_yield_nothing(monkeypatch):
+    # jamesclear.com/habit-stacking regression: discovery finds one bogus sub-link,
+    # its fetch fails, and the page itself (a valid article) must still be extracted.
+    listing = "https://b.com/blog/habit-stacking"
+    page_raw = "<html>" + "real article content " * 50 + "</html>"
+    article_text = "How to build habits. " * 20
+
+    monkeypatch.setattr(
+        wc.trafilatura, "fetch_url",
+        lambda u: page_raw if u == listing else None,
+    )
+    monkeypatch.setattr(
+        wc, "_discover_article_urls",
+        lambda u, m: ["https://b.com/blog/habit-stacking/habit-stacking-01"],
+    )
+    monkeypatch.setattr(
+        wc.trafilatura, "extract",
+        lambda raw, **kw: article_text,
+    )
+    monkeypatch.setattr(wc.time, "sleep", lambda s: None)
+
+    result = wc.crawl_url(listing, max_articles=1)
+
+    assert result["error"] is None
+    assert len(result["articles"]) == 1
+    assert result["articles"][0]["url"] == listing
 
 
 def test_discovery_uses_listing_order_newest_first(monkeypatch):

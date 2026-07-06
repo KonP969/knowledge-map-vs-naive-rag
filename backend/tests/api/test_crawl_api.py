@@ -79,6 +79,32 @@ def test_crawl_articles_found_reports_discovered_count(client, tmp_path):
     assert '"count": 1' in body  # extracted-articles count (progress-bar denominator)
 
 
+def test_crawl_ingest_filename_derives_from_article_title(client, tmp_path):
+    # Slug comes from the ingested filename; a tempfile name gives garbage slugs
+    # like 'tmpek833q' — the filename must derive from the article title instead.
+    from pathlib import Path
+    captured = {}
+
+    def capturing_ingest(file_path, store):
+        captured["name"] = Path(file_path).name
+        return IngestResult(
+            source_id="src_900", slug="x", status="ok",
+            entities_created=0, entities_merged=0, concepts_created=0, concepts_merged=0,
+            claims_added=0, edges_added=0, conflicts=[], duration_ms=1.0, llm_calls=0,
+        )
+
+    store = WikiStore(root=tmp_path)
+    fake_crawl = {"articles": [{"title": "Microgpt: A Guide!", "url": "http://x/a", "text": "body " * 50}], "error": None}
+    with patch("api.crawl.crawl_url", return_value=fake_crawl), \
+         patch("api.crawl._get_store", return_value=store), \
+         patch("api.crawl.ingest_source", side_effect=capturing_ingest):
+        resp = client.post("/api/crawl/ingest", json={"url": "http://x/blog", "max_articles": 1})
+        _ = resp.text
+    assert resp.status_code == 200
+    assert captured["name"].startswith("microgpt-a-guide")
+    assert captured["name"].endswith(".txt")
+
+
 def test_crawl_max_articles_accepts_100_rejects_101(client):
     with patch("api.crawl.crawl_url", return_value={"articles": [], "error": "stop"}):
         ok = client.post("/api/crawl/ingest", json={"url": "http://x/blog", "max_articles": 100})

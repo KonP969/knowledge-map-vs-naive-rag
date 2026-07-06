@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime
 from pathlib import Path
@@ -115,8 +116,11 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
         # ingest must still succeed if embedding is unavailable).
         try:
             add_claims_to_index(store, resolved["claims"])
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "semantic index update failed for %s — index is now stale, "
+                "run scripts/rebuild_embeddings.py (%s)", source_id, exc
+            )
 
         return IngestResult(
             source_id=source_id,

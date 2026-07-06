@@ -1,4 +1,5 @@
 import os
+import re
 import time
 from typing import Callable, Optional
 from openai import APIConnectionError, OpenAI
@@ -37,6 +38,52 @@ For entities and concepts: canonical name only — no duplicates.
 """
 
 
+# Unambiguous stopwords only — words that exist in one language but not the other
+# (e.g. no 'a', 'to', 'on', which are common to both).
+_PL_MARKERS = frozenset({
+    "się", "jest", "nie", "oraz", "dla", "jak", "że", "przez", "został",
+    "która", "który", "które", "był", "była", "było", "tego", "tym",
+    "na", "po", "z", "w", "od", "do", "co", "czy",
+})
+_EN_MARKERS = frozenset({
+    "the", "and", "is", "of", "was", "with", "that", "this", "from",
+    "for", "are", "it", "at", "by", "an", "be", "has", "have", "not",
+})
+_PL_DIACRITICS = re.compile(r"[ąćęłńóśźż]")
+
+
+def detect_document_language(text: str) -> Optional[str]:
+    """Heuristic language detection for the languages this corpus actually contains.
+    Returns "Polish"/"English", or None when the sample is too ambiguous."""
+    sample = text[:5000].lower()
+    if len(_PL_DIACRITICS.findall(sample)) >= 5:
+        return "Polish"
+    words = re.findall(r"[a-ząćęłńóśźż]+", sample)
+    pl = sum(1 for w in words if w in _PL_MARKERS)
+    en = sum(1 for w in words if w in _EN_MARKERS)
+    if pl >= 3 and pl > en:
+        return "Polish"
+    if en >= 3 and en > pl:
+        return "English"
+    return None
+
+
+def _build_messages(text: str) -> list:
+    """System + user messages; names the detected document language explicitly,
+    because the generic "same language as the document" instruction alone gets
+    ignored (English articles were coming back with Polish summaries)."""
+    language = detect_document_language(text)
+    lang_line = (
+        f"The document below is written in {language}. Write the title, description, "
+        f"tags, questions and key_takeaways in {language}.\n\n"
+        if language else ""
+    )
+    return [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "user", "content": f"{lang_line}DOCUMENT TEXT:\n\n{text}"},
+    ]
+
+
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
@@ -55,10 +102,7 @@ def classify_source(text: str, model: str = None) -> SourceClassification:
     client = _get_client()
     response = client.beta.chat.completions.parse(
         model=model,
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": f"DOCUMENT TEXT:\n\n{text}"},
-        ],
+        messages=_build_messages(text),
         response_format=SourceClassification,
     )
     result = response.choices[0].message.parsed
