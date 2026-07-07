@@ -276,6 +276,29 @@ class WikiStore:
         self._atomic_write(path, new_content)
         return removed
 
+    def next_source_id(self) -> str:
+        """Next source id that is guaranteed never to collide with an id still
+        referenced anywhere (sources or claims). Counting existing sources recycled
+        ids after delete_source, which made a later delete wipe another source's
+        claims that shared the recycled id."""
+        max_n = 0
+        for slug in self.list_sources():
+            src = self.read_source(slug)
+            if src is not None:
+                max_n = max(max_n, self._numeric_source_id(src.id))
+        for claim in self.read_all_claims():
+            max_n = max(max_n, self._numeric_source_id(claim.source_id))
+        return f"src_{max_n + 1:03d}"
+
+    @staticmethod
+    def _numeric_source_id(source_id: str) -> int:
+        if not source_id.startswith("src_"):
+            return 0
+        try:
+            return int(source_id[4:])
+        except ValueError:
+            return 0
+
     def delete_source(self, slug: str) -> Optional[str]:
         """Delete source file + all its claims and edges. Returns source_id if found, None if missing."""
         src = self.read_source(slug)
