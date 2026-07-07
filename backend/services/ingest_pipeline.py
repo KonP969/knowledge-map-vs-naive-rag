@@ -41,9 +41,8 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
         existing_slugs = set(store.list_sources())
         slug = ensure_unique(slug, existing_slugs)
 
-        # Generate source ID
-        source_count = len(existing_slugs) + 1
-        source_id = f"src_{source_count:03d}"
+        # Generate source ID (never recycle ids of deleted sources — see next_source_id)
+        source_id = store.next_source_id()
 
         # Stage 2: Classify (LLM). Large documents are chunked so extraction stays dense;
         # one LLM call per chunk.

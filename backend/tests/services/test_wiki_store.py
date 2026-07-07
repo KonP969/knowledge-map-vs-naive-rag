@@ -435,3 +435,34 @@ def test_update_concept_description_raises_when_missing(tmp_path):
     store = WikiStore(root=tmp_path)
     with pytest.raises(FileNotFoundError):
         store.update_concept_description("nope", "new def")
+
+
+# ── next_source_id: IDs must never be recycled ────────────────────────────────
+# Recycled IDs after delete_source made a later delete wipe another source's
+# claims (data-loss incident): new id must exceed every id still referenced.
+
+def test_next_source_id_starts_at_one(tmp_path):
+    store = WikiStore(root=tmp_path)
+    assert store.next_source_id() == "src_001"
+
+
+def test_next_source_id_exceeds_existing_sources(tmp_path):
+    from datetime import datetime
+    from models.wiki_models import Source
+    store = WikiStore(root=tmp_path)
+    store.write_source(Source(
+        id="src_002", title="B", type="txt", raw_path="raw/b/parsed.md",
+        ingested_at=datetime(2026, 1, 1), summary="s",
+        key_takeaways=[], questions=[], tags=[],
+    ), slug="b")
+    assert store.next_source_id() == "src_003"
+
+
+def test_next_source_id_exceeds_orphaned_claim_source_ids(tmp_path):
+    from models.wiki_models import Claim, Span
+    store = WikiStore(root=tmp_path)
+    store.append_claim(Claim(
+        id="cl_001", text="x", subject_id="concept:c_001", source_id="src_007",
+        span=Span(start=0, end=1, text="x"), confidence=1.0, polarity="asserts",
+    ))
+    assert store.next_source_id() == "src_008"
