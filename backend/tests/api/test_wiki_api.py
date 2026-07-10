@@ -428,3 +428,26 @@ def test_get_wiki_node_detail_includes_claims_and_edges(client, tmp_path):
     assert data["claims"][0]["span"] == {"start": 0, "end": 14, "text": "Room is neutral."}
     assert len(data["edges"]) == 1
     assert data["edges"][0]["id"] == "edge_001"
+
+
+def test_delete_source_prunes_its_claims_from_semantic_index(client, tmp_path):
+    # Deleting a source must also drop its claim vectors, or the index keeps stale
+    # vectors whose ids get recycled on the next ingest (wrong semantic results).
+    from unittest.mock import patch
+    from models.wiki_models import Claim, Span
+    from services.semantic_index import add_claims_to_index, load_claim_index
+
+    store = WikiStore(root=tmp_path)
+    _make_source(store, "doomed", "src_001")
+    claim = Claim(id="cl_001", text="doomed fact", subject_id="concept:c_001",
+                  source_id="src_001", span=Span(start=0, end=1, text="x"),
+                  confidence=1.0, polarity="asserts")
+    store.append_claim(claim)
+    add_claims_to_index(store, [claim], embed_fn=lambda batch: [[1.0, 0.0] for _ in batch])
+
+    assert "cl_001" in load_claim_index(store)
+
+    with patch("api.wiki._get_store", return_value=store):
+        resp = client.delete("/api/wiki/source/doomed")
+    assert resp.status_code == 200
+    assert "cl_001" not in load_claim_index(store)

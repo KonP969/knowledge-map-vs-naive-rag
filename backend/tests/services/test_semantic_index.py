@@ -75,3 +75,19 @@ def test_add_claims_skips_already_indexed(tmp_path):
     add_claims_to_index(store, [c], embed_fn=_fake_embed)
     add_claims_to_index(store, [c], embed_fn=_fake_embed)
     assert load_claim_index(store).ids == ["cl_001"]  # no duplicate
+
+
+def test_remove_claims_from_index_prunes_and_persists(tmp_path):
+    from services.semantic_index import (
+        add_claims_to_index, remove_claims_from_index, load_claim_index,
+    )
+    store = WikiStore(root=tmp_path)
+    add_claims_to_index(
+        store,
+        [_claim("cl_001", "alpha"), _claim("cl_002", "beta"), _claim("cl_003", "gamma")],
+        embed_fn=_fake_embed,
+    )
+    vs = remove_claims_from_index(store, ["cl_002"])
+    assert set(vs.ids) == {"cl_001", "cl_003"}
+    # persisted to disk, not just in memory
+    assert set(load_claim_index(store).ids) == {"cl_001", "cl_003"}
