@@ -45,3 +45,30 @@ def test_len_and_ids_track_additions():
     vs.add(["b"], [[0, 1]])
     assert len(vs) == 2
     assert vs.ids == ["a", "b"]
+
+
+def test_remove_drops_rows_by_id():
+    vs = VectorStore()
+    vs.add(["a", "b", "c"], [[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    removed = vs.remove(["b"])
+    assert removed == 1
+    assert vs.ids == ["a", "c"]
+    # surviving vectors still search correctly
+    assert vs.search([0, 0, 1], top_k=1)[0][0] == "c"
+    # removed id is gone
+    assert "b" not in vs
+
+
+def test_remove_ignores_unknown_ids():
+    vs = VectorStore()
+    vs.add(["a"], [[1, 0]])
+    assert vs.remove(["nope"]) == 0
+    assert vs.ids == ["a"]
+
+
+def test_remove_all_leaves_empty_store():
+    vs = VectorStore()
+    vs.add(["a", "b"], [[1, 0], [0, 1]])
+    assert vs.remove(["a", "b"]) == 2
+    assert vs.ids == []
+    assert vs.search([1, 0], top_k=1) == []

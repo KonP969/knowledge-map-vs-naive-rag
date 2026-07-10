@@ -139,6 +139,75 @@ def test_discovery_caps_at_max_articles(monkeypatch):
     assert len(out) == 3
 
 
+class _FakeMeta:
+    def __init__(self, title):
+        self.title = title
+
+
+def test_extract_title_prefers_page_metadata_over_first_body_line(monkeypatch):
+    # measureschool regression: articles open with an intro sentence, so first-line
+    # extraction produced titles like "It's not always clear whether...". The page's
+    # <title>/H1 metadata is the real title and must win.
+    monkeypatch.setattr(wc.trafilatura, "extract_metadata",
+                        lambda raw: _FakeMeta("Customer Engagement Analytics: A Guide"))
+    monkeypatch.setattr(wc.trafilatura, "extract",
+                        lambda raw, **kw: "It's not always clear whether your audience is engaged.")
+    title = wc._extract_title("<html/>", "https://b.com/customer-engagement-analytics")
+    assert title == "Customer Engagement Analytics: A Guide"
+
+
+def test_extract_title_falls_back_to_first_line_when_no_metadata(monkeypatch):
+    monkeypatch.setattr(wc.trafilatura, "extract_metadata", lambda raw: _FakeMeta(None))
+    monkeypatch.setattr(wc.trafilatura, "extract",
+                        lambda raw, **kw: "A Real First Line\nsecond line")
+    title = wc._extract_title("<html/>", "https://b.com/some-post")
+    assert title == "A Real First Line"
+
+
+def test_extract_title_falls_back_to_url_slug_when_nothing_else(monkeypatch):
+    monkeypatch.setattr(wc.trafilatura, "extract_metadata", lambda raw: None)
+    monkeypatch.setattr(wc.trafilatura, "extract", lambda raw, **kw: "")
+    title = wc._extract_title("<html/>", "https://b.com/blog/my-post-slug/")
+    assert title == "my-post-slug"
+
+
+def test_discovery_relaxed_fallback_to_root_level_articles(monkeypatch):
+    # Common WordPress layout: the /blog listing links to posts that live at the
+    # domain root (not under /blog). Strict prefix filtering yields nothing, so a
+    # relaxed pass keeps same-domain hyphenated article slugs, dropping single-word
+    # nav pages. (measureschool.com/blog regression.)
+    listing = "https://b.com/blog"
+    monkeypatch.setattr(wc, "_scrape_listing_links", lambda u: [
+        "https://b.com/customer-analytics-strategy",
+        "https://b.com/ga4-regex-tutorial",
+        "https://b.com/services",                       # single-word nav -> excluded
+        "https://b.com/services/analytics-consulting",  # section subpage (2 seg) -> excluded
+        "https://b.com/category/analytics",             # blocked segment
+        "https://other.com/some-article",               # off-domain
+    ])
+    monkeypatch.setattr(wc, "_fetch_sitemap_urls", lambda u: [])
+    monkeypatch.setattr(wc, "_fetch_feed_urls", lambda u: [])
+    out = wc._discover_article_urls(listing, max_articles=5)
+    assert out == [
+        "https://b.com/customer-analytics-strategy",
+        "https://b.com/ga4-regex-tutorial",
+    ]
+
+
+def test_discovery_prefers_strict_prefix_over_relaxed(monkeypatch):
+    # When strict prefix discovery finds articles, the relaxed fallback must NOT run
+    # (root-level nav/other pages should not leak in for a well-structured blog).
+    listing = "https://b.com/blog"
+    monkeypatch.setattr(wc, "_scrape_listing_links", lambda u: [
+        "https://b.com/blog/real-post-one",
+        "https://b.com/some-root-thing-with-dashes",
+    ])
+    monkeypatch.setattr(wc, "_fetch_sitemap_urls", lambda u: [])
+    monkeypatch.setattr(wc, "_fetch_feed_urls", lambda u: [])
+    out = wc._discover_article_urls(listing, max_articles=5)
+    assert out == ["https://b.com/blog/real-post-one"]
+
+
 def test_discovery_layer_errors_are_non_fatal(monkeypatch):
     listing = "https://b.com/blog"
     monkeypatch.setattr(wc, "_scrape_listing_links", lambda u: (_ for _ in ()).throw(RuntimeError("boom")))

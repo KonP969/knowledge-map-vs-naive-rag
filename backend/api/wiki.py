@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.wiki_store import WikiStore, ENTITIES_DIR, CONCEPTS_DIR
 from services.span_locate import locate_span
+from services.semantic_index import remove_claims_from_index
 
 router = APIRouter(prefix="/api/wiki", tags=["wiki"])
 
@@ -127,9 +128,17 @@ def list_wiki_edges():
 @router.delete("/source/{slug}")
 def delete_wiki_source(slug: str):
     store = _get_store()
-    source_id = store.delete_source(slug)
-    if source_id is None:
+    src = store.read_source(slug)
+    if src is None:
         raise HTTPException(status_code=404, detail=f"Source '{slug}' not found")
+    # Capture claim ids before deletion so we can prune their vectors from the
+    # semantic index — otherwise it keeps stale vectors under ids a later ingest recycles.
+    claim_ids = [c.id for c in store.read_all_claims() if c.source_id == src.id]
+    source_id = store.delete_source(slug)
+    try:
+        remove_claims_from_index(store, claim_ids)
+    except Exception:
+        pass  # non-fatal: source is gone; a rebuild_embeddings run reconciles the index
     return {"slug": slug, "source_id": source_id, "deleted": True}
 
 

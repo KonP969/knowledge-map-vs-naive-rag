@@ -25,6 +25,20 @@ class VectorStore:
         self._matrix = block if self._matrix is None else np.vstack([self._matrix, block])
         self._ids.extend(ids)
 
+    def remove(self, ids: List[str]) -> int:
+        """Drop rows whose id is in `ids`. Returns how many were removed. Unknown ids
+        are ignored. Keeps the index consistent when claims are deleted."""
+        drop = set(ids)
+        if not drop or not self._ids:
+            return 0
+        keep = [i for i, cid in enumerate(self._ids) if cid not in drop]
+        removed = len(self._ids) - len(keep)
+        if removed == 0:
+            return 0
+        self._ids = [self._ids[i] for i in keep]
+        self._matrix = self._matrix[keep] if (self._matrix is not None and keep) else None
+        return removed
+
     def search(self, query: List[float], top_k: int) -> List[Tuple[str, float]]:
         if self._matrix is None or len(self._ids) == 0 or top_k <= 0:
             return []

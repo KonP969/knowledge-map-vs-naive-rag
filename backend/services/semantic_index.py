@@ -42,3 +42,15 @@ def add_claims_to_index(store: WikiStore, claims, *, embed_fn: Optional[EmbedFn]
         vs.add([c.id for c in new], vectors)
         vs.save(claim_index_path(store))
     return vs
+
+
+def remove_claims_from_index(store: WikiStore, claim_ids) -> VectorStore:
+    """Drop the given claim ids from the persisted index. Called on source/claim
+    deletion so the index never keeps vectors for claims that no longer exist —
+    stale vectors would otherwise be served under ids recycled by a later ingest."""
+    vs = load_claim_index(store)
+    if vs is None:
+        return VectorStore()
+    if vs.remove(list(claim_ids)) > 0:
+        vs.save(claim_index_path(store))
+    return vs
