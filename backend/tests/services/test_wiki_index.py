@@ -56,3 +56,60 @@ def test_regenerate_overwrites_previous(store):
     regenerate_index(store)
     j = json.loads((store.root / "wiki" / "00-Index" / "index.json").read_text(encoding="utf-8"))
     assert len(j["entities"]) == 2
+
+
+def test_index_caps_questions_per_node(tmp_path):
+    """index.json is read on every query; unbounded questions made it 27 MB.
+
+    Scoring caps question_overlap at 2 points regardless of how many hit, so
+    keeping hundreds buys nothing and drowns the signal.
+    """
+    from services.wiki_index import regenerate_index, MAX_INDEX_QUESTIONS
+    from services.wiki_store import WikiStore
+    from models.wiki_models import Entity, Concept
+    import json
+
+    store = WikiStore(root=tmp_path)
+    many = [f"Pytanie numer {i}?" for i in range(MAX_INDEX_QUESTIONS * 5)]
+    store.write_entity(Entity(id="e_001", type="Org", aliases=[], description="d",
+                              mentions_count=1, questions=list(many), tags=["t"]), slug="e_001")
+    store.write_concept(Concept(id="c_001", definition="d", examples=[], related=[],
+                                questions=list(many), tags=["t"]), slug="c_001")
+    regenerate_index(store)
+
+    data = json.loads((tmp_path / "wiki" / "00-Index" / "index.json").read_text(encoding="utf-8"))
+    assert len(data["entities"][0]["questions"]) == MAX_INDEX_QUESTIONS
+    assert len(data["concepts"][0]["questions"]) == MAX_INDEX_QUESTIONS
+    # kept questions are the first ones, not a random slice
+    assert data["entities"][0]["questions"] == many[:MAX_INDEX_QUESTIONS]
+
+
+def test_index_keeps_short_question_lists_intact(tmp_path):
+    from services.wiki_index import regenerate_index
+    from services.wiki_store import WikiStore
+    from models.wiki_models import Entity
+    import json
+
+    store = WikiStore(root=tmp_path)
+    qs = ["Pierwsze?", "Drugie?"]
+    store.write_entity(Entity(id="e_001", type="Org", aliases=[], description="d",
+                              mentions_count=1, questions=list(qs), tags=[]), slug="e_001")
+    regenerate_index(store)
+    data = json.loads((tmp_path / "wiki" / "00-Index" / "index.json").read_text(encoding="utf-8"))
+    assert data["entities"][0]["questions"] == qs
+
+
+def test_index_caps_tags_per_node(tmp_path):
+    """tag_overlap adds to the score uncapped, so accumulated tags distort ranking."""
+    from services.wiki_index import regenerate_index, MAX_INDEX_TAGS
+    from services.wiki_store import WikiStore
+    from models.wiki_models import Entity
+    import json
+
+    store = WikiStore(root=tmp_path)
+    tags = [f"tag-{i}" for i in range(MAX_INDEX_TAGS * 4)]
+    store.write_entity(Entity(id="e_001", type="Org", aliases=[], description="d",
+                              mentions_count=1, questions=[], tags=list(tags)), slug="e_001")
+    regenerate_index(store)
+    data = json.loads((tmp_path / "wiki" / "00-Index" / "index.json").read_text(encoding="utf-8"))
+    assert data["entities"][0]["tags"] == tags[:MAX_INDEX_TAGS]

@@ -3,6 +3,18 @@ from typing import List
 
 from services.wiki_store import WikiStore, ENTITIES_DIR
 
+# index.json is parsed on every query (candidate_filter + semantic_retrieval), so its
+# size is a per-request cost. Unbounded question lists blew it up to 27 MB / 74 MB in
+# RAM over 5 sources — 356,865 questions, a median of 429 per node. Scoring caps
+# question_overlap at 2 points no matter how many match, so a handful carries the same
+# signal with far less noise. The node files keep the full list.
+MAX_INDEX_QUESTIONS = 12
+
+# Same story for tags: a median of 184 per node, up to 271. Worse than questions,
+# because tag_overlap adds to the score uncapped, so a node that accumulated tags
+# from every past ingest outranks a precise match on sheer volume.
+MAX_INDEX_TAGS = 30
+
 
 def regenerate_index(store: WikiStore) -> None:
     sources = _collect_sources(store)
@@ -23,7 +35,7 @@ def _collect_sources(store: WikiStore) -> List[dict]:
         s = store.read_source(slug)
         out.append({
             "slug": slug, "id": s.id, "title": s.title,
-            "tags": s.tags, "questions": s.questions,
+            "tags": (s.tags or [])[:MAX_INDEX_TAGS], "questions": (s.questions or [])[:MAX_INDEX_QUESTIONS],
             "summary": s.summary[:200],
         })
     return out
@@ -44,8 +56,8 @@ def _collect_entities(store: WikiStore) -> List[dict]:
                 continue
             out.append({
                 "slug": slug, "id": e.id, "type": e.type,
-                "aliases": e.aliases, "tags": e.tags,
-                "questions": e.questions,
+                "aliases": e.aliases, "tags": (e.tags or [])[:MAX_INDEX_TAGS],
+                "questions": (e.questions or [])[:MAX_INDEX_QUESTIONS],
                 "description_preview": e.description[:200],
             })
     return out
@@ -61,7 +73,7 @@ def _collect_concepts(store: WikiStore) -> List[dict]:
         out.append({
             "slug": slug, "id": c.id,
             "parent_concept": c.parent_concept,
-            "tags": c.tags, "questions": c.questions,
+            "tags": (c.tags or [])[:MAX_INDEX_TAGS], "questions": (c.questions or [])[:MAX_INDEX_QUESTIONS],
             "definition_preview": c.definition[:200],
         })
     return out
