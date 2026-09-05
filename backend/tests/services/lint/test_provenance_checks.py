@@ -131,6 +131,36 @@ def test_dangling_node_ref_clean_when_both_nodes_exist(store: WikiStore):
     assert check_dangling_node_ref(store) == []
 
 
+
+def test_dangling_node_ref_accepts_source_endpoint(store: WikiStore):
+    """Ingest emits source:->entity: 'mentions' edges; a source is a real node."""
+    _add_source(store)
+    _add_entity(store, "e_001")
+    edge = Edge(
+        id="ed_001", **{"from": "source:src_001"}, to="entity:e_001",
+        relation="mentions", source_id="src_001",
+        span=Span(start=0, end=1, text="x"), confidence=0.9,
+    )
+    store.append_edge(edge)
+    regenerate_index(store)
+    assert check_dangling_node_ref(store) == []
+
+
+def test_dangling_node_ref_detects_missing_source_endpoint(store: WikiStore):
+    _add_source(store)
+    _add_entity(store, "e_001")
+    edge = Edge(
+        id="ed_001", **{"from": "source:src_999"}, to="entity:e_001",
+        relation="mentions", source_id="src_001",
+        span=Span(start=0, end=1, text="x"), confidence=0.9,
+    )
+    store.append_edge(edge)
+    regenerate_index(store)
+    issues = check_dangling_node_ref(store)
+    assert len(issues) == 1
+    assert issues[0].payload["missing_id"] == "source:src_999"
+
+
 # -- corrupted_jsonl --------------------------------------------------------
 
 def test_corrupted_jsonl_detects_unparseable_line(store: WikiStore):

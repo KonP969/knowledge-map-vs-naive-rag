@@ -77,8 +77,13 @@ def _collect_source_ids(store: WikiStore) -> Set[str]:
 
 
 def _collect_node_ids(store: WikiStore) -> Set[str]:
-    """Returns prefixed node IDs ('entity:e_001', 'concept:c_001')."""
-    ids: Set[str] = set()
+    """Returns prefixed node IDs ('source:src_001', 'entity:e_001', 'concept:c_001').
+
+    Sources are nodes too: ingest emits a source:->entity: 'mentions' edge for every
+    entity it finds. Leaving them out made every such edge look dangling, and since
+    the fix is auto-applicable ("Delete edge"), a bulk fix run wiped the whole graph.
+    """
+    ids: Set[str] = {f"source:{sid}" for sid in _collect_source_ids(store)}
 
     entities_dir = store.root / "wiki" / ENTITIES_DIR
     if entities_dir.exists():
