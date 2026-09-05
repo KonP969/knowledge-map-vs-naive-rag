@@ -32,7 +32,7 @@ from services.retrieval.retrieval_pipeline import run_retrieval  # noqa: E402
 from services.wiki_store import WikiStore  # noqa: E402
 from tests.rag_evaluation.cost_guard import CostGuard, calc_openai_cost  # noqa: E402
 from tests.rag_evaluation.evaluator import evaluate  # noqa: E402
-from tests.rag_evaluation.gold_questions import GOLD_QUESTIONS  # noqa: E402
+from tests.rag_evaluation.gold_questions import QUESTION_SETS  # noqa: E402
 
 REPORTS_DIR = Path(__file__).resolve().parent.parent / "tests" / "rag_evaluation" / "reports"
 
@@ -168,6 +168,8 @@ def write_report(rows, summary, guard):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--vault", default="wiki_data/default")
+    ap.add_argument("--questions", default="default", choices=sorted(QUESTION_SETS),
+                    help="ktory zestaw pytan (pl_articles idzie w parze z --vault wiki_data/eval_lang)")
     ap.add_argument("--limit", type=int, help="odpal tylko N pierwszych pytan")
     ap.add_argument("--category", help="tylko jedna kategoria")
     ap.add_argument("--only", help="konkretne id pytan po przecinku (do wznawiania partiami)")
@@ -176,7 +178,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="nie wola LLM, tylko pokazuje plan")
     args = ap.parse_args()
 
-    questions = GOLD_QUESTIONS
+    questions = QUESTION_SETS[args.questions]
     if args.category:
         questions = [q for q in questions if q["category"] == args.category]
     if args.only:

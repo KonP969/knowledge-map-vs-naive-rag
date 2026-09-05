@@ -126,3 +126,47 @@ def by_category(category: str):
 
 
 CATEGORIES = sorted({q["category"] for q in GOLD_QUESTIONS})
+
+
+# --- eksperyment „jezyk czy struktura?" -------------------------------------
+# Pytania do vaultu `wiki_data/eval_lang` (3 polskie artykuly narracyjne z
+# porta.com.pl). Celowo w tych samych proporcjach co pytania EN w glownym
+# gold-secie (2 factual + 2 synthesis), zeby porownanie bylo uczciwe:
+#   PL katalog (default) vs PL artykul (tutaj) -> izoluje strukture
+#   PL artykul (tutaj)   vs EN artykul (default) -> izoluje jezyk
+GOLD_QUESTIONS_PL_ARTICLES = [
+    {
+        "id": "pla_mocha_skojarzenia",
+        "question": "Z czym kojarzy się kolor Mocha Mousse?",
+        "expected_topics": ["spokój", "harmonia", "elegancja"],
+        "category": "factual",
+        "language": "pl",
+    },
+    {
+        "id": "pla_softloft_drzwi",
+        "question": "Jakie drzwi najlepiej sprawdzają się w stylu soft loft?",
+        "expected_topics": ["drzwi z przeszkleniami", "styl industrialny"],
+        "category": "factual",
+        "language": "pl",
+    },
+    {
+        "id": "pla_organic_modern",
+        "question": "Co charakteryzuje styl Organic Modern we wnętrzach?",
+        "expected_topics": ["nowoczesny minimalizm", "naturalność", "stonowane kolory",
+                            "drewno i kamień"],
+        "category": "synthesis",
+        "language": "pl",
+    },
+    {
+        "id": "pla_softloft_sypialnia",
+        "question": "Jakie drzwi wybrać do sypialni w stylu soft loft i dlaczego?",
+        "expected_topics": ["matowe przeszklenie", "drzwi pełne", "prywatność"],
+        "category": "synthesis",
+        "language": "pl",
+    },
+]
+
+QUESTION_SETS = {
+    "default": GOLD_QUESTIONS,
+    "pl_articles": GOLD_QUESTIONS_PL_ARTICLES,
+}
