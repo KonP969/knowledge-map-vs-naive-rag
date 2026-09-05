@@ -170,6 +170,8 @@ def main():
     ap.add_argument("--vault", default="wiki_data/default")
     ap.add_argument("--limit", type=int, help="odpal tylko N pierwszych pytan")
     ap.add_argument("--category", help="tylko jedna kategoria")
+    ap.add_argument("--only", help="konkretne id pytan po przecinku (do wznawiania partiami)")
+    ap.add_argument("--skip", type=int, default=0, help="pomin N pierwszych pytan")
     ap.add_argument("--max-usd", type=float, default=2.00)
     ap.add_argument("--dry-run", action="store_true", help="nie wola LLM, tylko pokazuje plan")
     args = ap.parse_args()
@@ -177,6 +179,11 @@ def main():
     questions = GOLD_QUESTIONS
     if args.category:
         questions = [q for q in questions if q["category"] == args.category]
+    if args.only:
+        wanted = [x.strip() for x in args.only.split(",") if x.strip()]
+        questions = [q for q in questions if q["id"] in wanted]
+    if args.skip:
+        questions = questions[args.skip:]
     if args.limit:
         questions = questions[:args.limit]
 
