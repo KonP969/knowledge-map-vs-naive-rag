@@ -227,6 +227,7 @@ def run_agent_fallback(
             messages=messages,
             tools=_TOOL_DEFINITIONS,
             tool_choice="auto",
+            temperature=0,
         )
         choice = response.choices[0]
         msg = choice.message

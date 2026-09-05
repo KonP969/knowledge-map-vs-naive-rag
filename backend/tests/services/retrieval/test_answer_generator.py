@@ -102,3 +102,15 @@ def test_generate_answer_sources_present():
         result = generate_answer("Q", "context")
     assert len(result.answer.sources) == 1
     assert result.answer.sources[0].source_id == "src_001"
+
+
+def test_generate_answer_uses_temperature_zero():
+    from services.retrieval.answer_generator import generate_answer
+    mock_response = _make_mock_response(FIXED_ANSWER)
+    with patch("services.retrieval.answer_generator._get_client") as mock_get_client:
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = mock_response
+        mock_get_client.return_value = mock_client
+        generate_answer("Q", "context")
+        call_kwargs = mock_client.beta.chat.completions.parse.call_args
+        assert call_kwargs.kwargs.get("temperature") == 0

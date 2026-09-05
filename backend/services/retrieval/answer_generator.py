@@ -60,6 +60,7 @@ def generate_answer(question: str, context: str, model: str = None) -> AnswerWit
             {"role": "user", "content": f"QUESTION: {question}\n\nCONTEXT:\n{context}"},
         ],
         response_format=Answer,
+        temperature=0,
     )
     llm_ms = (time.time() - t) * 1000
     result = response.choices[0].message.parsed
