@@ -12,6 +12,11 @@ import services.retrieval.agent_tools as _tools
 _client: Optional[OpenAI] = None
 MAX_ITERATIONS = 8
 
+# A tool result is appended verbatim to the prompt, so an unbounded one is a live
+# grenade: read_index over a real vault produced 26 MB (~6.5M tokens) and the API
+# rejected the whole request. Bound every result at the single place they pass.
+MAX_TOOL_RESULT_CHARS = 12_000
+
 _SYSTEM_PROMPT = (
     "You are a wiki search agent with access to tools to search a structured knowledge wiki. "
     "Use tools to gather information, then answer the user's question with evidence from the wiki. "
@@ -183,9 +188,19 @@ def _dispatch_tool(name: str, args: dict, store: WikiStore) -> str:
     if fn is None:
         return json.dumps({"error": f"unknown tool: {name}"})
     try:
-        return fn()
+        return _truncate(fn(), name)
     except Exception as exc:
         return json.dumps({"error": f"tool {name} failed: {exc}"})
+
+
+def _truncate(result: str, name: str) -> str:
+    if len(result) <= MAX_TOOL_RESULT_CHARS:
+        return result
+    return (
+        result[:MAX_TOOL_RESULT_CHARS]
+        + f"\n\n[truncated: {name} returned {len(result)} chars, "
+        + f"capped at {MAX_TOOL_RESULT_CHARS}. Narrow the query instead of reading everything.]"
+    )
 
 
 def run_agent_fallback(
