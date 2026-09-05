@@ -167,3 +167,30 @@ def test_dispatch_tool_exception_returns_error_json(tmp_path):
         result = json.loads(_dispatch_tool("read_index", {}, store))
     assert "error" in result
     assert "read_index" in result["error"]
+
+
+def test_dispatch_tool_truncates_oversized_result(tmp_path):
+    """A tool result goes straight into the prompt, so it must be bounded.
+
+    read_index over a real vault returned 26 MB (~6.5M tokens) and the request was
+    rejected outright — every question that fell through to the agent died there.
+    """
+    from services.retrieval.agent_fallback import _dispatch_tool, MAX_TOOL_RESULT_CHARS
+    from services.wiki_store import WikiStore
+    import services.retrieval.agent_tools as _tools
+    store = WikiStore(root=tmp_path)
+    huge = "x" * (MAX_TOOL_RESULT_CHARS * 3)
+    with patch.object(_tools, "read_index", return_value=huge):
+        result = _dispatch_tool("read_index", {}, store)
+    assert len(result) <= MAX_TOOL_RESULT_CHARS + 200
+    assert "truncated" in result.lower()
+
+
+def test_dispatch_tool_leaves_small_result_untouched(tmp_path):
+    from services.retrieval.agent_fallback import _dispatch_tool
+    from services.wiki_store import WikiStore
+    import services.retrieval.agent_tools as _tools
+    store = WikiStore(root=tmp_path)
+    with patch.object(_tools, "read_index", return_value='{"sources": []}'):
+        result = _dispatch_tool("read_index", {}, store)
+    assert result == '{"sources": []}'
