@@ -8,6 +8,7 @@ from models.retrieval_models import (
     ParsedIntent, Selection, SelectedArtifact, Answer, AnswerSource, QueryTrace,
     AgentTrace, AgentToolCall,
 )
+from services.retrieval.answer_generator import AnswerWithUsage
 
 
 @pytest.fixture
@@ -74,11 +75,24 @@ FIXED_ANSWER = Answer(
 )
 
 
+def _with_usage(answer, prompt_tokens=120, completion_tokens=40, llm_ms=12.5):
+    """generate_answer returns AnswerWithUsage, not a bare Answer."""
+    return AnswerWithUsage(
+        answer=answer,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        llm_ms=llm_ms,
+    )
+
+
+FIXED_ANSWER_RESULT = _with_usage(FIXED_ANSWER)
+
+
 def run_pipeline(store):
     from services.retrieval.retrieval_pipeline import run_retrieval
     with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
          patch("services.retrieval.retrieval_pipeline.select_candidates", return_value=FIXED_SELECTION), \
-         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER):
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER_RESULT):
         return run_retrieval("What colors are used in Scandinavian bedrooms?", store)
 
 
@@ -146,7 +160,7 @@ def test_pipeline_empty_vault_returns_trace(tmp_path):
     from services.retrieval.retrieval_pipeline import run_retrieval
     empty_store = WikiStore(root=tmp_path)
     with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
-         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER_RESULT), \
          patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE):
         result = run_retrieval("Q", empty_store)
     assert isinstance(result, QueryTrace)
@@ -176,7 +190,7 @@ def test_pipeline_triggers_fallback_when_no_candidates(tmp_path):
     from services.wiki_store import WikiStore
     empty_store = WikiStore(root=tmp_path)
     with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
-         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER_RESULT), \
          patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE) as mock_fb:
         result = run_retrieval("Q", empty_store)
     mock_fb.assert_called_once()
@@ -194,7 +208,7 @@ def test_pipeline_triggers_fallback_when_low_selection_confidence(store):
     )
     with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
          patch("services.retrieval.retrieval_pipeline.select_candidates", return_value=low_conf_selection), \
-         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER_RESULT), \
          patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE) as mock_fb:
         result = run_retrieval("Q", store)
     mock_fb.assert_called_once()
@@ -215,7 +229,7 @@ def test_pipeline_triggers_fallback_when_low_answer_confidence(store):
     )
     with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
          patch("services.retrieval.retrieval_pipeline.select_candidates", return_value=FIXED_SELECTION), \
-         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=low_conf_answer), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=_with_usage(low_conf_answer)), \
          patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE) as mock_fb:
         result = run_retrieval("Q", store)
     mock_fb.assert_called_once()
@@ -229,7 +243,7 @@ def test_pipeline_fallback_trigger_reason_no_candidates(tmp_path):
     from services.wiki_store import WikiStore
     empty_store = WikiStore(root=tmp_path)
     with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
-         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=FIXED_ANSWER_RESULT), \
          patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=FIXED_AGENT_TRACE) as mock_fb:
         run_retrieval("Q", empty_store)
     trigger_reason = mock_fb.call_args.kwargs["trigger_reason"]
