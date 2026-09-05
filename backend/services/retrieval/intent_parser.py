@@ -36,6 +36,7 @@ def parse_intent(question: str, model: str = None) -> ParsedIntent:
             {"role": "user", "content": question},
         ],
         response_format=ParsedIntent,
+        temperature=0,
     )
     result = response.choices[0].message.parsed
     if result is None:

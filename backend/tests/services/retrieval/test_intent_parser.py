@@ -94,3 +94,15 @@ def test_parse_intent_entity_mentions_extracted():
         mock_get_client.return_value = mock_client
         result = parse_intent("any question")
     assert "Sypialnia" in result.entity_mentions
+
+
+def test_parse_intent_uses_temperature_zero():
+    from services.retrieval.intent_parser import parse_intent
+    mock_response = _make_mock_response(FIXED_INTENT)
+    with patch("services.retrieval.intent_parser._get_client") as mock_get_client:
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = mock_response
+        mock_get_client.return_value = mock_client
+        parse_intent("any question")
+        call_kwargs = mock_client.beta.chat.completions.parse.call_args
+        assert call_kwargs.kwargs.get("temperature") == 0

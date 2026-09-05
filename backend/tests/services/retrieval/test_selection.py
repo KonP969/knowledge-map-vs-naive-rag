@@ -114,3 +114,15 @@ def test_select_candidates_includes_artifact_ids_in_prompt():
         messages = call_kwargs.kwargs.get("messages", [])
         all_content = " ".join(m["content"] for m in messages if isinstance(m.get("content"), str))
         assert "source:src_001" in all_content
+
+
+def test_select_candidates_uses_temperature_zero():
+    from services.retrieval.selection import select_candidates
+    mock_response = _make_mock_response(FIXED_SELECTION)
+    with patch("services.retrieval.selection._get_client") as mock_get_client:
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = mock_response
+        mock_get_client.return_value = mock_client
+        select_candidates("Q", SAMPLE_CANDIDATES)
+        call_kwargs = mock_client.beta.chat.completions.parse.call_args
+        assert call_kwargs.kwargs.get("temperature") == 0

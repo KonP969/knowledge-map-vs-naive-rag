@@ -194,3 +194,16 @@ def test_dispatch_tool_leaves_small_result_untouched(tmp_path):
     with patch.object(_tools, "read_index", return_value='{"sources": []}'):
         result = _dispatch_tool("read_index", {}, store)
     assert result == '{"sources": []}'
+
+
+def test_run_agent_fallback_uses_temperature_zero(tmp_path):
+    from services.retrieval.agent_fallback import run_agent_fallback
+    from services.wiki_store import WikiStore
+    store = WikiStore(root=tmp_path)
+    with patch("services.retrieval.agent_fallback._get_client") as mock_get:
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _make_stop_response("ans")
+        mock_get.return_value = mock_client
+        run_agent_fallback("Q", store, "reason")
+        call_kwargs = mock_client.chat.completions.create.call_args
+        assert call_kwargs.kwargs.get("temperature") == 0

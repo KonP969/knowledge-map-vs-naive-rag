@@ -51,6 +51,7 @@ def select_candidates(
             {"role": "user", "content": f"QUESTION: {question}\n\nCANDIDATES:\n{candidates_text}"},
         ],
         response_format=Selection,
+        temperature=0,
     )
     result = response.choices[0].message.parsed
     if result is None:
