@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from models.retrieval_models import Answer, AnswerSource
+from services.retrieval.answer_generator import AnswerWithUsage
 import services.retrieval.answer_generator as _module
 
 
@@ -20,13 +21,15 @@ FIXED_ANSWER = Answer(
 )
 
 
-def _make_mock_response(answer: Answer):
+def _make_mock_response(answer: Answer, prompt_tokens: int = 120, completion_tokens: int = 40):
     mock_msg = MagicMock()
     mock_msg.parsed = answer
     mock_choice = MagicMock()
     mock_choice.message = mock_msg
     mock_response = MagicMock()
     mock_response.choices = [mock_choice]
+    mock_response.usage.prompt_tokens = prompt_tokens
+    mock_response.usage.completion_tokens = completion_tokens
     return mock_response
 
 
@@ -38,8 +41,12 @@ def test_generate_answer_returns_answer():
         mock_client.beta.chat.completions.parse.return_value = mock_response
         mock_get_client.return_value = mock_client
         result = generate_answer("What colors?", "# Context\n\nSome context.")
-    assert isinstance(result, Answer)
-    assert result.confidence == 0.9
+    assert isinstance(result, AnswerWithUsage)
+    assert isinstance(result.answer, Answer)
+    assert result.answer.confidence == 0.9
+    assert result.prompt_tokens == 120
+    assert result.completion_tokens == 40
+    assert result.llm_ms >= 0
 
 
 def test_generate_answer_passes_question_and_context():
@@ -93,5 +100,5 @@ def test_generate_answer_sources_present():
         mock_client.beta.chat.completions.parse.return_value = mock_response
         mock_get_client.return_value = mock_client
         result = generate_answer("Q", "context")
-    assert len(result.sources) == 1
-    assert result.sources[0].source_id == "src_001"
+    assert len(result.answer.sources) == 1
+    assert result.answer.sources[0].source_id == "src_001"
