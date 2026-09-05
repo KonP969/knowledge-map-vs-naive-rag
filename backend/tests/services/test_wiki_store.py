@@ -466,3 +466,43 @@ def test_next_source_id_exceeds_orphaned_claim_source_ids(tmp_path):
         span=Span(start=0, end=1, text="x"), confidence=1.0, polarity="asserts",
     ))
     assert store.next_source_id() == "src_008"
+
+
+# ── prune_orphaned_nodes ───────────────────────────────────────────────────
+
+def test_prune_orphaned_nodes_removes_unreferenced(store):
+    store.write_entity(Entity(id="e_001", type="Place", aliases=[], description="d",
+                              mentions_count=0, questions=[], tags=[]), slug="ghost")
+    store.write_concept(Concept(id="c_001", definition="d", examples=[], related=[],
+                                questions=[], tags=[]), slug="phantom")
+    pruned = store.prune_orphaned_nodes()
+    assert pruned["entities"] == ["e_001"]
+    assert pruned["concepts"] == ["c_001"]
+    assert store.read_entity("ghost", "Place") is None
+    assert store.read_concept("phantom") is None
+
+
+def test_prune_orphaned_nodes_keeps_entity_with_claim(store):
+    store.write_entity(Entity(id="e_001", type="Place", aliases=[], description="d",
+                              mentions_count=0, questions=[], tags=[]), slug="kept")
+    store.append_claim(Claim(id="cl_001", text="t", subject_id="entity:e_001",
+                             source_id="src_002", span=Span(start=0, end=1, text="x"),
+                             confidence=0.9, polarity="asserts"))
+    pruned = store.prune_orphaned_nodes()
+    assert pruned["entities"] == []
+    assert store.read_entity("kept", "Place") is not None
+
+
+def test_prune_orphaned_nodes_keeps_concept_with_edge(store):
+    store.write_concept(Concept(id="c_001", definition="d", examples=[], related=[],
+                                questions=[], tags=[]), slug="bridged")
+    store.append_edge(Edge(id="ed_001", **{"from": "entity:e_009"}, to="concept:c_001",
+                           relation="associated_with", source_id="src_002",
+                           span=Span(start=0, end=1, text="x"), confidence=0.8))
+    pruned = store.prune_orphaned_nodes()
+    assert pruned["concepts"] == []
+    assert store.read_concept("bridged") is not None
+
+
+def test_prune_orphaned_nodes_empty_store_is_noop(store):
+    assert store.prune_orphaned_nodes() == {"entities": [], "concepts": []}

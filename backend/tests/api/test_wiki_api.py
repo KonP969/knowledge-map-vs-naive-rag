@@ -451,3 +451,72 @@ def test_delete_source_prunes_its_claims_from_semantic_index(client, tmp_path):
         resp = client.delete("/api/wiki/source/doomed")
     assert resp.status_code == 200
     assert "cl_001" not in load_claim_index(store)
+
+
+def test_delete_source_prunes_orphaned_entities_and_concepts(client, tmp_path):
+    from unittest.mock import patch
+    from models.wiki_models import Claim, Edge, Span
+    store = WikiStore(root=tmp_path)
+    _make_source(store, "doomed", "src_001")
+    store.write_entity(Entity(id="e_001", type="Product", aliases=[], description="d",
+                              mentions_count=1, questions=["q?"], tags=["t"]), slug="only-here")
+    store.write_concept(Concept(id="c_001", definition="d", examples=[], related=[],
+                                questions=[], tags=[]), slug="only-concept")
+    store.append_claim(Claim(id="cl_001", text="t", subject_id="entity:e_001",
+                             source_id="src_001", span=Span(start=0, end=1, text="x"),
+                             confidence=0.9, polarity="asserts"))
+    store.append_edge(Edge(id="ed_001", **{"from": "entity:e_001"}, to="concept:c_001",
+                           relation="associated_with", source_id="src_001",
+                           span=Span(start=0, end=1, text="x"), confidence=0.8))
+
+    with patch("api.wiki._get_store", return_value=store):
+        resp = client.delete("/api/wiki/source/doomed")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["pruned_entities"] == ["e_001"]
+    assert body["pruned_concepts"] == ["c_001"]
+    assert store.read_entity("only-here", "Product") is None
+    assert store.read_concept("only-concept") is None
+
+
+def test_delete_source_keeps_nodes_referenced_by_another_source(client, tmp_path):
+    from unittest.mock import patch
+    from models.wiki_models import Claim, Span
+    store = WikiStore(root=tmp_path)
+    _make_source(store, "doomed", "src_001")
+    _make_source(store, "survivor", "src_002")
+    store.write_entity(Entity(id="e_001", type="Product", aliases=[], description="d",
+                              mentions_count=2, questions=[], tags=[]), slug="shared")
+    store.append_claim(Claim(id="cl_001", text="from doomed", subject_id="entity:e_001",
+                             source_id="src_001", span=Span(start=0, end=1, text="x"),
+                             confidence=0.9, polarity="asserts"))
+    store.append_claim(Claim(id="cl_002", text="from survivor", subject_id="entity:e_001",
+                             source_id="src_002", span=Span(start=0, end=1, text="y"),
+                             confidence=0.9, polarity="asserts"))
+
+    with patch("api.wiki._get_store", return_value=store):
+        resp = client.delete("/api/wiki/source/doomed")
+
+    assert resp.status_code == 200
+    assert resp.json()["pruned_entities"] == []
+    assert store.read_entity("shared", "Product") is not None
+
+
+def test_delete_source_regenerates_index(client, tmp_path):
+    import json
+    from unittest.mock import patch
+    from services.wiki_index import regenerate_index
+    store = WikiStore(root=tmp_path)
+    _make_source(store, "doomed", "src_001")
+    _make_source(store, "survivor", "src_002")
+    regenerate_index(store)
+    index_path = store.root / "wiki" / "00-Index" / "index.json"
+    assert len(json.loads(index_path.read_text(encoding="utf-8"))["sources"]) == 2
+
+    with patch("api.wiki._get_store", return_value=store):
+        resp = client.delete("/api/wiki/source/doomed")
+
+    assert resp.status_code == 200
+    remaining = json.loads(index_path.read_text(encoding="utf-8"))["sources"]
+    assert [s["slug"] for s in remaining] == ["survivor"]
