@@ -310,6 +310,48 @@ class WikiStore:
         self._source_path(slug).unlink()
         return source_id
 
+    def prune_orphaned_nodes(self) -> dict:
+        """Delete entity/concept files that nothing references any more — no claim has
+        them as subject and no edge points at them. Meant to run right after
+        delete_source, so removing a source also clears the nodes it alone kept alive
+        (and, via a following regenerate_index, their questions/tags from the index).
+
+        Returns {"entities": [ids], "concepts": [ids]} of what was removed.
+        """
+        referenced = set()
+        for e in self.read_all_edges():
+            referenced.add(e.from_)
+            referenced.add(e.to)
+        for c in self.read_all_claims():
+            referenced.add(c.subject_id)
+
+        removed_entities: List[str] = []
+        ent_base = self.root / "wiki" / ENTITIES_DIR
+        if ent_base.exists():
+            for type_dir in ent_base.iterdir():
+                if not type_dir.is_dir():
+                    continue
+                for path in list(type_dir.glob("*.md")):
+                    ent = self.read_entity(path.stem, type_dir.name)
+                    if ent is None:
+                        continue
+                    if f"entity:{ent.id}" not in referenced:
+                        path.unlink()
+                        removed_entities.append(ent.id)
+
+        removed_concepts: List[str] = []
+        con_base = self.root / "wiki" / CONCEPTS_DIR
+        if con_base.exists():
+            for path in list(con_base.glob("*.md")):
+                con = self.read_concept(path.stem)
+                if con is None:
+                    continue
+                if f"concept:{con.id}" not in referenced:
+                    path.unlink()
+                    removed_concepts.append(con.id)
+
+        return {"entities": removed_entities, "concepts": removed_concepts}
+
     def delete_claim(self, claim_id: str) -> bool:
         path = self._claims_path()
         removed = self._rewrite_jsonl_skipping(path, lambda d: d.get("id") != claim_id)

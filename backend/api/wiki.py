@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from services.wiki_store import WikiStore, ENTITIES_DIR, CONCEPTS_DIR
 from services.span_locate import locate_span
 from services.semantic_index import remove_claims_from_index
+from services.wiki_index import regenerate_index
 
 router = APIRouter(prefix="/api/wiki", tags=["wiki"])
 
@@ -135,11 +136,18 @@ def delete_wiki_source(slug: str):
     # semantic index — otherwise it keeps stale vectors under ids a later ingest recycles.
     claim_ids = [c.id for c in store.read_all_claims() if c.source_id == src.id]
     source_id = store.delete_source(slug)
+    # Drop entities/concepts this source alone kept alive, then rebuild the index so
+    # their questions/tags stop inflating retrieval scores for a source that is gone.
+    pruned = store.prune_orphaned_nodes()
     try:
         remove_claims_from_index(store, claim_ids)
     except Exception:
         pass  # non-fatal: source is gone; a rebuild_embeddings run reconciles the index
-    return {"slug": slug, "source_id": source_id, "deleted": True}
+    regenerate_index(store)
+    return {
+        "slug": slug, "source_id": source_id, "deleted": True,
+        "pruned_entities": pruned["entities"], "pruned_concepts": pruned["concepts"],
+    }
 
 
 @router.get("/source-raw", response_model=Dict[str, Any])
