@@ -117,6 +117,11 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
             trigger_reason=f"Stage 5 answer confidence too low ({answer.confidence:.2f} < 0.6)",
         )
 
+    # The fallback runs precisely because the pipeline answer was judged weak — when it
+    # produced a fresh answer, that is the one the caller should get.
+    if agent_trace is not None and agent_trace.final_answer is not None:
+        answer = agent_trace.final_answer
+
     total_duration_ms = (time.time() - t_total) * 1000
     # gpt-4o-mini pricing: $0.15/1M input tokens, $0.60/1M output tokens
     cost_usd = (answer_result.prompt_tokens * 0.15 + answer_result.completion_tokens * 0.60) / 1_000_000

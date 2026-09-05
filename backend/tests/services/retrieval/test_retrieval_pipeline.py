@@ -248,3 +248,37 @@ def test_pipeline_fallback_trigger_reason_no_candidates(tmp_path):
         run_retrieval("Q", empty_store)
     trigger_reason = mock_fb.call_args.kwargs["trigger_reason"]
     assert "Stage 2" in trigger_reason or "0 candidates" in trigger_reason
+
+
+def test_pipeline_fallback_answer_supersedes_weak_answer(store):
+    """When the agent fallback produces an answer, QueryTrace.answer must be that one,
+    not the weak pipeline answer that triggered the fallback."""
+    from services.retrieval.retrieval_pipeline import run_retrieval
+    from models.retrieval_models import Answer, AnswerSource
+    weak_answer = Answer(
+        final_answer="I am not sure.",
+        sources=[AnswerSource(source_id="src_001", relevance="low")],
+        confidence=0.3,
+        reasoning_steps=[],
+        related_questions=[],
+    )
+    strong_fallback = AgentTrace(
+        triggered=True,
+        trigger_reason="Stage 5 answer confidence too low (0.30 < 0.6)",
+        tool_calls=[],
+        final_answer=Answer(
+            final_answer="The fallback found the real answer.",
+            sources=[AnswerSource(source_id="src_001", claim_ids=["cl_001"], relevance="primary")],
+            confidence=0.88,
+            reasoning_steps=["searched"],
+            related_questions=[],
+        ),
+        duration_ms=150.0,
+    )
+    with patch("services.retrieval.retrieval_pipeline.parse_intent", return_value=FIXED_INTENT), \
+         patch("services.retrieval.retrieval_pipeline.select_candidates", return_value=FIXED_SELECTION), \
+         patch("services.retrieval.retrieval_pipeline.generate_answer", return_value=_with_usage(weak_answer)), \
+         patch("services.retrieval.retrieval_pipeline.run_agent_fallback", return_value=strong_fallback):
+        result = run_retrieval("Q", store)
+    assert result.answer.final_answer == "The fallback found the real answer."
+    assert result.answer.confidence == 0.88
