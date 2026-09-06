@@ -11,6 +11,10 @@ import {
   type Edge as RFEdge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import {
+  forceSimulation, forceLink, forceManyBody, forceCollide, forceX, forceY,
+  type SimulationNodeDatum,
+} from "d3-force";
 import { Search, X, User, Building, Package, MapPin, Calendar, Lightbulb } from "lucide-react";
 import { api } from "../../api/client";
 import type { WikiEntity, WikiConcept, WikiSource, WikiEdge } from "../../types";
@@ -32,23 +36,35 @@ const ENTITY_COLORS: Record<string, string> = {
   Event: "#8b5cf6",
 };
 
-function radialLayout(nodes: Node[]): Node[] {
-  const entities = nodes.filter((n) => n.id.startsWith("entity:"));
-  const concepts = nodes.filter((n) => n.id.startsWith("concept:"));
-  const sources = nodes.filter((n) => n.id.startsWith("source:"));
+// Position nodes with a force simulation so connected nodes cluster and nothing
+// overlaps. Seeded by type (sources up top, entities mid, concepts below) to keep
+// the layout roughly stable and readable, then relaxed by the forces.
+function forceLayout(nodes: Node[], edges: RFEdge[]): Node[] {
+  type SimNode = SimulationNodeDatum & { id: string; band: number };
+  const bandOf = (id: string) => (id.startsWith("source:") ? -1 : id.startsWith("entity:") ? 0 : 1);
 
-  function ring(items: Node[], radius: number): Node[] {
-    return items.map((n, i) => {
-      const angle = (2 * Math.PI * i) / Math.max(items.length, 1) - Math.PI / 2;
-      return { ...n, position: { x: radius * Math.cos(angle), y: radius * Math.sin(angle) } };
-    });
-  }
+  const sim: SimNode[] = nodes.map((n, i) => ({
+    id: n.id,
+    band: bandOf(n.id),
+    x: (i % 20) * 60 - 600 + (Math.random() - 0.5) * 40,
+    y: bandOf(n.id) * 260 + (Math.random() - 0.5) * 40,
+  }));
+  const links = edges.map((e) => ({ source: e.source, target: e.target }));
 
-  return [
-    ...ring(concepts, 160),
-    ...ring(entities, 360),
-    ...ring(sources, 580),
-  ];
+  forceSimulation(sim)
+    .force("link", forceLink(links).id((d) => (d as SimNode).id).distance(120).strength(0.28))
+    .force("charge", forceManyBody().strength(-520))
+    .force("collide", forceCollide(NODE_W / 2 + 12))
+    .force("x", forceX(0).strength(0.05))
+    .force("y", forceY<SimNode>((d) => d.band * 200).strength(0.06))
+    .stop()
+    .tick(440);
+
+  const pos = new Map(sim.map((s) => [s.id, s]));
+  return nodes.map((n) => {
+    const p = pos.get(n.id);
+    return { ...n, position: { x: (p?.x ?? 0) - NODE_W / 2, y: (p?.y ?? 0) - NODE_H / 2 } };
+  });
 }
 
 function buildNodeStyle(color: string, shape: "round" | "rect" | "pill") {
@@ -171,20 +187,21 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
 
     const nodeIdSet = new Set(rawNodes.map((n) => n.id));
 
+    // Relation labels are kept on the edge data but not painted here — with
+    // hundreds of edges they turn the canvas to fog. displayEdges shows the
+    // label only for the currently selected node's edges.
     const rawEdges: RFEdge[] = wikiEdges
       .filter((e) => nodeIdSet.has(e.from) && nodeIdSet.has(e.to))
       .map((e) => ({
         id: e.id,
         source: e.from,
         target: e.to,
-        label: e.relation,
-        style: { stroke: "#94a3b8", strokeWidth: 1 },
-        labelStyle: { fontSize: 8, fill: "#94a3b8" },
-        labelBgStyle: { fill: "transparent" },
+        data: { relation: e.relation },
+        style: { stroke: "#94a3b8", strokeWidth: 1, opacity: 0.35 },
         animated: false,
       }));
 
-    setRfNodes(radialLayout(rawNodes));
+    setRfNodes(forceLayout(rawNodes, rawEdges));
     setRfEdges(rawEdges);
   }, [entities, concepts, sources, wikiEdges, filters, loading]);
 
@@ -212,8 +229,14 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
     return rfEdges.map((e) => {
       const connected = e.source === selectedNodeId || e.target === selectedNodeId;
       return connected
-        ? { ...e, style: { stroke: "#3b82f6", strokeWidth: 2, opacity: 1 } }
-        : { ...e, style: { opacity: 0.15 } };
+        ? {
+            ...e,
+            label: (e.data as { relation?: string })?.relation,
+            labelStyle: { fontSize: 9, fill: "#3b82f6" },
+            labelBgStyle: { fill: "#0b0e14", fillOpacity: 0.85 },
+            style: { stroke: "#3b82f6", strokeWidth: 2, opacity: 1 },
+          }
+        : { ...e, style: { stroke: "#94a3b8", strokeWidth: 1, opacity: 0.08 } };
     });
   }, [rfEdges, selectedNodeId]);
 
@@ -265,7 +288,7 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-        Loading graph…
+        Loading the graph…
       </div>
     );
   }
@@ -342,7 +365,7 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
           {dropdownOpen && graphSearch.length > 0 && (
             <div className="absolute right-0 top-full mt-1 w-72 bg-popover border border-border rounded-md shadow-lg z-50 overflow-hidden">
               {searchResults.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-muted-foreground">Brak wyników dla «{graphSearch}»</p>
+                <p className="px-3 py-2 text-xs text-muted-foreground">No nodes match “{graphSearch}”</p>
               ) : (
                 searchResults.map((r) => (
                   <button
@@ -365,15 +388,15 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
       {rfNodes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
           {totalData === 0 ? (
-            <p>Brak danych. Dodaj źródła w panelu Sources.</p>
+            <p>No graph yet. Add sources in the Sources panel.</p>
           ) : (
             <>
-              <p>Wszystkie filtry wyłączone — brak węzłów do wyświetlenia.</p>
+              <p>Every filter is off — nothing to show.</p>
               <button
                 onClick={resetFilters}
                 className="text-xs text-primary hover:underline"
               >
-                Włącz wszystkie filtry
+                Turn all filters on
               </button>
             </>
           )}
