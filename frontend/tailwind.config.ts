@@ -5,6 +5,11 @@ const config: Config = {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Space Grotesk"', "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ['"IBM Plex Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
+        serif: ['Georgia', '"Iowan Old Style"', "ui-serif", "serif"],
+      },
       colors: {
         border: "hsl(var(--border) / <alpha-value>)",
         background: "hsl(var(--background) / <alpha-value>)",

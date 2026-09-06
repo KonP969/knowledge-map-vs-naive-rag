@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, Brain, Filter, CheckSquare, Layers, Sparkles, Clock, AlertCircle, Trash2, ChevronRight, ChevronDown, FileSearch, X } from "lucide-react";
+import { useState, useRef, useEffect, Fragment } from "react";
+import { Send, Brain, Filter, CheckSquare, Layers, Sparkles, AlertCircle, Trash2, ChevronRight, ChevronDown, FileSearch, X } from "lucide-react";
 import { api } from "../../api/client";
 import type { QueryTrace, RetrievalStageTrace, AnswerSource, NodeDetailClaim, ClaimContext } from "../../types";
 
@@ -9,12 +9,10 @@ const POLARITY_COLOR: Record<string, string> = {
 };
 
 const STAGE_ICONS = [Brain, Filter, CheckSquare, Layers, Sparkles];
-const STAGE_COLORS: Record<string, string> = {
-  idle: "text-muted-foreground border-border",
-  running: "text-blue-500 border-blue-500/40 bg-blue-500/5 animate-pulse",
-  done: "text-green-500 border-green-500/40 bg-green-500/5",
-  error: "text-red-500 border-red-500/40 bg-red-500/5",
-};
+type StageStatus = "idle" | "running" | "done" | "error";
+
+// One fixed hue per stage, cool → warm as the signal moves down the chain.
+const STAGE_HUE = ["#4a9e8f", "#6fa8c4", "#8e9cc8", "#c99b6e", "#d0714c"];
 
 const HISTORY_KEY = "wikiChatHistory";
 const HISTORY_LIMIT = 20;
@@ -30,23 +28,139 @@ function loadHistory(): QueryTrace[] {
   }
 }
 
-function StageCard({ stage, status }: { stage: RetrievalStageTrace; status: "idle" | "running" | "done" | "error" }) {
-  const Icon = STAGE_ICONS[stage.stage - 1] ?? Brain;
+// Turn "[claim:cl_065]" / "[source:src_001]" in an answer into small superscript
+// markers so the prose stays readable and the provenance is still one glance away.
+function renderAnswer(text: string) {
+  const parts = text.split(/(\[(?:claim|source):[A-Za-z0-9_]+\])/g);
+  return parts.map((part, i) => {
+    const m = part.match(/^\[(claim|source):([A-Za-z0-9_]+)\]$/);
+    if (!m) return <Fragment key={i}>{part}</Fragment>;
+    return (
+      <sup
+        key={i}
+        title={`${m[1]} ${m[2]}`}
+        className="mx-0.5 rounded-sm bg-primary/15 px-1 text-[0.65em] font-medium text-primary"
+      >
+        {m[1] === "claim" ? "cl" : "src"}
+      </sup>
+    );
+  });
+}
+
+function SignalStation({
+  stage,
+  index,
+  status,
+  isLast,
+}: {
+  stage: RetrievalStageTrace | { stage: number; name: string; hint: string };
+  index: number;
+  status: StageStatus;
+  isLast: boolean;
+}) {
+  const Icon = STAGE_ICONS[index] ?? Brain;
+  const hue = STAGE_HUE[index] ?? "#8e9cc8";
+  const live = status === "running";
+  const done = status === "done";
+  const hasTrace = "duration_ms" in stage;
+
   return (
-    <div className={`border rounded-md p-2.5 text-xs transition-colors ${STAGE_COLORS[status]}`}>
-      <div className="flex items-center gap-1.5 font-medium mb-1">
-        <Icon className="w-3 h-3" />
-        Stage {stage.stage}: {stage.name}
-        {stage.llm_called && <span className="ml-auto text-[10px] bg-muted px-1 rounded">LLM</span>}
+    <div className="flex min-w-0 flex-1 items-start gap-2">
+      <div className="flex flex-col items-center pt-0.5">
+        <span
+          className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border transition-colors ${live ? "animate-pulse" : ""}`}
+          style={{
+            borderColor: done || live ? hue : "var(--tw-border, #33343a)",
+            background: done || live ? `${hue}22` : "transparent",
+            color: done || live ? hue : "#8a8a82",
+          }}
+        >
+          <Icon className="h-3 w-3" />
+        </span>
       </div>
-      {status === "done" && (
-        <>
-          <p className="text-muted-foreground truncate">{stage.output_summary}</p>
-          <p className="text-muted-foreground/60 mt-0.5">
-            <Clock className="w-2.5 h-2.5 inline mr-0.5" />
-            {stage.duration_ms.toFixed(0)} ms
+      <div className="min-w-0 flex-1 pb-1">
+        <div className="flex items-baseline gap-1.5">
+          <span className={`text-xs font-semibold ${done || live ? "text-foreground" : "text-muted-foreground"}`}>
+            {stage.name}
+          </span>
+          {hasTrace && (stage as RetrievalStageTrace).llm_called && (
+            <span className="rounded bg-muted px-1 text-[9px] font-medium text-muted-foreground">LLM</span>
+          )}
+        </div>
+        {hasTrace && done ? (
+          <>
+            <p className="truncate text-[11px] text-muted-foreground" title={(stage as RetrievalStageTrace).output_summary}>
+              {(stage as RetrievalStageTrace).output_summary}
+            </p>
+            <p className="font-mono text-[10px] text-muted-foreground/60">
+              {(stage as RetrievalStageTrace).duration_ms.toFixed(0)} ms
+            </p>
+          </>
+        ) : (
+          <p className="text-[11px] text-muted-foreground/70">
+            {hasTrace ? (live ? "running…" : "") : (stage as { hint: string }).hint}
           </p>
-        </>
+        )}
+      </div>
+      {!isLast && <div className="mt-3 hidden h-px flex-1 self-start bg-border sm:block" style={{ maxWidth: 24 }} />}
+    </div>
+  );
+}
+
+const IDLE_STAGES = [
+  { stage: 1, name: "Intent Parser", hint: "Reads the question; pulls out entities and concepts" },
+  { stage: 2, name: "Candidate Filter", hint: "Lexical + semantic search over the graph" },
+  { stage: 3, name: "Selection", hint: "Picks the artifacts most likely to answer it" },
+  { stage: 4, name: "Context Assembly", hint: "Builds the context from the selected claims" },
+  { stage: 5, name: "Answer Generator", hint: "Writes the answer, cites every claim" },
+];
+
+function SignalChain({
+  latest,
+  loading,
+  revealedStages,
+}: {
+  latest: QueryTrace | null;
+  loading: boolean;
+  revealedStages: number;
+}) {
+  const stageStatus = (idx: number): StageStatus => {
+    if (!latest) return loading && idx === 0 ? "running" : "idle";
+    if (revealedStages >= latest.stages.length) return "done";
+    if (idx < revealedStages - 1) return "done";
+    if (idx === revealedStages - 1) return "running";
+    return "idle";
+  };
+
+  const stages = latest ? latest.stages : IDLE_STAGES;
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-3">
+      <div className="mb-2 flex items-baseline justify-between">
+        <h3 className="text-xs font-semibold text-muted-foreground">Pipeline</h3>
+        {latest && (
+          <div className="flex gap-3 font-mono text-[10px] text-muted-foreground">
+            <span>{latest.intent.intent_type}</span>
+            <span>{latest.total_llm_calls} LLM</span>
+            <span>{latest.total_duration_ms.toFixed(0)} ms</span>
+            <span>{latest.candidates_count}→{latest.selected_count}</span>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-1">
+        {stages.map((s, i) => (
+          <SignalStation key={s.stage} stage={s} index={i} status={stageStatus(i)} isLast={i === stages.length - 1} />
+        ))}
+      </div>
+      {latest && (latest.intent.entity_mentions.length > 0 || latest.intent.concept_mentions.length > 0) && (
+        <div className="mt-2 flex flex-wrap gap-1 border-t border-border pt-2">
+          {latest.intent.entity_mentions.map((e) => (
+            <span key={`e-${e}`} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{e}</span>
+          ))}
+          {latest.intent.concept_mentions.map((c) => (
+            <span key={`c-${c}`} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80">{c}</span>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -66,19 +180,16 @@ function ChatEntry({
   const [claimsBySource, setClaimsBySource] = useState<
     Record<string, NodeDetailClaim[] | "loading" | "error">
   >({});
-  // Fragment-in-context snippet (not the whole document).
   const [snippet, setSnippet] = useState<(ClaimContext & { title: string }) | null>(null);
 
   async function loadClaims(s: AnswerSource) {
-    if (claimsBySource[s.source_id]) return; // cached or in-flight
+    if (claimsBySource[s.source_id]) return;
     if (s.claim_ids.length === 0) {
       setClaimsBySource((p) => ({ ...p, [s.source_id]: [] }));
       return;
     }
     setClaimsBySource((p) => ({ ...p, [s.source_id]: "loading" }));
     try {
-      // Fetch exactly the cited claims by id (not a source's first-N window), so claims
-      // cited beyond the node-detail cap still show up.
       const claims = await api.getClaimsByIds(s.claim_ids);
       setClaimsBySource((p) => ({ ...p, [s.source_id]: claims }));
     } catch {
@@ -91,7 +202,7 @@ function ChatEntry({
       const ctx = await api.getClaimContext(claim.id);
       setSnippet({ ...ctx, title });
     } catch {
-      // ignore — button just won't open
+      /* button just won't open */
     }
   }
 
@@ -109,35 +220,32 @@ function ChatEntry({
     loadClaims(s);
   }
 
-  // Compact claim list shared by the hover popover and the expanded panel.
-  // onOpenDoc is only passed in the expanded panel (the hover popover is transient,
-  // so its "jump to document" button would be unreachable).
   function renderClaims(
     claims: NodeDetailClaim[] | "loading" | "error" | undefined,
     onOpenDoc?: (c: NodeDetailClaim) => void,
   ) {
-    if (claims === "loading") return <p className="text-muted-foreground animate-pulse py-0.5">Ładuję fragmenty…</p>;
-    if (claims === "error") return <p className="text-red-500 py-0.5">Nie udało się wczytać fragmentów.</p>;
-    if (Array.isArray(claims) && claims.length === 0) return <p className="text-muted-foreground py-0.5">Brak dopasowanych twierdzeń.</p>;
+    if (claims === "loading") return <p className="animate-pulse py-0.5 text-muted-foreground">Loading claims…</p>;
+    if (claims === "error") return <p className="py-0.5 text-red-500">Couldn't load the claims.</p>;
+    if (Array.isArray(claims) && claims.length === 0) return <p className="py-0.5 text-muted-foreground">No matched claims.</p>;
     if (!Array.isArray(claims)) return null;
     return claims.map((c) => (
       <div key={c.id} className="border-l-2 border-primary/40 pl-2 py-0.5">
-        <p className="text-foreground leading-snug">{c.text}</p>
+        <p className="leading-snug text-foreground">{c.text}</p>
         {c.span?.text && (
-          <p className="text-xs italic text-foreground/90 border-l-2 border-amber-400/50 pl-2 mt-1 leading-snug">
-            „{c.span.text}"
+          <p className="mt-1 border-l-2 border-amber-400/50 pl-2 text-xs italic leading-snug text-foreground/90">
+            “{c.span.text}”
           </p>
         )}
-        <p className={`text-[10px] mt-0.5 ${POLARITY_COLOR[c.polarity] ?? "text-muted-foreground"}`}>
+        <p className={`mt-0.5 text-[10px] ${POLARITY_COLOR[c.polarity] ?? "text-muted-foreground"}`}>
           {c.polarity} · {(c.confidence * 100).toFixed(0)}% · <span className="font-mono text-muted-foreground/60">{c.id}</span>
         </p>
         {onOpenDoc && c.span && (
           <button
             onClick={() => onOpenDoc(c)}
-            className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary border border-primary/35 rounded px-1.5 py-0.5 hover:bg-primary/10 transition-colors"
+            className="mt-1 inline-flex items-center gap-1 rounded border border-primary/35 px-1.5 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
           >
-            <FileSearch className="w-3 h-3" />
-            Pokaż w dokumencie
+            <FileSearch className="h-3 w-3" />
+            Show in document
           </button>
         )}
       </div>
@@ -145,18 +253,20 @@ function ChatEntry({
   }
 
   return (
-    <div className="space-y-4 pb-4 border-b border-border last:border-b-0">
+    <div className="space-y-4 border-b border-border pb-4 last:border-b-0">
       <div>
-        <p className="text-xs text-muted-foreground mb-1">Question</p>
+        <p className="mb-1 text-xs font-medium text-muted-foreground">Question</p>
         <p className="text-sm font-medium">{trace.question}</p>
       </div>
       <div>
-        <p className="text-xs text-muted-foreground mb-1">Answer</p>
-        <p className="text-sm whitespace-pre-wrap">{trace.answer.final_answer}</p>
+        <p className="mb-1 text-xs font-medium text-muted-foreground">Answer</p>
+        <p className="max-w-[70ch] whitespace-pre-wrap font-serif text-[15px] leading-relaxed">
+          {renderAnswer(trace.answer.final_answer)}
+        </p>
       </div>
       {trace.answer.sources.length > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Sources</p>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Sources</p>
           <div className="space-y-1.5">
             {trace.answer.sources.map((s) => {
               const src = sourcesData[s.source_id];
@@ -166,15 +276,14 @@ function ChatEntry({
               return (
                 <div
                   key={s.source_id}
-                  className="relative text-xs border border-border rounded-md"
+                  className="relative rounded-md border border-border text-xs"
                   onMouseEnter={() => hasClaims && hoverSource(s)}
                   onMouseLeave={() => setHovered(null)}
                 >
-                  {/* Hover preview popover — quick peek at the fragments */}
                   {hovered === s.source_id && !isOpen && hasClaims && (
-                    <div className="absolute z-30 left-0 right-0 bottom-full mb-1 p-2.5 rounded-md border border-border bg-popover shadow-lg space-y-1.5">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-                        Fragmenty cytowane w odpowiedzi
+                    <div className="absolute bottom-full left-0 right-0 z-30 mb-1 space-y-1.5 rounded-md border border-border bg-popover p-2.5 shadow-lg">
+                      <p className="text-[10px] font-medium text-muted-foreground">
+                        Claims cited in this answer
                       </p>
                       {renderClaims(claims)}
                     </div>
@@ -182,26 +291,26 @@ function ChatEntry({
                   <button
                     onClick={() => hasClaims && toggleSource(s)}
                     disabled={!hasClaims}
-                    className={`w-full text-left px-3 py-2 space-y-1 rounded-md ${hasClaims ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"} transition-colors`}
+                    className={`w-full space-y-1 rounded-md px-3 py-2 text-left transition-colors ${hasClaims ? "cursor-pointer hover:bg-muted/50" : "cursor-default"}`}
                   >
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-foreground flex-1 truncate">{src?.title ?? s.source_id}</p>
+                      <p className="flex-1 truncate font-medium text-foreground">{src?.title ?? s.source_id}</p>
                       {hasClaims && (
-                        <span className="flex items-center gap-1 shrink-0 text-primary text-[11px] font-medium rounded px-1.5 py-0.5 bg-primary/10">
-                          {isOpen ? "Ukryj fragmenty" : `Pokaż ${s.claim_ids.length} ${s.claim_ids.length === 1 ? "fragment" : "fragmenty"}`}
-                          {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        <span className="flex shrink-0 items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
+                          {isOpen ? "Hide claims" : `${s.claim_ids.length} ${s.claim_ids.length === 1 ? "claim" : "claims"}`}
+                          {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                         </span>
                       )}
                     </div>
                     {src?.summary && !isOpen && (
-                      <p className="text-muted-foreground line-clamp-2">{src.summary}</p>
+                      <p className="line-clamp-2 text-muted-foreground">{src.summary}</p>
                     )}
-                    <p className="text-muted-foreground/60 font-mono text-[10px]">
-                      {s.source_id}{!hasClaims && " · brak fragmentów"}
+                    <p className="font-mono text-[10px] text-muted-foreground/60">
+                      {s.source_id}{!hasClaims && " · no claims"}
                     </p>
                   </button>
                   {isOpen && (
-                    <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/20 space-y-1.5">
+                    <div className="space-y-1.5 border-t border-border bg-muted/20 px-3 pb-2 pt-1">
                       {renderClaims(claims, (c) => openDoc(c, src?.title ?? s.source_id))}
                     </div>
                   )}
@@ -213,8 +322,8 @@ function ChatEntry({
       )}
       {trace.answer.reasoning_steps.length > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Reasoning</p>
-          <ol className="text-xs space-y-0.5 list-decimal list-inside text-muted-foreground">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Reasoning</p>
+          <ol className="list-inside list-decimal space-y-0.5 text-xs text-muted-foreground">
             {trace.answer.reasoning_steps.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
@@ -223,13 +332,13 @@ function ChatEntry({
       )}
       {trace.answer.related_questions.length > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Related questions</p>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Follow-ups</p>
           <ul className="space-y-1">
             {trace.answer.related_questions.map((q, i) => (
               <li key={i}>
                 <button
                   onClick={() => onPickQuestion(q)}
-                  className="text-xs text-primary hover:underline text-left"
+                  className="text-left text-xs text-primary hover:underline"
                 >
                   {q}
                 </button>
@@ -238,11 +347,11 @@ function ChatEntry({
           </ul>
         </div>
       )}
-      <div className="flex gap-3 text-xs text-muted-foreground pt-2">
-        <span>Confidence: {(trace.answer.confidence * 100).toFixed(0)}%</span>
+      <div className="flex gap-3 pt-2 font-mono text-[11px] text-muted-foreground">
+        <span>confidence {(trace.answer.confidence * 100).toFixed(0)}%</span>
         <span>{trace.total_duration_ms.toFixed(0)} ms</span>
         <span>{trace.total_llm_calls} LLM calls</span>
-        <span>{trace.candidates_count} candidates → {trace.selected_count} selected</span>
+        <span>{trace.candidates_count} → {trace.selected_count}</span>
       </div>
       {snippet && (
         <div
@@ -250,26 +359,26 @@ function ChatEntry({
           onClick={() => setSnippet(null)}
         >
           <div
-            className="w-full max-w-2xl max-h-[70vh] flex flex-col rounded-lg border border-border bg-card shadow-xl"
+            className="flex max-h-[70vh] w-full max-w-2xl flex-col rounded-lg border border-border bg-card shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-              <span className="text-sm font-medium truncate" title={snippet.title}>
-                Fragment w dokumencie: {snippet.title}
+            <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+              <span className="truncate text-sm font-medium" title={snippet.title}>
+                In document: {snippet.title}
               </span>
-              <button onClick={() => setSnippet(null)} className="ml-2 text-muted-foreground hover:text-foreground transition-colors shrink-0">
-                <X className="w-4 h-4" />
+              <button onClick={() => setSnippet(null)} className="ml-2 shrink-0 text-muted-foreground transition-colors hover:text-foreground">
+                <X className="h-4 w-4" />
               </button>
             </div>
             <div className="flex-1 overflow-auto p-4">
               {!snippet.located && (
-                <p className="text-xs text-amber-500 mb-2">
-                  Nie udało się dokładnie zlokalizować fragmentu w oryginale (artefakty PDF) — pokazuję wyodrębniony fragment.
+                <p className="mb-2 text-xs text-amber-500">
+                  Couldn't pin the fragment exactly in the original (PDF artifacts) — showing the extracted text.
                 </p>
               )}
-              <p className="text-xs leading-relaxed whitespace-pre-wrap break-words font-mono text-foreground">
+              <p className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground">
                 {snippet.located && <span className="text-muted-foreground/60">…{snippet.before}</span>}
-                <mark className="bg-primary/25 text-foreground rounded-sm px-0.5">{snippet.match}</mark>
+                <mark className="rounded-sm bg-primary/25 px-0.5 text-foreground">{snippet.match}</mark>
                 {snippet.located && <span className="text-muted-foreground/60">{snippet.after}…</span>}
               </p>
             </div>
@@ -292,27 +401,24 @@ export function ChatWithTracePanel() {
 
   const latest = history.length > 0 ? history[history.length - 1] : null;
 
-  // Persist history to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     } catch {
-      // Storage full or unavailable — non-fatal
+      /* storage full or unavailable — non-fatal */
     }
   }, [history]);
 
-  // Load source data on mount
   useEffect(() => {
     api.listWikiSources().then((sources) => {
       const map: Record<string, { title: string; summary: string; slug: string }> = {};
       for (const s of sources) map[s.id] = { title: s.title, summary: s.summary ?? "", slug: s.slug };
       setSourcesData(map);
     }).catch(() => {
-      // Non-fatal: fall back to raw IDs
+      /* non-fatal: fall back to raw IDs */
     });
   }, []);
 
-  // Sequential stage replay for the latest trace
   useEffect(() => {
     if (!latest) {
       setRevealedStages(0);
@@ -326,11 +432,8 @@ export function ChatWithTracePanel() {
     return () => timeouts.forEach(clearTimeout);
   }, [latest]);
 
-  // Newest entry is rendered at the top → scroll the conversation back to top
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [history, loading]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -356,121 +459,71 @@ export function ChatWithTracePanel() {
     try {
       localStorage.removeItem(HISTORY_KEY);
     } catch {
-      // Non-fatal
+      /* non-fatal */
     }
   }
 
-  const stageStatus = (idx: number): "idle" | "running" | "done" | "error" => {
-    if (!latest) return loading && idx === 0 ? "running" : "idle";
-    if (revealedStages >= latest.stages.length) return "done";
-    if (idx < revealedStages - 1) return "done";
-    if (idx === revealedStages - 1) return "running";
-    return "idle";
-  };
-
   return (
-    <div className="h-full flex flex-col p-6 gap-4">
-      {/* Query bar */}
+    <div className="flex h-full flex-col gap-4 p-6">
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           ref={inputRef}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask a question about your wiki…"
-          className="flex-1 px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           disabled={loading}
         />
         <button
           type="submit"
           disabled={!question.trim() || loading}
-          className="px-3 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
+          className="rounded-md bg-primary px-3 py-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
-          <Send className="w-4 h-4" />
+          <Send className="h-4 w-4" />
         </button>
       </form>
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-500 border border-red-500/30 rounded-md p-3">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="flex items-center gap-2 rounded-md border border-red-500/30 p-3 text-sm text-red-500">
+          <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
-      <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
-        {/* Left: Conversation history */}
-        <div ref={scrollRef} className="flex-1 border border-border rounded-lg bg-card p-4 overflow-auto">
-          {history.length === 0 && !loading && (
-            <p className="text-sm text-muted-foreground">Ask a question to see the answer here.</p>
-          )}
-          {history.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {history.length} {history.length === 1 ? "rozmowa" : "rozmów"} w historii
-                </p>
-                <button
-                  onClick={clearHistory}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors"
-                  title="Wyczyść całą historię rozmów"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Wyczyść historię
-                </button>
-              </div>
-              {loading && (
-                <p className="text-sm text-muted-foreground animate-pulse">Running retrieval pipeline…</p>
-              )}
-              {[...history].reverse().map((t) => (
-                <ChatEntry
-                  key={t.query_id}
-                  trace={t}
-                  sourcesData={sourcesData}
-                  onPickQuestion={setQuestion}
-                />
-              ))}
-            </div>
-          )}
-          {history.length === 0 && loading && (
-            <p className="text-sm text-muted-foreground animate-pulse mt-4">Running retrieval pipeline…</p>
-          )}
-        </div>
+      <SignalChain latest={latest} loading={loading} revealedStages={revealedStages} />
 
-        {/* Right: Stage trace (latest conversation) */}
-        <div className="w-72 shrink-0 space-y-2 overflow-auto">
-          <div className="mb-1">
-            <h3 className="text-sm font-semibold">Pipeline Trace</h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Jak system przetwarza pytanie krok po kroku</p>
-          </div>
-          {latest ? (
-            latest.stages.map((s, i) => (
-              <StageCard key={s.stage} stage={s} status={stageStatus(i)} />
-            ))
-          ) : (
-            [
-              { name: "Intent Parser", desc: "Analizuje pytanie, wyciąga encje i koncepty" },
-              { name: "Candidate Filter", desc: "Szuka pasujących wpisów w wiki" },
-              { name: "Selection", desc: "Wybiera najlepiej pasujące wyniki" },
-              { name: "Context Assembly", desc: "Składa kontekst dla modelu" },
-              { name: "Answer Generator", desc: "Generuje odpowiedź na podstawie kontekstu" },
-            ].map((info, i) => (
-              <div key={i} className="border border-border rounded-md p-2.5 text-xs opacity-50">
-                <p className="font-medium">Stage {i + 1}: {info.name}</p>
-                <p className="text-muted-foreground mt-0.5">{info.desc}</p>
-              </div>
-            ))
-          )}
-          {latest && (
-            <div className="text-xs text-muted-foreground pt-1 border-t border-border">
-              <p>Intent: <span className="font-medium">{latest.intent.intent_type}</span></p>
-              {latest.intent.entity_mentions.length > 0 && (
-                <p>Entities: {latest.intent.entity_mentions.join(", ")}</p>
-              )}
-              {latest.intent.concept_mentions.length > 0 && (
-                <p>Concepts: {latest.intent.concept_mentions.join(", ")}</p>
-              )}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card p-4">
+        {history.length === 0 && !loading && (
+          <p className="text-sm text-muted-foreground">Ask a question to see the answer and its trace here.</p>
+        )}
+        {loading && (
+          <p className="animate-pulse text-sm text-muted-foreground">Running the retrieval pipeline…</p>
+        )}
+        {history.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {history.length} {history.length === 1 ? "question" : "questions"} in this session
+              </p>
+              <button
+                onClick={clearHistory}
+                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-red-500"
+                title="Clear the conversation history"
+              >
+                <Trash2 className="h-3 w-3" />
+                Clear history
+              </button>
             </div>
-          )}
-        </div>
+            {[...history].reverse().map((t) => (
+              <ChatEntry
+                key={t.query_id}
+                trace={t}
+                sourcesData={sourcesData}
+                onPickQuestion={setQuestion}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
