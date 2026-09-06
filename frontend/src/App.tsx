@@ -11,11 +11,19 @@ import { KnowledgeMapPanel } from "./components/wiki/KnowledgeMapPanel";
 import { LintPanel } from "./components/lint/LintPanel";
 import type { Panel, SessionMetrics } from "./types";
 import { api } from "./api/client";
+import { startTour, hasSeenTour } from "./components/onboarding/tour";
 
 export default function App() {
   const [activePanel, setActivePanel] = useState<Panel>("ingest");
   const [metrics, setMetrics] = useState<SessionMetrics | null>(null);
   const [focusNode, setFocusNode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hasSeenTour()) {
+      const t = setTimeout(() => startTour(setActivePanel), 700);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   const goToNode = (nodeId: string) => {
     setFocusNode(nodeId);
@@ -32,7 +40,7 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <Header metrics={metrics} />
+      <Header metrics={metrics} onStartTour={() => startTour(setActivePanel)} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar active={activePanel} onChange={setActivePanel} />
         <main className="flex-1 overflow-auto bg-background">

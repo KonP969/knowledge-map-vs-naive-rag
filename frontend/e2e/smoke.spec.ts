@@ -17,7 +17,10 @@ async function goToPanel(page: Page, name: string) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.clear());
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem("tourSeen", "1"); // don't auto-run the onboarding tour in tests
+  });
 });
 
 test("every panel renders without console errors", async ({ page }) => {
@@ -56,6 +59,16 @@ test("the demo corpus loaded into the graph", async ({ page }) => {
   const label = await page.getByText(/\d+ nodes · \d+ edges/).textContent();
   const nodes = Number(label?.match(/(\d+) nodes/)?.[1] ?? 0);
   expect(nodes).toBeGreaterThan(10);
+});
+
+test("the onboarding tour runs on a first visit", async ({ browser }) => {
+  const ctx = await browser.newContext(); // fresh storage — tour not yet seen
+  const page = await ctx.newPage();
+  await page.goto("/");
+  await expect(page.getByText("Knowledge-Map RAG", { exact: true })).toBeVisible({ timeout: 5_000 });
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("1 · Add knowledge")).toBeVisible();
+  await ctx.close();
 });
 
 test("the app has no Polish UI strings left", async ({ page }) => {

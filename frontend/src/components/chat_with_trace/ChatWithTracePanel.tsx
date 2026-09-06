@@ -135,7 +135,7 @@ function SignalChain({
   const stages = latest ? latest.stages : IDLE_STAGES;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-3">
+    <div data-tour="pipeline" className="rounded-lg border border-border bg-card p-3">
       <div className="mb-2 flex items-baseline justify-between">
         <h3 className="text-xs font-semibold text-muted-foreground">Pipeline</h3>
         {latest && (
@@ -465,7 +465,7 @@ export function ChatWithTracePanel() {
 
   return (
     <div className="flex h-full flex-col gap-4 p-6">
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} data-tour="chat-input" className="flex gap-2">
         <input
           ref={inputRef}
           value={question}
