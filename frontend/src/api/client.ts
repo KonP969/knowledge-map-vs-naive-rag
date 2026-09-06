@@ -1,4 +1,7 @@
-const BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api";
+// Dev: "/api" is proxied to the backend by Vite (see vite.config.ts), which
+// sidesteps CORS and any localhost/127.0.0.1 mismatch. Set VITE_API_BASE to an
+// absolute URL when the frontend is served separately from the API.
+const BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, options);
