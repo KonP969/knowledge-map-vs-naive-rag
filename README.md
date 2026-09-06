@@ -1,5 +1,7 @@
 # RAG 2.0 — Karpathy Method
 
+*English · [Polski](README.pl.md)*
+
 A local, educational web app that implements **Knowledge-Map RAG** — an experiment
 inspired by Andrej Karpathy's critique of naive retrieval-augmented generation.
 Instead of chunking documents and doing vector search, the system extracts a
@@ -12,9 +14,17 @@ legible, not to be a production RAG stack.
 ![Wiki Chat — a question, its 5-stage retrieval trace, and the cited answer](docs/screenshots/wiki-chat.png)
 
 Ask a question and the pipeline runs across the top, one stage at a time; the
-answer below cites the exact claims it used. The
-[Knowledge Map](docs/screenshots/knowledge-map.png) shows the graph those claims
-live in.
+answer below cites the exact claims it used.
+
+| | |
+|---|---|
+| [![Knowledge Map](docs/screenshots/knowledge-map.png)](docs/screenshots/knowledge-map.png) | [![Ingest pipeline](docs/screenshots/ingest.png)](docs/screenshots/ingest.png) |
+| The graph your answers are built from | The 5-stage ingest pipeline, per source |
+| [![Sources](docs/screenshots/sources.png)](docs/screenshots/sources.png) | [![Tutorial](docs/screenshots/tutorial.png)](docs/screenshots/tutorial.png) |
+| Every ingested source and what was extracted | An in-app guide to the whole approach |
+
+On the first visit a short tour walks you through the panels — replay it any time
+from the **Tour** button in the header.
 
 ## Why not naive RAG?
 
@@ -118,13 +128,12 @@ cd frontend && npm run dev
 
 ## Try it without ingesting anything
 
-A `wiki_data/default` starts empty. To explore the app with a pre-built graph, point
+`wiki_data/default` starts empty. To explore the app with a pre-built graph, point
 it at the bundled demo corpus (3 Wikipedia articles on RAG, vector databases, and
-word embeddings):
+word embeddings) — uncomment this line in `backend/.env`:
 
-```bash
-cd backend
-WIKI_DATA_DIR=wiki_data/.example uvicorn main:app --port 8000
+```
+WIKI_DATA_DIR=wiki_data/.example
 ```
 
 **Sources**, **Knowledge Map**, and **Lint** work with no API key. **Wiki Chat** and
@@ -162,7 +171,7 @@ backend/
 │   ├── wiki_store.py       read/write wiki_data/
 │   └── wiki_index.py       regenerate 00-Index
 ├── scripts/                eval + maintenance scripts
-├── tests/                  ~465 unit + integration tests
+├── tests/                  ~470 unit + integration tests
 └── wiki_data/
     ├── default/            your knowledge base (git-ignored, starts empty)
     └── .example/           bundled demo corpus
@@ -190,11 +199,10 @@ wiki_data/<name>/
 ## Tests
 
 ```bash
-cd backend && python -m pytest -q          # ~465 unit + integration tests
+cd backend && python -m pytest -q     # ~470 unit + integration tests
 
-cd frontend
-npm run test:e2e                           # Playwright smoke suite (needs the dev servers;
-                                           # runs the backend on the demo corpus, no API key)
+cd frontend && npm run test:e2e       # Playwright smoke suite — starts (or reuses) the dev
+                                      # servers, runs the backend on the demo corpus, no API key
 ```
 
 ## License
