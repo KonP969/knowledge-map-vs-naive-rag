@@ -9,6 +9,13 @@ by reasoning over that graph — showing its work at every step.
 This is a research/learning project: the point is to make the retrieval pipeline
 legible, not to be a production RAG stack.
 
+![Wiki Chat — a question, its 5-stage retrieval trace, and the cited answer](docs/screenshots/wiki-chat.png)
+
+Ask a question and the pipeline runs across the top, one stage at a time; the
+answer below cites the exact claims it used. The
+[Knowledge Map](docs/screenshots/knowledge-map.png) shows the graph those claims
+live in.
+
 ## Why not naive RAG?
 
 Classic RAG (chunk → embed → vector search → stuff context → LLM) struggles with:
@@ -183,7 +190,11 @@ wiki_data/<name>/
 ## Tests
 
 ```bash
-cd backend && python -m pytest -q
+cd backend && python -m pytest -q          # ~465 unit + integration tests
+
+cd frontend
+npm run test:e2e                           # Playwright smoke suite (needs the dev servers;
+                                           # runs the backend on the demo corpus, no API key)
 ```
 
 ## License
