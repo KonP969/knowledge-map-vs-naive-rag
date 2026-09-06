@@ -4,58 +4,59 @@ export function SectionIntro() {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Czym jest Knowledge Map RAG?</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Knowledge Map RAG to podejście do pytania-odpowiedzi oparte na <strong className="text-foreground">wiedzy strukturalnej</strong> zamiast podobieństwa wektorowego.
-          System buduje graf wiedzy: encje, pojęcia, claims z proweniencją i relacje. Zamiast top-K chunków — precyzyjne cytowania z grafu.
+        <h2 className="text-lg font-semibold">What is Knowledge-Map RAG?</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Knowledge-Map RAG answers questions from <strong className="text-foreground">structured knowledge</strong> rather
+          than vector similarity. At ingest time it builds a graph — entities, concepts, claims (each with provenance),
+          and edges. Instead of the top-K chunks, an answer cites specific claims from that graph.
         </p>
 
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <div className="border border-border rounded-lg p-4 bg-destructive/5">
-            <p className="text-xs font-semibold text-destructive uppercase tracking-wide mb-2">Naive RAG</p>
-            <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Podziel dokument na chunki</li>
-              <li>Wygeneruj embeddingi (wektory)</li>
-              <li>Przechowaj w vector store</li>
-              <li>Zapytanie → cosine similarity → top-K</li>
-              <li>Wstaw chunki do prompta → odpowiedź</li>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-border bg-error/5 p-4">
+            <p className="mb-2 text-xs font-semibold text-error">Naive RAG</p>
+            <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
+              <li>Split the document into chunks</li>
+              <li>Embed each chunk into a vector</li>
+              <li>Store the vectors</li>
+              <li>Query → cosine similarity → top-K</li>
+              <li>Stuff the chunks into the prompt → answer</li>
             </ol>
           </div>
-          <div className="border border-primary/30 rounded-lg p-4 bg-primary/5">
-            <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Knowledge Map RAG</p>
-            <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Parsuj dokument</li>
-              <li>Klasyfikuj (LLM) → encje, claims, relacje</li>
-              <li>Wykryj konflikty z istniejącą wiedzą</li>
-              <li>Zapisz do wiki (Markdown + JSONL)</li>
-              <li>Zapytanie → intent → graf → cytowana odpowiedź</li>
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <p className="mb-2 text-xs font-semibold text-primary">Knowledge-Map RAG</p>
+            <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
+              <li>Parse the document</li>
+              <li>Classify (LLM) → entities, claims, edges</li>
+              <li>Check for conflicts with what's already known</li>
+              <li>Write to the wiki (Markdown + JSONL)</li>
+              <li>Query → intent → graph → cited answer</li>
             </ol>
           </div>
         </div>
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-foreground">Kluczowe różnice</h3>
-        <table className="w-full text-xs border-collapse">
+        <h3 className="text-sm font-semibold text-foreground">The key differences</h3>
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-muted">
-              <th className="px-3 py-2 text-left border border-border">Cecha</th>
-              <th className="px-3 py-2 text-left border border-border text-destructive">Naive RAG</th>
-              <th className="px-3 py-2 text-left border border-border text-primary">KM RAG</th>
+              <th className="border border-border px-3 py-2 text-left">Aspect</th>
+              <th className="border border-border px-3 py-2 text-left text-error">Naive RAG</th>
+              <th className="border border-border px-3 py-2 text-left text-primary">KM RAG</th>
             </tr>
           </thead>
           <tbody>
             {[
-              ["Śledzenie źródeł", "Brak — chunk pochodzi z dowolnego miejsca", "Każdy claim ma proweniencję (source_id, sekcja)"],
-              ["Sprzeczności", "Niewidoczne — oba chunki trafiają do prompta", "Wykrywane podczas ingestu, oznaczone w wiki"],
-              ["Zapytania temporalne", "Słabe — chunki bez struktury dat", "Claims mają pola date_start/date_end"],
-              ["Relacje między encjami", "Brak — każdy chunk jest izolowany", "Graf relacji: X –[CEO_OF]→ Y"],
-              ["Skalowanie", "Rośnie liczba wektorów — degradacja jakości", "Rośnie wiki — każda encja wzbogaca graf"],
+              ["Source tracking", "None — a chunk could be from anywhere", "Every claim carries provenance (source_id, section)"],
+              ["Contradictions", "Invisible — both chunks land in the prompt", "Detected at ingest, flagged in the wiki"],
+              ["Temporal queries", "Weak — chunks have no date structure", "Claims have date_start / date_end fields"],
+              ["Relationships", "None — every chunk is isolated", "A graph of edges: X –[CEO_OF]→ Y"],
+              ["Scaling", "More vectors → quality degrades", "A bigger wiki → every entity enriches the graph"],
             ].map(([feature, naive, km]) => (
               <tr key={feature} className="border-b border-border odd:bg-card even:bg-muted/20">
-                <td className="px-3 py-2 border border-border font-medium">{feature}</td>
-                <td className="px-3 py-2 border border-border text-muted-foreground">{naive}</td>
-                <td className="px-3 py-2 border border-border text-muted-foreground">{km}</td>
+                <td className="border border-border px-3 py-2 font-medium">{feature}</td>
+                <td className="border border-border px-3 py-2 text-muted-foreground">{naive}</td>
+                <td className="border border-border px-3 py-2 text-muted-foreground">{km}</td>
               </tr>
             ))}
           </tbody>
@@ -65,23 +66,23 @@ export function SectionIntro() {
       <Walkthrough
         steps={[
           {
-            title: "Otwórz Knowledge Map",
-            content: <p>Kliknij <strong>Knowledge Map</strong> w sidebarze. Zobaczysz graf wiedzy zbudowany ze wszystkich wgranych źródeł — każdy węzeł to encja lub pojęcie.</p>,
+            title: "Open the Knowledge Map",
+            content: <p>Click <strong>Knowledge Map</strong> in the sidebar. You'll see the graph built from every ingested source — each node is an entity or a concept.</p>,
             panelHint: "Knowledge Map → Browser",
           },
           {
-            title: "Kliknij węzeł na grafie",
-            content: <p>Na zakładce <strong>Graph</strong> kliknij dowolny węzeł. Otworzy się szuflada z pełną stroną wiki: lista claims z proweniencją, relacje z innymi węzłami.</p>,
+            title: "Click a node",
+            content: <p>On the <strong>Graph</strong> tab, click any node. A drawer opens with the full wiki page: its claims with provenance, and its edges to other nodes.</p>,
             panelHint: "Knowledge Map → Graph",
           },
           {
-            title: "Porównaj z listą w Browser",
-            content: <p>Zakładka <strong>Browser</strong> pokazuje tabelarycznie wszystkie encje i pojęcia z liczbą claims. Przeszukuj po nazwie — każde wystąpienie linkuje do strony wiki.</p>,
+            title: "Compare with the Browser list",
+            content: <p>The <strong>Browser</strong> tab lists every entity and concept in a table with its claim count. Search by name — each hit links to the wiki page.</p>,
             panelHint: "Knowledge Map → Browser",
           },
           {
-            title: "Struktura wiki na dysku",
-            content: <p>System przechowuje wiedzę w plikach Markdown w <code className="bg-muted px-1 rounded text-xs">wiki_data/default/</code>. Każda encja to <code className="bg-muted px-1 rounded text-xs">entity_*.md</code> z YAML frontmatter i <code className="bg-muted px-1 rounded text-xs">claims.jsonl</code>.</p>,
+            title: "The wiki on disk",
+            content: <p>Knowledge lives in Markdown files under <code className="rounded bg-muted px-1 text-xs">wiki_data/default/</code>. Each entity is an <code className="rounded bg-muted px-1 text-xs">entity_*.md</code> with YAML frontmatter, plus <code className="rounded bg-muted px-1 text-xs">claims.jsonl</code>.</p>,
           },
         ]}
       />

@@ -9,30 +9,30 @@ function isGraphNodeLocation(location: string): boolean {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  provenance_missing: "Brak proweniencji",
-  dangling_source_ref: "Odwołanie do usuniętego źródła",
-  dangling_node_ref: "Odwołanie do nieistniejącego węzła",
-  corrupted_jsonl: "Uszkodzony plik danych",
-  orphan_entity: "Encja bez powiązań",
-  orphan_concept: "Koncept bez powiązań",
-  empty_questions: "Brak pytań",
-  empty_description: "Brak opisu",
-  unmarked_contradiction: "Nieoflagowana sprzeczność",
-  entity_alias_collision: "Kolizja aliasów encji",
-  missing_concept: "Brakujący koncept",
-  stale_summary: "Nieaktualny opis",
+  provenance_missing: "Missing provenance",
+  dangling_source_ref: "Reference to a deleted source",
+  dangling_node_ref: "Reference to a missing node",
+  corrupted_jsonl: "Corrupted data file",
+  orphan_entity: "Entity with no links",
+  orphan_concept: "Concept with no links",
+  empty_questions: "No questions",
+  empty_description: "No description",
+  unmarked_contradiction: "Unflagged contradiction",
+  entity_alias_collision: "Entity alias collision",
+  missing_concept: "Missing concept",
+  stale_summary: "Stale summary",
 };
 
 const FIX_DESCRIPTIONS: Record<string, string> = {
-  provenance_missing: "Uzupełni brakujące dane proweniencji",
-  dangling_source_ref: "Usunie odwołanie do nieistniejącego źródła",
-  dangling_node_ref: "Usunie krawędź wskazującą na nieistniejący węzeł",
-  orphan_entity: "Oflaguje encję jako izolowaną",
-  orphan_concept: "Oflaguje koncept jako izolowany",
-  empty_questions: "Wygeneruje pytania pomocne przy wyszukiwaniu (LLM)",
-  empty_description: "Zapisze podany opis",
-  entity_alias_collision: "Połączy encje z identycznymi aliasami",
-  missing_concept: "Doda brakujący koncept do wiki",
+  provenance_missing: "Fills in the missing provenance",
+  dangling_source_ref: "Removes the reference to the missing source",
+  dangling_node_ref: "Removes the edge pointing at a missing node",
+  orphan_entity: "Marks the entity as isolated",
+  orphan_concept: "Marks the concept as isolated",
+  empty_questions: "Generates retrieval-helper questions (LLM)",
+  empty_description: "Saves the description you write",
+  entity_alias_collision: "Merges entities that share an alias",
+  missing_concept: "Adds the missing concept to the wiki",
 };
 
 function formatLocation(location: string): string {
@@ -96,7 +96,7 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, onLocationCl
               <button
                 onClick={() => onLocationClick!(issue.location)}
                 className="flex items-center gap-0.5 text-[11px] text-primary hover:underline truncate"
-                title={`Pokaż w Knowledge Map: ${issue.location}`}
+                title={`Show in Knowledge Map: ${issue.location}`}
               >
                 <MapPin className="w-2.5 h-2.5 shrink-0" />
                 {formatLocation(issue.location)}
@@ -106,7 +106,7 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, onLocationCl
                 {formatLocation(issue.location)}
               </span>
             )}
-            <span className={`ml-auto px-2 py-0.5 rounded text-[10px] uppercase ${STATUS_BADGE[issue.status]}`}>
+            <span className={`ml-auto px-2 py-0.5 rounded text-[10px] ${STATUS_BADGE[issue.status]}`}>
               {issue.status}
             </span>
           </div>
@@ -120,13 +120,13 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, onLocationCl
       {!closed && isEmptyDescriptionEdit && (
         <div className="space-y-1">
           <p className="text-[11px] text-muted-foreground">
-            {entitySlug ? <>Opisz: <span className="font-medium text-foreground">{entitySlug}</span>. </> : null}
-            Wygeneruj opis automatycznie (AI) lub wpisz własny (≥30 znaków).
+            {entitySlug ? <>Describe <span className="font-medium text-foreground">{entitySlug}</span>. </> : null}
+            Generate one with AI, or write your own (min. 30 characters).
           </p>
           <textarea
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
-            placeholder="Własny opis (≥30 znaków)…"
+            placeholder="Your own description (min. 30 characters)…"
             rows={2}
             className="w-full px-2 py-1 text-xs border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
@@ -141,16 +141,16 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, onLocationCl
                 disabled={busy}
                 onClick={() => onApply(issue.id)}
                 className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-violet-600 text-white hover:opacity-90 transition-opacity disabled:opacity-40"
-                title="Wygeneruj opis na podstawie kontekstu encji (LLM)"
+                title="Generate a description from the entity's context (LLM)"
               >
-                <Sparkles className="w-3 h-3" /> Wygeneruj opis (AI)
+                <Sparkles className="w-3 h-3" /> Generate with AI
               </button>
               <button
                 disabled={busy || !editValid}
                 onClick={() => onApply(issue.id, { description: editText.trim() })}
                 className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Check className="w-3 h-3" /> Zapisz mój opis
+                <Check className="w-3 h-3" /> Save my description
               </button>
             </>
           ) : isGenerateQuestions ? (
@@ -166,7 +166,7 @@ export function LintIssueRow({ issue, onApply, onReject, onWontFix, onLocationCl
               disabled={busy || !issue.auto_fixable}
               onClick={() => onApply(issue.id)}
               className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-              title={FIX_DESCRIPTIONS[issue.type] ?? (issue.auto_fixable ? "Zastosuj automatyczną poprawkę" : "Brak automatycznej poprawki")}
+              title={FIX_DESCRIPTIONS[issue.type] ?? (issue.auto_fixable ? "Apply the automatic fix" : "No automatic fix available")}
             >
               <Check className="w-3 h-3" /> Apply Fix
             </button>

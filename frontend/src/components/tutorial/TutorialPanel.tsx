@@ -9,12 +9,12 @@ import { SectionWalkthroughs } from "./sections/SectionWalkthroughs";
 type TabId = "intro" | "naive-rag" | "ingest" | "retrieval" | "querying" | "walkthroughs";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "intro", label: "Knowledge Map RAG" },
-  { id: "naive-rag", label: "Dlaczego nie naive RAG" },
-  { id: "ingest", label: "Jak działa ingest" },
-  { id: "retrieval", label: "Jak działa retrieval" },
-  { id: "querying", label: "Jak pytać" },
-  { id: "walkthroughs", label: "Przewodniki" },
+  { id: "intro", label: "Knowledge-Map RAG" },
+  { id: "naive-rag", label: "Why not naive RAG" },
+  { id: "ingest", label: "How ingest works" },
+  { id: "retrieval", label: "How retrieval works" },
+  { id: "querying", label: "How to ask" },
+  { id: "walkthroughs", label: "Walkthroughs" },
 ];
 
 export function TutorialPanel() {
@@ -24,7 +24,7 @@ export function TutorialPanel() {
     <div className="max-w-3xl mx-auto p-6">
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-foreground mb-1">RAG 2.0 — Knowledge Map</h1>
-        <p className="text-muted-foreground text-sm">Kompletny przewodnik systemu opartego na wiedzy strukturalnej.</p>
+        <p className="text-muted-foreground text-sm">A guide to answering questions from a structured knowledge graph.</p>
       </div>
 
       <div className="flex gap-0.5 flex-wrap border-b border-border mb-6">

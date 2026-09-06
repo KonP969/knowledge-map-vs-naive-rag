@@ -106,7 +106,7 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
     } catch (e) {
       setError((e as Error).message);
     }
-    if (failures > 0) setError(`${failures} z ${targets.length} poprawek nie powiodło się.`);
+    if (failures > 0) setError(`${failures} of ${targets.length} fixes failed.`);
     setFixingAll(false);
   }
 
@@ -136,7 +136,7 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
             </span>
           ) : confirmFixAll ? (
             <span className="flex items-center gap-1.5 text-xs">
-              <span className="text-muted-foreground">Naprawić hurtem {bulkFixable.length}?</span>
+              <span className="text-muted-foreground">Fix all {bulkFixable.length}?</span>
               <button onClick={fixAll} className="text-primary hover:underline font-medium px-1">
                 Tak
               </button>
@@ -150,7 +150,7 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
                 onClick={() => setConfirmFixAll(true)}
                 disabled={running}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-primary/40 text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
-                title="Zastosuj hurtem wszystkie automatyczne poprawki (bez LLM i bez ręcznej edycji)"
+                title="Apply every automatic fix at once (no LLM, no manual edits)"
               >
                 <Wand2 className="w-3.5 h-3.5" />
                 Fix all ({bulkFixable.length})
@@ -219,11 +219,10 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
 
       {/* Panel explanation */}
       <div className="px-4 py-2.5 bg-muted/40 border-b border-border text-xs text-muted-foreground shrink-0">
-        <span className="font-medium text-foreground">Co to jest Lint?</span>{" "}
-        Automatyczna kontrola jakości wiki — wykrywa brakujące opisy, sprzeczne twierdzenia i duplikaty.
-        Kliknij <span className="font-medium text-foreground">Run Now</span>, potem{" "}
-        <span className="font-medium text-foreground">Fix</span> lub{" "}
-        <span className="font-medium text-foreground">Reject</span> przy każdym problemie.
+        <span className="font-medium text-foreground">What is Lint?</span>{" "}
+        Automatic quality checks over the wiki — missing descriptions, contradictory claims, duplicates.
+        Run it, then <span className="font-medium text-foreground">Apply Fix</span> or{" "}
+        <span className="font-medium text-foreground">Reject</span> on each issue.
       </div>
 
       {error && (

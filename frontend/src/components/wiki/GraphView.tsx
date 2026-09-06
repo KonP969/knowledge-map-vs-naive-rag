@@ -28,13 +28,18 @@ type GraphSearchResult = { nodeId: string; label: string; type: string; Icon: Re
 const NODE_W = 140;
 const NODE_H = 36;
 
+// A calm categorical set that sits on the graphite ground without competing with
+// the UI's single orange accent. Concept (usually the largest group) is the
+// quietest; sources are near-neutral containers.
 const ENTITY_COLORS: Record<string, string> = {
-  Person: "#3b82f6",
-  Org: "#10b981",
-  Product: "#f97316",
-  Place: "#ef4444",
-  Event: "#8b5cf6",
+  Person: "#c98f6b",
+  Org: "#6fa98f",
+  Product: "#9b8bc4",
+  Place: "#b76d6d",
+  Event: "#b5a05c",
 };
+const CONCEPT_COLOR = "#6b8cae";
+const SOURCE_COLOR = "#565963";
 
 // Position nodes with a force simulation so connected nodes cluster and nothing
 // overlaps. Seeded by type (sources up top, entities mid, concepts below) to keep
@@ -158,7 +163,7 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
             id: `entity:${e.id}`,
             data: { label: e.slug },
             position: { x: 0, y: 0 },
-            style: buildNodeStyle(ENTITY_COLORS[e.type] ?? "#3b82f6", "rect"),
+            style: buildNodeStyle(ENTITY_COLORS[e.type] ?? "#c98f6b", "rect"),
           });
         });
     }
@@ -169,7 +174,7 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
           id: `concept:${c.id}`,
           data: { label: c.slug },
           position: { x: 0, y: 0 },
-          style: buildNodeStyle("#f59e0b", "pill"),
+          style: buildNodeStyle(CONCEPT_COLOR, "pill"),
         });
       });
     }
@@ -180,7 +185,7 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
           id: `source:${s.id}`,
           data: { label: s.title.length > 18 ? s.title.slice(0, 18) + "…" : s.title },
           position: { x: 0, y: 0 },
-          style: buildNodeStyle("#6b7280", "round"),
+          style: buildNodeStyle(SOURCE_COLOR, "round"),
         });
       });
     }
@@ -336,11 +341,11 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
         </span>
         {/* Legend */}
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground border-l border-border pl-2 ml-1">
-          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: "#f59e0b" }} />Concept
-          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0 ml-1" style={{ background: "#3b82f6" }} />Person
-          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: "#10b981" }} />Org
-          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: "#f97316" }} />Product
-          <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0 ml-1" style={{ background: "#6b7280" }} />Source
+          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: CONCEPT_COLOR }} />Concept
+          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0 ml-1" style={{ background: ENTITY_COLORS.Person }} />Person
+          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: ENTITY_COLORS.Org }} />Org
+          <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: ENTITY_COLORS.Product }} />Product
+          <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0 ml-1" style={{ background: SOURCE_COLOR }} />Source
         </div>
 
         {/* Node search */}

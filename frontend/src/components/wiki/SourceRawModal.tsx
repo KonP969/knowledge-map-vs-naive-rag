@@ -46,7 +46,7 @@ export function SourceRawModal({ slug, title, onClose, highlight }: SourceRawMod
         if (!cancelled) setRawText(res.raw_text);
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Nie udało się wczytać oryginału");
+        if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load the original");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -108,7 +108,7 @@ export function SourceRawModal({ slug, title, onClose, highlight }: SourceRawMod
           {loading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Wczytywanie oryginału…
+              Loading the original…
             </div>
           )}
           {error && !loading && (

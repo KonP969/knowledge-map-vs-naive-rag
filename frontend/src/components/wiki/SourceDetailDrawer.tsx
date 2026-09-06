@@ -110,7 +110,7 @@ export function SourceDetailDrawer({ source, onClose }: SourceDetailDrawerProps)
           className="mt-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
         >
           <FileText className="w-3.5 h-3.5" />
-          Pokaż oryginał
+          Show original
         </button>
       </div>
 
