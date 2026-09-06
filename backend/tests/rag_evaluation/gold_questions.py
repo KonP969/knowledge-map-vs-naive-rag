@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 """Gold-set pytan do ewaluacji retrievalu (Phase 4 planu semantic-retrieval-over-graph).
 
-Pytania sa napisane pod AKTUALNA zawartosc vaultu `wiki_data/default` (5 zrodel:
-2x PORTA po polsku, 3x measureschool o customer analytics po angielsku). Po kazdej
-przebudowie korpusu gold-set trzeba przejrzec — `verify_gold_set.py` sprawdza, czy
-oczekiwane tematy da sie jeszcze znalezc w claimach.
+Zestawy pytan (QUESTION_SETS na dole pliku):
+  default / porta_articles — korpus produkcyjny: 15 artykulow wnetrzarskich
+                             porta.com.pl (vault wiki_data/default, od 2026-09-06)
+  legacy_mixed             — stary mieszany korpus (2x katalog PORTA PL +
+                             3x measureschool EN); tresci juz nie ma w default
+  pl_articles              — eksperyment jezyk-vs-struktura (vault wiki_data/eval_lang)
+
+Po kazdej przebudowie korpusu gold-set trzeba przejrzec, czy oczekiwane tematy
+da sie jeszcze znalezc w claimach.
 
 Kategorie sa celowo rozdzielone, bo mierza rozne rzeczy:
   factual      — prosty fakt zapisany wprost w jednym claimie
@@ -166,7 +171,126 @@ GOLD_QUESTIONS_PL_ARTICLES = [
     },
 ]
 
+# --- korpus produkcyjny: 15 artykulow wnetrzarskich porta.com.pl -----------
+# Vault `wiki_data/default` przebudowany 2026-09-06 (stary mieszany korpus ->
+# `legacy_mixed`). Wszystkie zrodla to narracyjna proza PL — struktura, ktora
+# w eksperymencie jezyk-vs-struktura dawala 10/10. Kategorie jak w glownym
+# gold-secie: factual / synthesis / entity_name / out_of_corpus.
+GOLD_QUESTIONS_PORTA_ARTICLES = [
+    # --- factual: fakt zapisany wprost w jednym claimie -------------------
+    {
+        "id": "pa_cloud_dancer_pantone",
+        "question": "Jaki kolor został Kolorem Roku 2026 według Pantone?",
+        "expected_topics": ["Cloud Dancer", "złamana biel", "kolor roku 2026"],
+        "category": "factual",
+        "language": "pl",
+    },
+    {
+        "id": "pa_mocha_skojarzenia",
+        "question": "Z czym kojarzy się kolor Mocha Mousse?",
+        "expected_topics": ["spokój", "harmonia", "elegancja", "domowe ciepło"],
+        "category": "factual",
+        "language": "pl",
+    },
+    {
+        "id": "pa_organic_materialy",
+        "question": "Jakie materiały dominują we wnętrzach w stylu Organic Modern?",
+        "expected_topics": ["drewno", "kamień", "len", "bawełna"],
+        "category": "factual",
+        "language": "pl",
+    },
+    {
+        "id": "pa_softloft_sypialnia",
+        "question": "Jakie drzwi najlepiej sprawdzają się w sypialni w stylu soft loft?",
+        "expected_topics": ["matowe przeszklenie", "pełne skrzydła", "prywatność"],
+        "category": "factual",
+        "language": "pl",
+    },
+    {
+        "id": "pa_wysokosc_skrzydel",
+        "question": "W jakich wysokościach dostępne są skrzydła drzwi PORTA?",
+        "expected_topics": ["200 cm", "220 cm", "wysokość podwyższona"],
+        "category": "factual",
+        "language": "pl",
+    },
+    {
+        "id": "pa_biurko_gaming",
+        "question": "Jakie cechy powinno mieć biurko do pokoju gamingowego?",
+        "expected_topics": ["szeroki blat", "regulacja wysokości", "przepusty na kable"],
+        "category": "factual",
+        "language": "pl",
+    },
+    # --- synthesis: odpowiedz wymaga zlozenia kilku claimow --------------
+    {
+        "id": "pa_szary_salon_akcenty",
+        "question": "Dlaczego szary salon wymaga barwnych akcentów?",
+        "expected_topics": ["neutralna baza", "monotonia", "barwne akcenty", "przełamanie jednolitości"],
+        "category": "synthesis",
+        "language": "pl",
+    },
+    {
+        "id": "pa_retro_vs_vintage",
+        "question": "Czym różni się styl retro od vintage w aranżacji łazienki?",
+        "expected_topics": ["oryginalne stare meble", "sprzed 20-25 lat", "współczesne meble stylizowane"],
+        "category": "synthesis",
+        "language": "pl",
+    },
+    {
+        "id": "pa_boho_pochodzenie",
+        "question": "Skąd wywodzi się styl boho i czym się charakteryzuje?",
+        "expected_topics": ["paryscy artyści", "XIX wiek", "naturalne materiały", "barwy ziemi"],
+        "category": "synthesis",
+        "language": "pl",
+    },
+    {
+        "id": "pa_szare_drzwi_podloga",
+        "question": "Jak dobrać odcień podłogi do szarych drzwi wewnętrznych?",
+        "expected_topics": ["odcienie szarości", "nowoczesne aranżacje", "harmonia kolorów"],
+        "category": "synthesis",
+        "language": "pl",
+    },
+    # --- entity_name: nazwa wlasna zyjaca w WEZLE grafu -----------------
+    {
+        "id": "pa_entity_cloud_dancer",
+        "question": "Czym jest Cloud Dancer?",
+        "expected_topics": ["kolor roku 2026", "Pantone", "złamana biel", "spokój"],
+        "category": "entity_name",
+        "language": "pl",
+    },
+    {
+        "id": "pa_entity_zywioly_powietrze",
+        "question": "Drzwi z jakiej kolekcji PORTA pasują do łazienki w stylu retro?",
+        "expected_topics": ["4 ŻYWIOŁY", "POWIETRZE", "model P.1", "model P.3"],
+        "category": "entity_name",
+        "language": "pl",
+    },
+    {
+        "id": "pa_entity_portadecor_fiord",
+        "question": "W jakiej okleinie PORTA dostępne są listwy ścienne do nowoczesnej sztukaterii?",
+        "expected_topics": ["Portadecor Fiord", "listwy ścienne", "nielakierowane"],
+        "category": "entity_name",
+        "language": "pl",
+    },
+    # --- out_of_corpus: informacji nie ma — system ma to przyznac -------
+    {
+        "id": "pa_oos_ceny_drzwi",
+        "question": "Ile kosztują drzwi PORTA z kolekcji PORTA DECOR?",
+        "expected_topics": ["brak informacji o cenach", "cennik poza korpusem"],
+        "category": "out_of_corpus",
+        "language": "pl",
+    },
+    {
+        "id": "pa_oos_gwarancja",
+        "question": "Jaki okres gwarancji obejmuje drzwi wewnętrzne PORTA?",
+        "expected_topics": ["brak informacji o gwarancji"],
+        "category": "out_of_corpus",
+        "language": "pl",
+    },
+]
+
 QUESTION_SETS = {
-    "default": GOLD_QUESTIONS,
+    "default": GOLD_QUESTIONS_PORTA_ARTICLES,
+    "porta_articles": GOLD_QUESTIONS_PORTA_ARTICLES,
+    "legacy_mixed": GOLD_QUESTIONS,
     "pl_articles": GOLD_QUESTIONS_PL_ARTICLES,
 }
