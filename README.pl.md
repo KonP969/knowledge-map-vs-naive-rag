@@ -2,6 +2,8 @@
 
 *[English](README.md) · Polski*
 
+[![CI](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml/badge.svg)](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml)
+
 Lokalna, edukacyjna aplikacja webowa realizująca **Knowledge-Map RAG** — eksperyment
 zainspirowany krytyką naiwnego RAG autorstwa Andreja Karpathy'ego. Zamiast tłuc
 dokumenty na fragmenty i szukać po wektorach, system przy każdym wgraniu wyciąga ze
@@ -76,7 +78,7 @@ krawędzi. Bez bazy danych, bez usługi vector store. Przenośne, czytelne, diff
 
 | Warstwa | Technologia |
 |---|---|
-| Backend | FastAPI · Python 3.11+ |
+| Backend | FastAPI · Python 3.9+ |
 | Frontend | React 19 · TypeScript · Vite · Tailwind |
 | LLM | OpenAI API (domyślnie `gpt-4o-mini` i `text-embedding-3-small`) |
 | Przechowywanie | Płaskie pliki — Markdown + JSONL |
@@ -85,7 +87,7 @@ krawędzi. Bez bazy danych, bez usługi vector store. Przenośne, czytelne, diff
 
 ### Wymagania
 
-- Python 3.11+
+- Python 3.9+
 - Node.js 18+
 - Klucz API OpenAI
 

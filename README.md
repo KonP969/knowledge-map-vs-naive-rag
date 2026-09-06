@@ -2,6 +2,8 @@
 
 *English · [Polski](README.pl.md)*
 
+[![CI](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml/badge.svg)](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml)
+
 A local, educational web app that implements **Knowledge-Map RAG** — an experiment
 inspired by Andrej Karpathy's critique of naive retrieval-augmented generation.
 Instead of chunking documents and doing vector search, the system extracts a
@@ -75,7 +77,7 @@ no vector store service. Portable, readable, diffable.
 
 | Layer | Technology |
 |---|---|
-| Backend | FastAPI · Python 3.11+ |
+| Backend | FastAPI · Python 3.9+ |
 | Frontend | React 19 · TypeScript · Vite · Tailwind |
 | LLM | OpenAI API (`gpt-4o-mini` and `text-embedding-3-small` by default) |
 | Storage | Flat files — Markdown + JSONL |
@@ -84,7 +86,7 @@ no vector store service. Portable, readable, diffable.
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.9+
 - Node.js 18+
 - An OpenAI API key
 
