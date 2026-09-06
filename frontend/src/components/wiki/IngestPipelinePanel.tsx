@@ -170,7 +170,7 @@ export function IngestPipelinePanel() {
           <label className="block text-xs font-medium">File</label>
           <input
             type="file"
-            accept=".pdf,.docx,.txt"
+            accept=".pdf,.docx,.txt,.md"
             className="block w-full text-xs text-muted-foreground file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-border file:text-xs file:bg-muted hover:file:bg-muted/80"
             onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
           />

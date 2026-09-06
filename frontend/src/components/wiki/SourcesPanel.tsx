@@ -272,7 +272,7 @@ export function SourcesPanel() {
           <input
             ref={inputRef}
             type="file"
-            accept=".pdf,.docx,.txt"
+            accept=".pdf,.docx,.txt,.md"
             multiple
             className="hidden"
             onChange={(e) => {
@@ -289,7 +289,7 @@ export function SourcesPanel() {
           ) : (
             <>
               <p className="text-sm font-medium">Drop files or click to ingest</p>
-              <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT</p>
+              <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT, MD</p>
             </>
           )}
         </div>
@@ -368,7 +368,7 @@ export function SourcesPanel() {
                       ) : item.status === "ok" ? (
                         <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
                       ) : (
-                        <AlertCircle className="w-3 h-3 text-red-500 shrink-0" title={item.error} />
+                        <AlertCircle className="w-3 h-3 text-red-500 shrink-0" aria-label={item.error} />
                       )}
                       <span className="truncate text-muted-foreground">{item.title}</span>
                     </div>

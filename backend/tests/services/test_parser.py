@@ -90,3 +90,10 @@ def test_manifest_contains_char_count(txt_file, tmp_path):
     manifest_path = store_root / "raw" / result["slug"] / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["char_count"] == len(result["text"])
+
+
+def test_parse_md_is_treated_as_text(tmp_path):
+    p = tmp_path / "notes.md"
+    p.write_text("# Heading\n\nA markdown paragraph about oak and pine.", encoding="utf-8")
+    result = parse_source(p, store_root=tmp_path / "wiki_root")
+    assert "markdown paragraph" in result["text"]

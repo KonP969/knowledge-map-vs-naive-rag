@@ -18,14 +18,14 @@ def parse_source(file_path: Path, store_root: Path) -> Dict[str, Any]:
     file_path = Path(file_path)
     ext = file_path.suffix.lower()
 
-    if ext == ".txt":
+    if ext in (".txt", ".md"):
         text = _parse_txt(file_path)
     elif ext == ".pdf":
         text = _parse_pdf(file_path)
     elif ext == ".docx":
         text = _parse_docx(file_path)
     else:
-        raise ValueError(f"Unsupported file type: {ext!r}. Allowed: .txt, .pdf, .docx")
+        raise ValueError(f"Unsupported file type: {ext!r}. Allowed: .txt, .md, .pdf, .docx")
 
     slug = slugify(file_path.stem)
     raw_dir = Path(store_root) / "raw" / slug

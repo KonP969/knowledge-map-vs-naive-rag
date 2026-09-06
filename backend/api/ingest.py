@@ -9,7 +9,7 @@ from models.ingest_models import IngestResult
 
 router = APIRouter(prefix="/api/ingest", tags=["ingest"])
 
-_ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+_ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
 _WIKI_DATA_DIR = Path(os.getenv("WIKI_DATA_DIR", "wiki_data/default"))
 
 
