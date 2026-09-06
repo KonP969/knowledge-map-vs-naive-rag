@@ -43,8 +43,8 @@ export function MetricsPanel() {
               <div>
                 <p className="font-medium text-foreground mb-1">No session data yet</p>
                 <p className="text-muted-foreground text-xs">
-                  Metryki są zbierane od startu serwera i nie są zapisywane między sesjami.
-                  Zadaj pytanie w <span className="font-medium text-foreground">Wiki Chat</span> żeby zobaczyć dane o tokenach i koszcie.
+                  Metrics are collected since the server started and aren't saved between sessions.
+                  Ask a question in <span className="font-medium text-foreground">Wiki Chat</span> to see token and cost data.
                 </p>
               </div>
             </div>

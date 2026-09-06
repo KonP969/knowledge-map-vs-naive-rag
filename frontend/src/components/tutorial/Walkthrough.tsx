@@ -14,7 +14,7 @@ export function Walkthrough({ steps }: { steps: WalkthroughStep[] }) {
   return (
     <div className="border border-primary/30 rounded-lg overflow-hidden bg-primary/5 mt-4">
       <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20">
-        <span className="text-xs font-mono text-primary font-medium">Krok po kroku</span>
+        <span className="text-xs font-mono text-primary font-medium">Step by step</span>
         <span className="ml-auto text-xs text-muted-foreground">{current + 1} / {steps.length}</span>
       </div>
       <div className="p-4 space-y-3 min-h-[100px]">
@@ -33,7 +33,7 @@ export function Walkthrough({ steps }: { steps: WalkthroughStep[] }) {
             <button
               key={i}
               onClick={() => setCurrent(i)}
-              aria-label={`Przejdź do kroku ${i + 1}`}
+              aria-label={`Go to step ${i + 1}`}
               className={`w-2 h-2 rounded-full transition-colors ${
                 i === current ? "bg-primary" : "bg-muted-foreground/30 hover:bg-muted-foreground/60"
               }`}
@@ -45,14 +45,14 @@ export function Walkthrough({ steps }: { steps: WalkthroughStep[] }) {
           disabled={current === 0}
           className="px-3 py-1 text-xs rounded border border-border disabled:opacity-30 hover:bg-muted transition-colors"
         >
-          ← Wstecz
+          ← Back
         </button>
         <button
           onClick={() => setCurrent(c => Math.min(steps.length - 1, c + 1))}
           disabled={current === steps.length - 1}
           className="px-3 py-1 text-xs rounded bg-primary text-primary-foreground disabled:opacity-30 hover:bg-primary/90 transition-colors"
         >
-          Dalej →
+          Next →
         </button>
       </div>
     </div>

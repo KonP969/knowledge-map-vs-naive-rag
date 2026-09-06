@@ -166,14 +166,18 @@ export function IngestPipelinePanel() {
           Pick a file and run the ingest pipeline to see each stage execute in real time.
         </p>
 
-        <div className="space-y-2">
-          <label className="block text-xs font-medium">File</label>
-          <input
-            type="file"
-            accept=".pdf,.docx,.txt,.md"
-            className="block w-full text-xs text-muted-foreground file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-border file:text-xs file:bg-muted hover:file:bg-muted/80"
-            onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-          />
+        <div className="space-y-1.5">
+          <span className="block text-xs font-medium">File</span>
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs transition-colors hover:border-primary/50">
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt,.md"
+              className="hidden"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+            />
+            <span className="rounded bg-muted px-2 py-0.5 font-medium">Choose file</span>
+            <span className="truncate text-muted-foreground">{selectedFile?.name ?? "PDF, DOCX, TXT, MD"}</span>
+          </label>
         </div>
 
         <button

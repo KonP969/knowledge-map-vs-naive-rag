@@ -160,7 +160,7 @@ export function SourcesPanel() {
         }
       }, crawlFolder.trim() || null);
     } catch (e: unknown) {
-      setCrawlFatalError(e instanceof Error ? e.message : "Błąd połączenia");
+      setCrawlFatalError(e instanceof Error ? e.message : "Connection error");
     } finally {
       setCrawling(false);
     }
@@ -212,7 +212,7 @@ export function SourcesPanel() {
       clearSelection();
       await fetchSources();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Nie udało się przypisać folderu.");
+      setError(e instanceof Error ? e.message : "Couldn't assign the folder.");
     } finally {
       setAssigning(false);
     }
@@ -308,7 +308,7 @@ export function SourcesPanel() {
               className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
             />
             <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground shrink-0">Maks. artykułów:</label>
+              <label className="text-xs text-muted-foreground shrink-0">Max articles:</label>
               <input
                 type="range"
                 min={1}
@@ -325,7 +325,7 @@ export function SourcesPanel() {
                 list="crawl-folder-options"
                 value={crawlFolder}
                 onChange={(e) => setCrawlFolder(e.target.value)}
-                placeholder="(opcjonalnie) nowy lub istniejący"
+                placeholder="(optional) new or existing"
                 className="flex-1 min-w-0 text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
               <datalist id="crawl-folder-options">
@@ -339,7 +339,7 @@ export function SourcesPanel() {
               disabled={!crawlUrl.trim() || crawling}
               className="w-full py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
             >
-              {crawling ? "Importuję…" : "Importuj artykuły"}
+              {crawling ? "Importing…" : "Import articles"}
             </button>
             {/* SSE crawl progress */}
             {(crawlFatalError || crawlItems.length > 0) && (
@@ -376,8 +376,8 @@ export function SourcesPanel() {
                 </div>
                 {crawlSummary && (
                   <p className={`text-xs font-medium ${crawlSummary.failed > 0 ? "text-yellow-600" : "text-green-700"}`}>
-                    Odkryto {crawlDiscovered} · treść {crawlTotal} · zapisano {crawlSummary.ingested}
-                    {crawlSummary.failed > 0 ? ` (${crawlSummary.failed} błędów)` : ""}
+                    Found {crawlDiscovered} · with content {crawlTotal} · ingested {crawlSummary.ingested}
+                    {crawlSummary.failed > 0 ? ` (${crawlSummary.failed} failed)` : ""}
                   </p>
                 )}
               </div>
@@ -440,7 +440,7 @@ export function SourcesPanel() {
               <div className="flex items-center gap-2 border-r border-border pr-3">
                 <span className="text-xs text-muted-foreground">Sort:</span>
                 <SortButton field="date" label="Data" />
-                <SortButton field="title" label="Tytuł" />
+                <SortButton field="title" label="Title" />
               </div>
             )}
             <button
@@ -453,7 +453,7 @@ export function SourcesPanel() {
             </button>
             {confirmReset ? (
               <span className="flex items-center gap-1">
-                <span className="text-xs text-red-500 font-medium">Wyczyścić wszystko?</span>
+                <span className="text-xs text-red-500 font-medium">Wipe everything?</span>
                 <button
                   onClick={handleReset}
                   disabled={resetting}
@@ -473,7 +473,7 @@ export function SourcesPanel() {
                 onClick={() => setConfirmReset(true)}
                 disabled={resetting || sources.length === 0}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-30"
-                title="Usuń wszystkie źródła i dane"
+                title="Delete every source and all data"
               >
                 <RotateCcw className={`w-3 h-3 ${resetting ? "animate-spin" : ""}`} />
                 Reset
@@ -540,15 +540,15 @@ export function SourcesPanel() {
               className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
             >
               <FolderPlus className="w-3 h-3" />
-              {assigning ? "Przypisuję…" : "Przypisz"}
+              {assigning ? "Assigning…" : "Assign"}
             </button>
             <button
               onClick={() => handleAssignFolder(null)}
               disabled={assigning}
               className="text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-              title="Usuń zaznaczone z folderu"
+              title="Remove the selected sources from their folder"
             >
-              Wyczyść folder
+              Clear folder
             </button>
             <button
               onClick={clearSelection}
@@ -595,7 +595,7 @@ export function SourcesPanel() {
                     <p className="text-sm font-medium truncate flex-1">{src.title}</p>
                     {confirmDelete === src.slug ? (
                       <span className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <span className="text-xs text-muted-foreground">Usuń?</span>
+                        <span className="text-xs text-muted-foreground">Delete?</span>
                         <button
                           onClick={() => handleDelete(src.slug)}
                           disabled={deleting === src.slug}
@@ -615,7 +615,7 @@ export function SourcesPanel() {
                         onClick={(e) => { e.stopPropagation(); setConfirmDelete(src.slug); }}
                         disabled={deleting === src.slug}
                         className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-30"
-                        title="Usuń źródło"
+                        title="Delete source"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
