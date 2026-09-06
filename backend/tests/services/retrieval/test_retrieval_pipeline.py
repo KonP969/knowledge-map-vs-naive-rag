@@ -141,7 +141,9 @@ def test_pipeline_answer_matches_mock(store):
 
 def test_pipeline_duration_ms_positive(store):
     result = run_pipeline(store)
-    assert result.total_duration_ms > 0
+    # A fully-mocked run can complete inside one clock tick on Windows, so 0.0 is
+    # a legitimate reading — assert non-negative, not strictly positive.
+    assert result.total_duration_ms >= 0
 
 
 def test_pipeline_query_id_unique(store):

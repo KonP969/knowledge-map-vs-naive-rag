@@ -1,32 +1,42 @@
-.worktrees/
+# ── dependencies / build ──────────────────────────────────────────────
 backend/.venv/
 backend/__pycache__/
 backend/**/__pycache__/
-backend/.env
-backend/chroma_data/
 *.pyc
-.DS_Store
-frontend/node_modules/
+node_modules/
 frontend/dist/
+
+# ── secrets / env ─────────────────────────────────────────────────────
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ── runtime / persisted state (not source) ────────────────────────────
+backend/data/
+backend/chroma_data/
 backend/chroma_data_test/
 backend/test_results.txt
 backend/tests/rag_evaluation/reports/
 
-# Dev-tool internals (not for public repo)
-.claude/
-.superpowers/
-CLAUDE.md
-ai-product-strategist-prd-prompt.md
-
-# Runtime data (persisted state, not source)
-backend/data/
-
-# Knowledge map data — gitignored, except bundled .example/
+# Knowledge-map data is runtime state — except the bundled demo corpus
 backend/wiki_data/*
 !backend/wiki_data/.example/
 !backend/wiki_data/.example/**
 
-# OS / editor noise
-bash.exe.stackdump
-*.stackdump
+# ── local scratch / dev-tool internals (not for public repo) ──────────
+.worktrees/
+.claude/
+.superpowers/
+CLAUDE.md
+.fork_doc/
 stitch_redesign/
+ai-product-strategist-prd-prompt.md
+_uvicorn*.log
+scripts_out.txt
+_diag*.py
+_rid.txt
+
+# ── OS / editor noise ─────────────────────────────────────────────────
+.DS_Store
+*.stackdump
