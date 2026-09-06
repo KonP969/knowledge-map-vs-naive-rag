@@ -18,21 +18,24 @@ interface SidebarProps {
 
 export function Sidebar({ active, onChange }: SidebarProps) {
   return (
-    <nav className="w-48 border-r border-border bg-card flex flex-col pt-4 shrink-0">
-      {NAV.map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          onClick={() => onChange(id)}
-          className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-            active === id
-              ? "bg-primary/15 text-primary font-medium"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          }`}
-        >
-          <Icon className="w-4 h-4" />
-          {label}
-        </button>
-      ))}
+    <nav className="flex w-48 shrink-0 flex-col border-r border-border bg-card pt-3">
+      {NAV.map(({ id, label, icon: Icon }) => {
+        const on = active === id;
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            className={`flex items-center gap-3 border-l-2 px-4 py-2.5 text-sm transition-colors ${
+              on
+                ? "border-primary bg-primary/10 font-medium text-foreground"
+                : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <Icon className={`h-4 w-4 ${on ? "text-primary" : ""}`} />
+            {label}
+          </button>
+        );
+      })}
     </nav>
   );
 }

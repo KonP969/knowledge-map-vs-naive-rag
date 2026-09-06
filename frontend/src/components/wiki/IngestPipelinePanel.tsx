@@ -156,14 +156,14 @@ export function IngestPipelinePanel() {
       {/* Left: file selector + trigger */}
       <div className="w-72 shrink-0 space-y-4">
         <div className="text-xs text-muted-foreground bg-muted/40 rounded-md p-2.5 border-l-2 border-primary/50 mb-4">
-          <span className="font-medium text-foreground">Panel edukacyjny</span> — pokazuje jak działa pipeline krok po kroku.
-          Aby dodawać pliki do wiki, użyj panelu{" "}
+          This panel is for watching the pipeline run, one stage at a time. To
+          actually add files to your wiki, use{" "}
           <span className="font-medium text-primary">Sources</span>.
         </div>
 
-        <h2 className="font-semibold text-sm">Pipeline Visualizer</h2>
+        <h2 className="font-semibold text-sm">Pipeline visualizer</h2>
         <p className="text-xs text-muted-foreground">
-          Select a file and run the ingest pipeline to see each stage execute in real time.
+          Pick a file and run the ingest pipeline to see each stage execute in real time.
         </p>
 
         <div className="space-y-2">

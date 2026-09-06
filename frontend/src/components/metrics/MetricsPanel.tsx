@@ -41,7 +41,7 @@ export function MetricsPanel() {
             <div className="flex items-start gap-3 text-sm border border-border rounded-lg p-4 bg-muted/30">
               <div className="mt-0.5 text-muted-foreground shrink-0">ℹ</div>
               <div>
-                <p className="font-medium text-foreground mb-1">Brak danych sesji</p>
+                <p className="font-medium text-foreground mb-1">No session data yet</p>
                 <p className="text-muted-foreground text-xs">
                   Metryki są zbierane od startu serwera i nie są zapisywane między sesjami.
                   Zadaj pytanie w <span className="font-medium text-foreground">Wiki Chat</span> żeby zobaczyć dane o tokenach i koszcie.
