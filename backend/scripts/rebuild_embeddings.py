@@ -1,7 +1,9 @@
-"""Embed every claim in the active store and persist the claim-embedding index.
+"""Embed every claim in a vault and persist the claim-embedding index.
 
-Run from backend/:  python scripts/rebuild_embeddings.py
+    python scripts/rebuild_embeddings.py                       # WIKI_DATA_DIR or wiki_data/default
+    python scripts/rebuild_embeddings.py --vault wiki_data/.example
 """
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -18,9 +20,13 @@ from services.semantic_index import build_claim_index, claim_index_path
 
 
 def main() -> None:
-    store = WikiStore(root=Path(os.getenv("WIKI_DATA_DIR", "wiki_data/default")))
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--vault", default=os.getenv("WIKI_DATA_DIR", "wiki_data/default"))
+    args = ap.parse_args()
+
+    store = WikiStore(root=Path(args.vault))
     n_claims = len(store.read_all_claims())
-    print(f"embedding {n_claims} claims…", flush=True)
+    print(f"embedding {n_claims} claims in {args.vault}…", flush=True)
     vs = build_claim_index(store)
     print(f"done: {len(vs)} vectors -> {claim_index_path(store)}", flush=True)
 

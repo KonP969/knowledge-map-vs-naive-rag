@@ -1,0 +1,56 @@
+{"id":"ed_001","from":"source:src_001","to":"entity:e_001","relation":"mentions","source_id":"src_001","span":{"start":2185,"end":2196,"text":"Google Bard"},"confidence":1.0}
+{"id":"ed_002","from":"source:src_001","to":"entity:e_002","relation":"mentions","source_id":"src_001","span":{"start":2277,"end":2303,"text":"James Webb Space Telescope"},"confidence":1.0}
+{"id":"ed_003","from":"source:src_001","to":"entity:e_003","relation":"mentions","source_id":"src_001","span":{"start":2711,"end":2731,"text":"Barack Hussein Obama"},"confidence":1.0}
+{"id":"ed_004","from":"source:src_001","to":"entity:e_004","relation":"mentions","source_id":"src_001","span":{"start":1103,"end":1115,"text":"Ars Technica"},"confidence":1.0}
+{"id":"ed_005","from":"source:src_001","to":"entity:e_005","relation":"mentions","source_id":"src_001","span":{"start":2585,"end":2606,"text":"MIT Technology Review"},"confidence":1.0}
+{"id":"ed_006","from":"source:src_001","to":"entity:e_006","relation":"mentions","source_id":"src_001","span":{"start":3927,"end":3930,"text":"IBM"},"confidence":1.0}
+{"id":"ed_007","from":"source:src_001","to":"entity:e_007","relation":"mentions","source_id":"src_001","span":{"start":223,"end":226,"text":"RAG"},"confidence":1.0}
+{"id":"ed_008","from":"source:src_001","to":"concept:c_001","relation":"mentions","source_id":"src_001","span":{"start":1851,"end":1887,"text":"retrieval-augmented generation (RAG)"},"confidence":1.0}
+{"id":"ed_009","from":"source:src_001","to":"concept:c_002","relation":"mentions","source_id":"src_001","span":{"start":256,"end":284,"text":"large language models (LLMs)"},"confidence":1.0}
+{"id":"ed_010","from":"source:src_001","to":"concept:c_003","relation":"mentions","source_id":"src_001","span":{"start":1311,"end":1328,"text":"AI hallucinations"},"confidence":1.0}
+{"id":"ed_011","from":"source:src_001","to":"concept:c_004","relation":"mentions","source_id":"src_001","span":{"start":3125,"end":3140,"text":"prompt stuffing"},"confidence":1.0}
+{"id":"ed_012","from":"source:src_001","to":"concept:c_005","relation":"mentions","source_id":"src_001","span":{"start":916,"end":937,"text":"information retrieval"},"confidence":1.0}
+{"id":"ed_013","from":"source:src_001","to":"concept:c_006","relation":"mentions","source_id":"src_001","span":{"start":4400,"end":4415,"text":"vector database"},"confidence":1.0}
+{"id":"ed_014","from":"source:src_001","to":"concept:c_007","relation":"mentions","source_id":"src_001","span":{"start":1195,"end":1206,"text":"hybrid search"},"confidence":1.0}
+{"id":"ed_015","from":"source:src_001","to":"concept:c_008","relation":"mentions","source_id":"src_001","span":{"start":9096,"end":9118,"text":"hallucinations in LLMs"},"confidence":1.0}
+{"id":"ed_016","from":"source:src_001","to":"concept:c_009","relation":"mentions","source_id":"src_001","span":{"start":9779,"end":9800,"text":"knowledge limitations"},"confidence":1.0}
+{"id":"ed_017","from":"source:src_001","to":"concept:c_010","relation":"mentions","source_id":"src_001","span":{"start":9902,"end":9926,"text":"errors in interpretation"},"confidence":1.0}
+{"id":"ed_018","from":"source:src_001","to":"concept:c_011","relation":"mentions","source_id":"src_001","span":{"start":9809,"end":9822,"text":"RAG poisoning"},"confidence":1.0}
+{"id":"ed_019","from":"source:src_002","to":"entity:e_008","relation":"mentions","source_id":"src_002","span":{"start":1959,"end":2021,"text":"International Conference on Similarity Search and Applications"},"confidence":1.0}
+{"id":"ed_020","from":"source:src_002","to":"entity:e_009","relation":"mentions","source_id":"src_002","span":{"start":2038,"end":2089,"text":"Conference on Neural Information Processing Systems"},"confidence":1.0}
+{"id":"ed_021","from":"source:src_002","to":"concept:c_006","relation":"mentions","source_id":"src_002","span":{"start":2,"end":17,"text":"Vector database"},"confidence":1.0}
+{"id":"ed_022","from":"source:src_002","to":"concept:c_012","relation":"mentions","source_id":"src_002","span":{"start":660,"end":690,"text":"retrieval-augmented generation"},"confidence":1.0}
+{"id":"ed_023","from":"source:src_002","to":"concept:c_013","relation":"mentions","source_id":"src_002","span":{"start":1168,"end":1182,"text":"feature vector"},"confidence":1.0}
+{"id":"ed_024","from":"source:src_002","to":"concept:c_014","relation":"mentions","source_id":"src_002","span":{"start":557,"end":574,"text":"similarity search"},"confidence":1.0}
+{"id":"ed_025","from":"source:src_002","to":"concept:c_015","relation":"mentions","source_id":"src_002","span":{"start":576,"end":591,"text":"semantic search"},"confidence":1.0}
+{"id":"ed_026","from":"source:src_002","to":"concept:c_016","relation":"mentions","source_id":"src_002","span":{"start":593,"end":611,"text":"multi-modal search"},"confidence":1.0}
+{"id":"ed_027","from":"source:src_003","to":"entity:e_010","relation":"mentions","source_id":"src_003","span":{"start":1624,"end":1641,"text":"John Rupert Firth"},"confidence":1.0}
+{"id":"ed_028","from":"source:src_003","to":"entity:e_011","relation":"mentions","source_id":"src_003","span":{"start":2599,"end":2605,"text":"Bengio"},"confidence":1.0}
+{"id":"ed_029","from":"source:src_003","to":"entity:e_012","relation":"mentions","source_id":"src_003","span":{"start":3990,"end":4003,"text":"Tomas Mikolov"},"confidence":1.0}
+{"id":"ed_030","from":"source:src_003","to":"entity:e_013","relation":"mentions","source_id":"src_003","span":{"start":3976,"end":3982,"text":"Google"},"confidence":1.0}
+{"id":"ed_031","from":"source:src_003","to":"entity:e_014","relation":"mentions","source_id":"src_003","span":{"start":4435,"end":4443,"text":"fastText"},"confidence":1.0}
+{"id":"ed_032","from":"source:src_003","to":"entity:e_015","relation":"mentions","source_id":"src_003","span":{"start":7148,"end":7165,"text":"Asgari and Mofrad"},"confidence":1.0}
+{"id":"ed_033","from":"source:src_003","to":"entity:e_016","relation":"mentions","source_id":"src_003","span":{"start":7731,"end":7745,"text":"Rabii and Cook"},"confidence":1.0}
+{"id":"ed_035","from":"source:src_003","to":"entity:e_017","relation":"mentions","source_id":"src_003","span":{"start":8712,"end":8733,"text":"Stanford University's"},"confidence":1.0}
+{"id":"ed_036","from":"source:src_003","to":"entity:e_018","relation":"mentions","source_id":"src_003","span":{"start":6639,"end":6643,"text":"BERT"},"confidence":1.0}
+{"id":"ed_037","from":"source:src_003","to":"entity:e_019","relation":"mentions","source_id":"src_003","span":{"start":9370,"end":9386,"text":"Bolukbasi et al."},"confidence":1.0}
+{"id":"ed_038","from":"source:src_003","to":"entity:e_020","relation":"mentions","source_id":"src_003","span":{"start":9956,"end":9973,"text":"Jieyu Zhao et al."},"confidence":1.0}
+{"id":"ed_039","from":"source:src_003","to":"entity:e_021","relation":"mentions","source_id":"src_003","span":{"start":4012,"end":4020,"text":"word2vec"},"confidence":1.0}
+{"id":"ed_040","from":"source:src_003","to":"entity:e_022","relation":"mentions","source_id":"src_003","span":{"start":9570,"end":9581,"text":"Google News"},"confidence":1.0}
+{"id":"ed_041","from":"source:src_003","to":"entity:e_023","relation":"mentions","source_id":"src_003","span":{"start":9405,"end":9415,"text":"2016 paper"},"confidence":1.0}
+{"id":"ed_042","from":"source:src_003","to":"entity:e_024","relation":"mentions","source_id":"src_003","span":{"start":9927,"end":9936,"text":"homemaker"},"confidence":1.0}
+{"id":"ed_043","from":"source:src_003","to":"concept:c_017","relation":"mentions","source_id":"src_003","span":{"start":193,"end":207,"text":"word embedding"},"confidence":1.0}
+{"id":"ed_044","from":"source:src_003","to":"concept:c_018","relation":"mentions","source_id":"src_003","span":{"start":1126,"end":1150,"text":"distributional semantics"},"confidence":1.0}
+{"id":"ed_045","from":"source:src_003","to":"concept:c_019","relation":"mentions","source_id":"src_003","span":{"start":724,"end":767,"text":"neural probabilistic language models"},"confidence":1.0}
+{"id":"ed_046","from":"source:src_003","to":"concept:c_020","relation":"mentions","source_id":"src_003","span":{"start":2470,"end":2494,"text":"latent semantic analysis"},"confidence":1.0}
+{"id":"ed_047","from":"source:src_003","to":"concept:c_021","relation":"mentions","source_id":"src_003","span":{"start":3390,"end":3414,"text":"locally linear embedding"},"confidence":1.0}
+{"id":"ed_048","from":"source:src_003","to":"concept:c_022","relation":"mentions","source_id":"src_003","span":{"start":5166,"end":5188,"text":"multi-sense embeddings"},"confidence":1.0}
+{"id":"ed_049","from":"source:src_003","to":"concept:c_023","relation":"mentions","source_id":"src_003","span":{"start":1016,"end":1019,"text":"NLP"},"confidence":1.0}
+{"id":"ed_050","from":"source:src_003","to":"concept:c_024","relation":"mentions","source_id":"src_003","span":{"start":7000,"end":7010,"text":"BioVectors"},"confidence":1.0}
+{"id":"ed_051","from":"source:src_003","to":"concept:c_025","relation":"mentions","source_id":"src_003","span":{"start":8278,"end":8293,"text":"thought vectors"},"confidence":1.0}
+{"id":"ed_052","from":"source:src_003","to":"concept:c_026","relation":"mentions","source_id":"src_003","span":{"start":8340,"end":8360,"text":"skip-thought vectors"},"confidence":1.0}
+{"id":"ed_053","from":"source:src_003","to":"concept:c_027","relation":"mentions","source_id":"src_003","span":{"start":8837,"end":8865,"text":"Principal Component Analysis"},"confidence":1.0}
+{"id":"ed_054","from":"source:src_003","to":"concept:c_028","relation":"mentions","source_id":"src_003","span":{"start":703,"end":727,"text":"dimensionality reduction"},"confidence":1.0}
+{"id":"ed_055","from":"source:src_003","to":"concept:c_029","relation":"mentions","source_id":"src_003","span":{"start":9310,"end":9316,"text":"biases"},"confidence":1.0}
+{"id":"ed_056","from":"source:src_003","to":"concept:c_030","relation":"mentions","source_id":"src_003","span":{"start":474,"end":489,"text":"Word embeddings"},"confidence":1.0}
+{"id":"ed_057","from":"source:src_003","to":"concept:c_031","relation":"mentions","source_id":"src_003","span":{"start":10080,"end":10104,"text":"existing bias in society"},"confidence":1.0}

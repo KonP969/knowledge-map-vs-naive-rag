@@ -1,0 +1,17 @@
+{
+  "slug": "word-embedding",
+  "original_filename": "word-embedding.md",
+  "char_count": 10219,
+  "language": "en",
+  "sections": [
+    "Word embedding",
+    "Development and history of the approach",
+    "Polysemy and homonymy",
+    "For biological sequences: BioVectors",
+    "Game design",
+    "Sentence embeddings",
+    "Software",
+    "Examples of application",
+    "Ethical implications"
+  ]
+}

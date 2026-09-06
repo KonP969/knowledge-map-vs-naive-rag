@@ -1,0 +1,13 @@
+{
+  "slug": "vector-database",
+  "original_filename": "vector-database.md",
+  "char_count": 3330,
+  "language": "en",
+  "sections": [
+    "Vector database",
+    "Techniques",
+    "Applications",
+    "Retrieval-augmented generation",
+    "Implementations"
+  ]
+}

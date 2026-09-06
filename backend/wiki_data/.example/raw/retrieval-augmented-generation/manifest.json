@@ -1,0 +1,21 @@
+{
+  "slug": "retrieval-augmented-generation",
+  "original_filename": "retrieval-augmented-generation.md",
+  "char_count": 10486,
+  "language": "en",
+  "sections": [
+    "Retrieval-augmented generation",
+    "RAG and LLM limitations",
+    "Process",
+    "RAG key stages",
+    "Applications",
+    "Improvements",
+    "Encoder",
+    "Retriever-centric methods",
+    "Language model",
+    "Chunking",
+    "Hybrid search",
+    "Challenges",
+    "RAG poisoning"
+  ]
+}
