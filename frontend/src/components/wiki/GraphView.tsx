@@ -96,8 +96,8 @@ interface GraphViewProps {
 }
 
 export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
-  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node>([]);
+  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
   const [entities, setEntities] = useState<WikiEntity[]>([]);
   const [concepts, setConcepts] = useState<WikiConcept[]>([]);
   const [sources, setSources] = useState<WikiSource[]>([]);
