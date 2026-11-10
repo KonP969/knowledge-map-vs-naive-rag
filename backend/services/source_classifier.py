@@ -3,6 +3,7 @@ import re
 import time
 from typing import Callable, Optional
 from openai import APIConnectionError, OpenAI
+from services.openai_client import make_client
 from models.ingest_models import SourceClassification
 from services.chunking import chunk_text, merge_classifications
 
@@ -87,7 +88,7 @@ def _build_messages(text: str) -> list:
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        _client = make_client()
     return _client
 
 
