@@ -55,9 +55,10 @@ test("every panel renders without console errors", async ({ page }) => {
 test("the demo corpus loaded into the graph", async ({ page }) => {
   await page.goto("/");
   await goToPanel(page, "Knowledge Map");
-  await expect(page.getByText(/\d+ nodes · \d+ edges/)).toBeVisible({ timeout: 15_000 });
-  const label = await page.getByText(/\d+ nodes · \d+ edges/).textContent();
-  const nodes = Number(label?.match(/(\d+) nodes/)?.[1] ?? 0);
+  // The label reads "0 nodes · 0 edges" until the graph has loaded — wait for a real count.
+  const label = page.getByText(/\d+ nodes · \d+ edges/);
+  await expect(label).toHaveText(/[1-9]\d* nodes/, { timeout: 15_000 });
+  const nodes = Number((await label.textContent())?.match(/(\d+) nodes/)?.[1] ?? 0);
   expect(nodes).toBeGreaterThan(10);
 });
 
@@ -74,11 +75,24 @@ test("the onboarding tour runs on a first visit", async ({ browser }) => {
 test("the app has no Polish UI strings left", async ({ page }) => {
   await page.goto("/");
   const panels = ["Ingest", "Sources", "Wiki Chat", "Knowledge Map", "Lint", "Metrics", "Tutorial"];
-  const polish = /\b(Kliknij|Otwórz|Wgraj|Zadaj|źródł\w*|pytani\w*|węzeł|encj\w*|Przewodnik|Krok po kroku|Wyczyść|Naprawić)\b/;
+  // Diacritics catch most leftovers; the word list catches the ones without any
+  // (e.g. "Tak" / "Nie" on confirm buttons). Tooltips, placeholders and aria-labels
+  // aren't in innerText, so they're checked separately.
+  const diacritics = /[ąćęłńśźżĄĆĘŁŃŚŹŻ]/;
+  const words = /\b(Tak|Nie|Kliknij|Otwórz|Wgraj|Zadaj|Wszystkie|Zaznacz|Odznacz|Importuj|Sortuj|Zamknij|Naprawiam|Przewodnik|Wyczyść|Naprawić|folderu|źródł\w*|pytani\w*|węzeł|encj\w*)\b/;
   for (const p of panels) {
     await goToPanel(page, p);
     await page.waitForTimeout(300);
-    const body = (await page.locator("main").innerText()).replace(/\s+/g, " ");
-    expect(body, `Polish text in ${p}`).not.toMatch(polish);
+    const main = page.locator("main");
+    const text = (await main.innerText()).replace(/\s+/g, " ");
+    const attrs = await main.evaluate((el) =>
+      Array.from(el.querySelectorAll("[title],[placeholder],[aria-label]"))
+        .flatMap((n) => ["title", "placeholder", "aria-label"].map((a) => n.getAttribute(a) ?? ""))
+        .join(" | "),
+    );
+    for (const [what, s] of [["text", text], ["attributes", attrs]] as const) {
+      expect(s, `Polish ${what} in ${p}`).not.toMatch(diacritics);
+      expect(s, `Polish ${what} in ${p}`).not.toMatch(words);
+    }
   }
 });

@@ -166,7 +166,7 @@ def get_source_raw(slug: str):
 @router.get("/claims-by-id", response_model=List[Dict[str, Any]])
 def get_claims_by_id(ids: str = ""):
     """Return the exact claims for the comma-separated ids (with span), preserving request
-    order. Missing ids are skipped. Used by the chat 'Pokaż fragmenty' view so it can show the
+    order. Missing ids are skipped. Used by the chat 'show excerpts' view so it can show the
     precisely cited claims even when they fall outside a source's first-N node-detail window."""
     store = _get_store()
     wanted = [i.strip() for i in ids.split(",") if i.strip()]
