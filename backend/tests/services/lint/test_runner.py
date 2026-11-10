@@ -130,7 +130,7 @@ def _make_noop_llm():
 
 def test_run_lint_without_semantic_does_not_call_llm(tmp_path):
     store = WikiStore(root=tmp_path)
-    with patch("services.lint.runner.OpenAI") as mock_openai:
+    with patch("services.lint.runner.make_client") as mock_openai:
         report = run_lint(store, include_semantic=False)
     mock_openai.assert_not_called()
     assert report.counts_by_severity.get("info", 0) == 0
@@ -148,7 +148,7 @@ def test_run_lint_with_semantic_calls_tier3(tmp_path):
         ))
 
     noop = _make_noop_llm()
-    with patch("services.lint.runner.OpenAI", return_value=noop):
+    with patch("services.lint.runner.make_client", return_value=noop):
         report = run_lint(store, include_semantic=True)
     # LLM was called at least once (for unmarked_contradiction check)
     assert noop.beta.chat.completions.parse.called
@@ -176,7 +176,7 @@ def test_run_lint_semantic_issues_have_info_severity(tmp_path):
     )
     stale_client.beta.chat.completions.parse.return_value = stale_resp
 
-    with patch("services.lint.runner.OpenAI", return_value=stale_client):
+    with patch("services.lint.runner.make_client", return_value=stale_client):
         report = run_lint(store, include_semantic=True)
 
     info_issues = [i for i in report.issues if i.severity == "info"]

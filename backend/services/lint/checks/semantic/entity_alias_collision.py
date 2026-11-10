@@ -2,6 +2,7 @@ import os
 from typing import List
 
 from openai import OpenAI
+from services.openai_client import make_client
 
 from models.lint_models import AliasMergeJudgement, LintIssue
 from services.wiki_store import ENTITIES_DIR, WikiStore
@@ -10,7 +11,7 @@ _SEMANTIC_CAP = 50
 
 
 def _get_client() -> OpenAI:
-    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return make_client()
 
 
 def _edit_distance(a: str, b: str) -> int:

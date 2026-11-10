@@ -162,7 +162,7 @@ def test_run_lint_include_semantic_false_by_default(client, tmp_path):
     from unittest.mock import patch
     store = WikiStore(root=tmp_path)
     with patch("api.lint._get_store", return_value=store):
-        with patch("services.lint.runner.OpenAI") as mock_openai:
+        with patch("services.lint.runner.make_client") as mock_openai:
             response = client.post("/api/lint/run", json={})
     assert response.status_code == 200
     mock_openai.assert_not_called()
@@ -178,7 +178,7 @@ def test_run_lint_with_include_semantic_true(client, tmp_path):
     noop_resp.choices[0].message.parsed = ContradictionJudgement(is_contradiction=False, explanation="")
     noop.beta.chat.completions.parse.return_value = noop_resp
     with patch("api.lint._get_store", return_value=store):
-        with patch("services.lint.runner.OpenAI", return_value=noop):
+        with patch("services.lint.runner.make_client", return_value=noop):
             response = client.post("/api/lint/run", json={"include_semantic": True})
     assert response.status_code == 200
 
@@ -205,3 +205,12 @@ def test_per_action_log_written_when_all_issues_closed(client, tmp_path):
     log_path = store.root / "wiki" / "log.md"
     if log_path.exists():
         assert "closed" in log_path.read_text(encoding="utf-8")
+
+
+def test_semantic_lint_without_api_key_returns_actionable_503(client, tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    store = WikiStore(root=tmp_path)
+    with patch("api.lint._get_store", return_value=store):
+        response = client.post("/api/lint/run", json={"include_semantic": True})
+    assert response.status_code == 503
+    assert "OPENAI_API_KEY" in response.json()["detail"]

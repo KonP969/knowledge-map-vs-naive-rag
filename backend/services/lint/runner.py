@@ -1,10 +1,9 @@
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from openai import OpenAI
+from services.openai_client import make_client
 
 from models.lint_models import IssueStatus, LintIssue, LintReport
 from services.lint.checks.navigability import (
@@ -64,7 +63,7 @@ def run_lint(store: WikiStore, include_semantic: bool = False) -> LintReport:
         from services.lint.checks.semantic.missing_concept import check_missing_concept
         from services.lint.checks.semantic.stale_summary import check_stale_summary
 
-        llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        llm_client = make_client()
         issues.extend(check_unmarked_contradiction(store, llm_client))
         issues.extend(check_entity_alias_collision(store, llm_client))
         issues.extend(check_missing_concept(store, llm_client))
