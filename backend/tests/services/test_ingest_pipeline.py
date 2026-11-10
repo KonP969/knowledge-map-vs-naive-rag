@@ -186,3 +186,32 @@ def test_pipeline_logs_warning_when_semantic_index_update_fails(txt_file, store,
 
     assert result.status == "ok"  # still non-fatal
     assert any("semantic index" in r.message.lower() for r in caplog.records)
+
+
+def test_failed_ingest_removes_its_raw_dir(txt_file, store):
+    # A classify failure (e.g. no API key) used to leave an orphaned raw/<slug>/ behind.
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=RuntimeError("boom")):
+        result = run_ingest(txt_file, store)
+    assert result.status == "error"
+    assert not (store.root / "raw" / "designarticle").exists()
+
+
+def test_failed_ingest_keeps_a_raw_dir_it_did_not_create(txt_file, store):
+    pre_existing = store.root / "raw" / "designarticle"
+    pre_existing.mkdir(parents=True)
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=RuntimeError("boom")):
+        run_ingest(txt_file, store)
+    assert pre_existing.exists()
+
+
+def test_same_filename_twice_does_not_overwrite_first_raw_copy(txt_file, store, tmp_path):
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
+        first = run_ingest(txt_file, store)
+        other = tmp_path / "other" / "design_article.txt"
+        other.parent.mkdir()
+        other.write_text("A different article with the same filename.", encoding="utf-8")
+        second = run_ingest(other, store)
+
+    assert (first.slug, second.slug) == ("designarticle", "designarticle-2")
+    assert "Scandinavian" in (store.root / "raw" / "designarticle" / "parsed.md").read_text()
+    assert "different" in (store.root / "raw" / "designarticle-2" / "parsed.md").read_text()

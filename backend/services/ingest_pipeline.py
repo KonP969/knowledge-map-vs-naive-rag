@@ -1,4 +1,5 @@
 import logging
+import shutil
 import time
 from datetime import datetime
 from pathlib import Path
@@ -30,16 +31,18 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
     t_start = time.time()
     llm_calls = 0
     file_path = Path(file_path)
+    # raw/<slug>/ this run created — removed again if ingest fails before the source page
+    # is written, so a failed upload leaves nothing behind.
+    new_raw_dir = None
 
     try:
-        # Stage 1: Parse
-        parsed = parse_source(file_path, store_root=store.root)
-        slug = parsed["slug"]
+        # Stage 1: Parse. The slug is made unique *before* parsing writes raw/<slug>/.
+        slug = ensure_unique(slugify(file_path.stem), set(store.list_sources()))
+        raw_dir = store.root / "raw" / slug
+        if not raw_dir.exists():
+            new_raw_dir = raw_dir
+        parsed = parse_source(file_path, store_root=store.root, slug=slug)
         text = parsed["text"]
-
-        # Ensure unique slug among existing sources
-        existing_slugs = set(store.list_sources())
-        slug = ensure_unique(slug, existing_slugs)
 
         # Generate source ID (never recycle ids of deleted sources — see next_source_id)
         source_id = store.next_source_id()
@@ -82,6 +85,7 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
             tags=classification.tags,
         )
         store.write_source(source, slug=slug)
+        new_raw_dir = None  # the source exists now; its raw copy must stay
 
         claims_added = 0
         for claim in resolved["claims"]:
@@ -137,12 +141,14 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
         )
 
     except Exception as exc:
+        if new_raw_dir is not None:
+            shutil.rmtree(new_raw_dir, ignore_errors=True)
         duration_ms = (time.time() - t_start) * 1000
         error_msg = str(exc)
         if "context_length_exceeded" in error_msg or "maximum context length" in error_msg:
             error_msg = (
-                "Plik jest za duży — tekst przekracza limit kontekstu modelu (~100k tokenów). "
-                "Podziel dokument na mniejsze części i dodaj każdą osobno."
+                "The file is too large: its text exceeds the model's context limit (~100k tokens). "
+                "Split the document into smaller parts and add each one separately."
             )
         return IngestResult(
             source_id="",

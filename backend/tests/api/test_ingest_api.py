@@ -84,3 +84,33 @@ def test_ingest_source_calls_pipeline_once(client, txt_upload_file):
                 files={"file": ("test_article.txt", f, "text/plain")},
             )
     mock_pipeline.assert_called_once()
+
+
+def test_ingest_source_keeps_the_uploaded_filename(client, txt_upload_file):
+    # The filename drives the slug; a UUID temp name used to replace it.
+    seen = {}
+
+    def _fake_ingest(file_path, store):
+        seen["name"] = file_path.name
+        return FIXED_RESULT
+
+    with patch("api.ingest.ingest_source", side_effect=_fake_ingest):
+        with open(txt_upload_file, "rb") as f:
+            client.post(
+                "/api/ingest/source",
+                files={"file": ("My Notes.txt", f, "text/plain")},
+            )
+    assert seen["name"] == "My Notes.txt"
+
+
+def test_ingest_source_falls_back_when_filename_cannot_be_slugified(client, txt_upload_file):
+    seen = {}
+
+    def _fake_ingest(file_path, store):
+        seen["name"] = file_path.name
+        return FIXED_RESULT
+
+    with patch("api.ingest.ingest_source", side_effect=_fake_ingest):
+        with open(txt_upload_file, "rb") as f:
+            client.post("/api/ingest/source", files={"file": ("!!!.txt", f, "text/plain")})
+    assert seen["name"] == "upload.txt"
