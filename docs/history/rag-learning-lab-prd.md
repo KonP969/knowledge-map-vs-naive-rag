@@ -1,3 +1,8 @@
+> **Historical document.** This is the original PRD for *RAG Learning Lab*, the classic
+> chunk → embed → vector-search RAG app this repository started as. The project has since
+> become Knowledge-Map RAG, which deliberately replaces that pipeline with a knowledge graph
+> — see the [README](../../README.md) for what the app does today. Kept for context only.
+
 ```markdown
 <PRD>
 
