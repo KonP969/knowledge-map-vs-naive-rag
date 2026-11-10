@@ -148,13 +148,13 @@ def _discover_article_urls(listing_url: str, max_articles: int) -> list[str]:
 def _detect_failure_cause(raw: Optional[str]) -> str:
     """Return human-readable message why fetch failed."""
     if raw is None:
-        return "Nie udało się nawiązać połączenia ze stroną. Sprawdź URL lub spróbuj później."
+        return "Couldn't connect to the site. Check the URL or try again later."
     lower = raw.lower()
     if any(m in lower for m in ("cf-ray", "cloudflare", "checking your browser", "just a moment")):
-        return "Strona używa ochrony Cloudflare — crawler nie obsługuje tej strony."
+        return "The site is behind Cloudflare protection, which the crawler can't get through."
     if len(raw.strip()) < 500:
-        return "Strona wymaga JavaScript do renderowania treści."
-    return "Nie udało się pobrać treści artykułów. Sprawdź URL lub spróbuj później."
+        return "The site needs JavaScript to render its content, which the crawler doesn't run."
+    return "Couldn't fetch the article content. Check the URL or try again later."
 
 
 def _extract_title(raw: str, url: str) -> str:
@@ -194,12 +194,12 @@ def crawl_url(url: str, max_articles: int = 5) -> dict:
     """
     parsed = urlparse(url)
     if not parsed.netloc:
-        return {"articles": [], "discovered": 0, "error": "Nieprawidłowy URL."}
+        return {"articles": [], "discovered": 0, "error": "Invalid URL."}
 
     # Probe first
     raw = trafilatura.fetch_url(url)
     if not raw:
-        return {"articles": [], "discovered": 0, "error": "Nie udało się nawiązać połączenia ze stroną."}
+        return {"articles": [], "discovered": 0, "error": "Couldn't connect to the site."}
 
     # Collect article URLs
     urls = _discover_article_urls(url, max_articles)

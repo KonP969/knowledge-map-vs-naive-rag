@@ -97,7 +97,7 @@ export function SourceRawModal({ slug, title, onClose, highlight }: SourceRawMod
           <button
             onClick={onClose}
             className="ml-2 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            aria-label="Zamknij"
+            aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
