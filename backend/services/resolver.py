@@ -8,6 +8,7 @@ from typing import Optional
 from models.ingest_models import SourceClassification
 from models.wiki_models import Claim, Concept, Edge, Entity, Span
 from services._slug import slugify
+from services.node_index import NodeIndex, NodeRef
 from services.wiki_store import CONCEPTS_DIR, ENTITIES_DIR, WikiStore
 
 
@@ -62,10 +63,37 @@ def resolve_classification(
     claim_count = _max_id_number(store.read_all_claims(), "cl_")
     edge_count = _max_id_number(store.read_all_edges(), "ed_")
 
+    # Store-wide name/alias index: links mentions and claim subjects to nodes that
+    # earlier documents created, even when the wording or entity type differs.
+    node_index = NodeIndex.from_store(store)
+
     slug_to_entity: Dict[str, Entity] = {}
 
     for em in classification.entity_mentions:
         slug = slugify(em.name)
+        if not store.entity_exists(slug, em.type):
+            same = node_index.find(em.name, prefer_kind="entity")
+            if same is None:
+                for alias in em.aliases:
+                    same = node_index.find_entity_by_name(alias)
+                    if same:
+                        break
+            if same is not None and same.kind == "entity":
+                # Same node under another name or type: merge, don't duplicate.
+                if overwrite_existing:
+                    store.merge_entity(Entity(
+                        id=same.id,
+                        type=same.entity_type,
+                        aliases=list(em.aliases) + ([em.name] if slug != same.slug else []),
+                        description="",  # keep the core node's own description
+
+                        mentions_count=1,
+                        questions=classification.questions,
+                        tags=classification.tags,
+                    ), same.slug)
+                entities_merged += 1
+                slug_to_entity[em.name] = store.read_entity(same.slug, same.entity_type)
+                continue
         if store.entity_exists(slug, em.type):
             if overwrite_existing:
                 existing_entity = store.read_entity(slug, em.type)
@@ -93,6 +121,7 @@ def resolve_classification(
                 tags=classification.tags,
             )
             store.write_entity(new_entity, slug)
+            node_index.add(NodeRef("entity", eid, slug, em.type), [slug] + list(em.aliases))
             entities_created += 1
         slug_to_entity[em.name] = store.read_entity(slug, em.type)
 
@@ -125,24 +154,45 @@ def resolve_classification(
                 tags=classification.tags,
             )
             store.write_concept(new_concept, slug)
+            node_index.add(NodeRef("concept", cid, slug), [slug])
             concepts_created += 1
         slug_to_concept[cm.name] = store.read_concept(slug)
 
     # Build lowercase lookup dicts for case-insensitive subject_name matching
     entity_lookup = {k.lower(): v for k, v in slug_to_entity.items()}
+    for em in classification.entity_mentions:
+        if em.name in slug_to_entity:
+            for alias in em.aliases:
+                entity_lookup.setdefault(alias.lower(), slug_to_entity[em.name])
     concept_lookup = {k.lower(): v for k, v in slug_to_concept.items()}
 
     claims: List[Claim] = []
+    stub_edges: List[Any] = []  # (NodeRef, Span) of stub concepts created below
     for ce in classification.claims:
         claim_count += 1
         cid = f"cl_{claim_count:03d}"
+        name = ce.subject_name.lower()
 
-        if ce.subject_type == "entity" and ce.subject_name.lower() in entity_lookup:
-            subject_id = f"entity:{entity_lookup[ce.subject_name.lower()].id}"
-        elif ce.subject_type == "concept" and ce.subject_name.lower() in concept_lookup:
-            subject_id = f"concept:{concept_lookup[ce.subject_name.lower()].id}"
+        if ce.subject_type == "entity" and name in entity_lookup:
+            subject_id = f"entity:{entity_lookup[name].id}"
+        elif ce.subject_type == "concept" and name in concept_lookup:
+            subject_id = f"concept:{concept_lookup[name].id}"
+        elif name in entity_lookup:
+            subject_id = f"entity:{entity_lookup[name].id}"
+        elif name in concept_lookup:
+            subject_id = f"concept:{concept_lookup[name].id}"
         else:
-            subject_id = f"{ce.subject_type}:{slugify(ce.subject_name)}"
+            ref = node_index.find(ce.subject_name, prefer_kind=ce.subject_type)
+            if ref is None:
+                # A topic the classifier used as a subject but never declared as a
+                # mention. Give it a node so its claims join the map (and meet the
+                # same topic's claims from other documents) instead of dangling.
+                ref = _create_stub_concept(ce, store, classification, concept_count + 1)
+                concept_count += 1
+                concepts_created += 1
+                node_index.add(ref, [ref.slug])
+                stub_edges.append((ref, ce.span))
+            subject_id = ref.subject_id
 
         claim = Claim(
             id=cid,
@@ -189,6 +239,18 @@ def resolve_classification(
         )
         edges.append(edge)
 
+    for ref, span in stub_edges:
+        edge_count += 1
+        edges.append(Edge(
+            id=f"ed_{edge_count:03d}",
+            **{"from": f"source:{source_id}"},
+            to=ref.subject_id,
+            relation="mentions",
+            source_id=source_id,
+            span=_ground_span(span, source_text),
+            confidence=1.0,
+        ))
+
     return {
         "entities_created": entities_created,
         "entities_merged": entities_merged,
@@ -199,6 +261,24 @@ def resolve_classification(
         "entity_map": slug_to_entity,
         "concept_map": slug_to_concept,
     }
+
+
+def _create_stub_concept(ce, store: WikiStore, classification, n: int) -> NodeRef:
+    """Concept node for an undeclared claim subject; definition seeded from the claim."""
+    slug = slugify(ce.subject_name)
+    if store.concept_exists(slug):  # defensive: index miss on an existing file
+        existing = store.read_concept(slug)
+        return NodeRef("concept", existing.id, slug)
+    cid = f"c_{n:03d}"
+    store.write_concept(Concept(
+        id=cid,
+        definition=ce.text,
+        examples=[],
+        related=[],
+        questions=classification.questions,
+        tags=classification.tags,
+    ), slug)
+    return NodeRef("concept", cid, slug)
 
 
 def _max_id_number(items: List[Any], prefix: str) -> int:

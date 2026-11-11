@@ -295,3 +295,100 @@ def test_resolve_edge_count_matches_mentions(store, simple_classification):
     result = resolve_classification(simple_classification, "src_001", store)
     # simple_classification has 1 entity mention + 1 concept mention = 2 edges
     assert len(result["edges"]) == 2
+
+
+# ── node resolution across the whole store (aliases, prefixes, types) ─────────
+# A claim's subject is often phrased differently from the entity's name
+# ("drzwi ukryte PORTA HIDE" vs "PORTA HIDE"), and often refers to a node that an
+# EARLIER document created. Exact in-document matching left most subjects dangling.
+
+def _claim_only(subject_name, subject_type="entity"):
+    return SourceClassification(
+        title="Doc", description="d", tags=[], questions=[], key_takeaways=[],
+        entity_mentions=[], concept_mentions=[],
+        claims=[ClaimExtraction(
+            text=f"{subject_name} is great.", subject_name=subject_name,
+            subject_type=subject_type, span=Span(start=0, end=1, text="x"),
+            confidence=0.9, polarity="asserts",
+        )],
+    )
+
+
+def _existing(store, slug, eid, etype="Product", aliases=None):
+    store.write_entity(Entity(id=eid, type=etype, aliases=aliases or [],
+                              description="Existing node.", questions=[], tags=[]), slug=slug)
+
+
+def test_claim_subject_links_to_entity_created_by_earlier_document(store):
+    _existing(store, "porta-hide", "e_006")
+    result = resolve_classification(_claim_only("PORTA HIDE"), "src_002", store)
+    assert result["claims"][0].subject_id == "entity:e_006"
+
+
+def test_claim_subject_with_descriptive_prefix_links_to_core_entity(store):
+    _existing(store, "porta-hide", "e_006")
+    for phrase in ("drzwi ukryte PORTA HIDE", "modele z kolekcji PORTA HIDE"):
+        result = resolve_classification(_claim_only(phrase), "src_002", store)
+        assert result["claims"][0].subject_id == "entity:e_006", phrase
+
+
+def test_claim_subject_matches_existing_alias(store):
+    _existing(store, "porta-hide", "e_006", aliases=["drzwi bezprzylgowe HIDE"])
+    result = resolve_classification(_claim_only("drzwi bezprzylgowe HIDE"), "src_002", store)
+    assert result["claims"][0].subject_id == "entity:e_006"
+
+
+def test_claim_subject_typed_as_concept_links_to_matching_entity(store):
+    _existing(store, "porta-hide", "e_006")
+    result = resolve_classification(_claim_only("PORTA HIDE", "concept"), "src_002", store)
+    assert result["claims"][0].subject_id == "entity:e_006"
+
+
+def test_longer_product_name_is_not_collapsed_into_shorter_one(store):
+    # "PORTA SYSTEM ELEGANCE" is a different product than "PORTA SYSTEM".
+    _existing(store, "porta-system", "e_010")
+    result = resolve_classification(_claim_only("PORTA SYSTEM ELEGANCE"), "src_002", store)
+    assert result["claims"][0].subject_id != "entity:e_010"
+
+
+def test_single_word_node_does_not_swallow_longer_names(store):
+    _existing(store, "porta", "e_001", etype="Org")
+    result = resolve_classification(_claim_only("drzwi PORTA HIDE"), "src_002", store)
+    assert result["claims"][0].subject_id != "entity:e_001"
+
+
+def test_entity_mention_with_other_type_merges_into_existing_node(store):
+    _existing(store, "porta-hide", "e_006", etype="Product")
+    cls = SourceClassification(
+        title="Doc", description="d", tags=[], questions=[], key_takeaways=[],
+        entity_mentions=[EntityMention(name="PORTA HIDE", type="Org", aliases=[],
+                                       description="Hidden doors.",
+                                       span=Span(start=0, end=10, text="PORTA HIDE"))],
+        concept_mentions=[], claims=[],
+    )
+    result = resolve_classification(cls, "src_002", store)
+    assert not store.entity_exists("porta-hide", "Org")
+    assert result["entities_created"] == 0 and result["entities_merged"] == 1
+    assert result["edges"][0].to == "entity:e_006"
+
+
+def test_generic_leading_words_are_stripped_before_matching(store):
+    _existing(store, "porta", "e_001", etype="Org")
+    result = resolve_classification(_claim_only("drzwi wewnętrzne PORTA"), "src_002", store)
+    assert result["claims"][0].subject_id == "entity:e_001"
+
+
+def test_unmatched_subject_becomes_a_concept_node(store):
+    result = resolve_classification(_claim_only("zielona łazienka", "concept"), "src_001", store)
+    subject = result["claims"][0].subject_id
+    concept = store.read_concept("zielona-lazienka")
+    assert concept is not None
+    assert subject == f"concept:{concept.id}"
+    assert concept.definition  # seeded from the claim text, not empty
+    assert any(e.to == subject for e in result["edges"])  # source -> new node edge
+
+
+def test_same_topic_in_two_documents_lands_on_one_node(store):
+    r1 = resolve_classification(_claim_only("zielona łazienka", "concept"), "src_001", store)
+    r2 = resolve_classification(_claim_only("Zielona łazienka", "concept"), "src_002", store)
+    assert r1["claims"][0].subject_id == r2["claims"][0].subject_id
