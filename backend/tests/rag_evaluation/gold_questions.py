@@ -288,9 +288,144 @@ GOLD_QUESTIONS_PORTA_ARTICLES = [
     },
 ]
 
+# Multi-hop set on the same 15 PORTA articles. Every question needs facts from
+# several documents at once — the terrain where a compiled knowledge map should
+# beat top-k chunk retrieval. Ground truth taken from raw/*/parsed.md (2026-11-11).
+GOLD_QUESTIONS_PORTA_MULTIHOP = [
+    # --- aggregation: the answer is spread over many articles ---------------
+    {
+        "id": "mh_hide_wszystkie",
+        "question": "W jakich pomieszczeniach i stylach wnętrz PORTA poleca drzwi ukryte PORTA HIDE? Wymień wszystkie.",
+        "expected_topics": ["biały pokój", "Mocha Mousse", "zielony kolor we wnętrzu", "łazienka retro",
+                            "sztukateria", "Organic Modern", "pokój gamingowy", "szare drzwi",
+                            "zielona łazienka"],
+        "category": "aggregation",
+        "language": "pl",
+    },
+    {
+        "id": "mh_grande_wszystkie",
+        "question": "Do jakich aranżacji PORTA rekomenduje drzwi PORTA GRANDE? Wymień wszystkie.",
+        "expected_topics": ["Cloud Dancer", "szary salon", "Mocha Mousse", "łazienka retro",
+                            "łazienka francuska", "sztukateria", "szare drzwi"],
+        "category": "aggregation",
+        "language": "pl",
+    },
+    {
+        "id": "mh_loft_wszystkie",
+        "question": "W jakich wnętrzach polecane są drzwi z kolekcji PORTA LOFT, łącznie z PORTA LOFT STALOWE?",
+        "expected_topics": ["biały pokój", "łazienka retro", "łazienka francuska", "pokój gamingowy",
+                            "soft loft", "boho"],
+        "category": "aggregation",
+        "language": "pl",
+    },
+    # --- intersection: needs two articles and a join ------------------------
+    {
+        "id": "mh_organic_i_zielona_lazienka",
+        "question": "Które kolekcje drzwi PORTA są polecane zarówno do wnętrz Organic Modern, jak i do zielonej łazienki?",
+        "expected_topics": ["PORTA ART DECO", "PORTA HARMONY", "PORTA HIDE"],
+        "category": "intersection",
+        "language": "pl",
+    },
+    {
+        "id": "mh_bialy_i_zielony",
+        "question": "Które drzwi PORTA pojawiają się w poradach zarówno do białego pokoju, jak i do aranżacji z kolorem zielonym?",
+        "expected_topics": ["PORTA BALANCE", "PORTA HIDE", "PORTA UNI KOLOR"],
+        "category": "intersection",
+        "language": "pl",
+    },
+    {
+        "id": "mh_softloft_i_boho",
+        "question": "Jaka kolekcja drzwi PORTA jest polecana zarówno do stylu soft loft, jak i do wnętrz boho?",
+        "expected_topics": ["PORTA LOFT"],
+        "category": "intersection",
+        "language": "pl",
+    },
+    # --- comparison / synthesis across documents ----------------------------
+    {
+        "id": "mh_kolory_roku_2025_2026",
+        "question": "Porównaj kolor roku Pantone 2025 i 2026: jakie to odcienie, jaki nastrój budują i jakie drzwi PORTA do nich pasują?",
+        "expected_topics": ["Mocha Mousse 2025", "ciepły, przytulny", "Cloud Dancer 2026", "biel, spokój",
+                            "PORTA BALANCE do Cloud Dancer", "PORTA GRANDE / klasyczne drzwi do Mocha Mousse"],
+        "category": "comparison",
+        "language": "pl",
+    },
+    {
+        "id": "mh_drzwi_lazienkowe_zasady",
+        "question": "Zbierz wszystkie wskazówki PORTA dotyczące drzwi do łazienki: wymagania, wentylacja i ościeżnice.",
+        "expected_topics": ["otwieranie na zewnątrz", "80 cm szerokości i 200 cm wysokości",
+                            "podcięcie wentylacyjne / kratka / skrót rekuperacyjny",
+                            "stalowa ościeżnica PORTA SYSTEM ELEGANCE", "HYDRO PROTECT wodoodporna",
+                            "montaż po pracach mokrych"],
+        "category": "synthesis",
+        "language": "pl",
+    },
+    {
+        "id": "mh_szary_salon_szare_drzwi",
+        "question": "Mam szary salon i szare drzwi. Jak ocieplić to wnętrze i jaką podłogę dobrać?",
+        "expected_topics": ["tekstylia z naturalnych włókien w beżach i brązach", "drewniane meble i dodatki",
+                            "oświetlenie", "drewniana podłoga", "nie mieszać ciepłych i zimnych barw",
+                            "płytki / gres"],
+        "category": "synthesis",
+        "language": "pl",
+    },
+    {
+        "id": "mh_style_lazienek",
+        "question": "Jakie style łazienek opisuje PORTA i czym każdy z nich się wyróżnia?",
+        "expected_topics": ["retro vs vintage", "styl francuski vs prowansalski", "zielona łazienka",
+                            "planowanie remontu"],
+        "category": "synthesis",
+        "language": "pl",
+    },
+]
+
+# Conflict set: run against the vault built by scripts/build_conflict_vault.py
+# (the 15 PORTA articles + 3 fixture docs in fixtures/conflict/ that contradict
+# them). A good answer surfaces BOTH versions and says the sources disagree;
+# silently picking one side is the failure mode.
+GOLD_QUESTIONS_PORTA_CONFLICT = [
+    {
+        "id": "cf_drzwi_lazienka_wymiary",
+        "question": "W którą stronę mają się otwierać drzwi do łazienki i jaka jest ich minimalna szerokość?",
+        "expected_topics": ["na zewnątrz, min. 80 cm (poradnik remontu PORTA)",
+                            "do wewnątrz, min. 70 cm (inny poradnik)",
+                            "źródła są ze sobą sprzeczne"],
+        "category": "conflict",
+        "language": "pl",
+    },
+    {
+        "id": "cf_kolor_roku_2026",
+        "question": "Jaki jest kolor roku 2026 według Pantone?",
+        "expected_topics": ["Cloud Dancer – ciepła biel (artykuł PORTA)",
+                            "Mocha Mousse (inny artykuł; Mocha Mousse to kolor roku 2025)",
+                            "źródła są ze sobą sprzeczne"],
+        "category": "conflict",
+        "language": "pl",
+    },
+    {
+        "id": "cf_hydro_protect",
+        "question": "Czy ościeżnica HYDRO PROTECT nadaje się do łazienki i pralni?",
+        "expected_topics": ["tak: 100% wodoodporna, kompozyt drzewno-polimerowy (artykuł o zielonej łazience)",
+                            "nie: MDF, puchnie (inny poradnik)",
+                            "źródła są ze sobą sprzeczne"],
+        "category": "conflict",
+        "language": "pl",
+    },
+    {
+        "id": "cf_montaz_drzwi",
+        "question": "Kiedy podczas remontu łazienki montuje się drzwi?",
+        "expected_topics": ["po pracach mokrych (poradnik remontu PORTA)",
+                            "przed układaniem płytek (inny poradnik)",
+                            "źródła są ze sobą sprzeczne"],
+        "category": "conflict",
+        "language": "pl",
+    },
+]
+
 QUESTION_SETS = {
     "default": GOLD_QUESTIONS_PORTA_ARTICLES,
+    "porta_conflict": GOLD_QUESTIONS_PORTA_CONFLICT,
     "porta_articles": GOLD_QUESTIONS_PORTA_ARTICLES,
+    "porta_multihop": GOLD_QUESTIONS_PORTA_MULTIHOP,
     "legacy_mixed": GOLD_QUESTIONS,
     "pl_articles": GOLD_QUESTIONS_PL_ARTICLES,
 }
