@@ -12,8 +12,17 @@ if ! grep -qE '^OPENAI_API_KEY=sk-' backend/.env; then
   echo "warning: OPENAI_API_KEY does not look set in backend/.env — ingest and chat will fail" >&2
 fi
 
+# Prefer the project venv so a fresh terminal (venv not activated) still works.
+PYTHON=python
+for p in backend/.venv/bin/python backend/.venv/Scripts/python.exe; do
+  if [ -x "$p" ]; then PYTHON="$PWD/$p"; break; fi
+done
+if [ "$PYTHON" = python ]; then
+  echo "warning: backend/.venv not found — falling back to 'python' on PATH (see README, Setup step 1)" >&2
+fi
+
 trap 'kill 0' EXIT
-( cd backend  && exec python -m uvicorn main:app --port 8000 ) &
+( cd backend  && exec "$PYTHON" -m uvicorn main:app --port 8000 ) &
 ( cd frontend && exec npm run dev ) &
 
 echo "backend  -> http://localhost:8000  (API docs: http://localhost:8000/docs)"

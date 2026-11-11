@@ -11,8 +11,15 @@ if (-not (Select-String -Path backend/.env -Pattern '^OPENAI_API_KEY=sk-' -Quiet
     Write-Warning "OPENAI_API_KEY does not look set in backend/.env - ingest and chat will fail"
 }
 
+# Prefer the project venv so a fresh terminal (venv not activated) still works.
+$python = "$PSScriptRoot/backend/.venv/Scripts/python.exe"
+if (-not (Test-Path $python)) {
+    Write-Warning "backend/.venv not found - falling back to 'python' on PATH (see README, Setup step 1)"
+    $python = "python"
+}
+
 $backend  = Start-Process -PassThru -NoNewWindow -WorkingDirectory "$PSScriptRoot/backend" `
-    python -ArgumentList "-m", "uvicorn", "main:app", "--port", "8000"
+    $python -ArgumentList "-m", "uvicorn", "main:app", "--port", "8000"
 $frontend = Start-Process -PassThru -NoNewWindow -WorkingDirectory "$PSScriptRoot/frontend" `
     npm -ArgumentList "run", "dev"
 
