@@ -78,7 +78,7 @@ krawędzi. Bez bazy danych, bez usługi vector store. Przenośne, czytelne, diff
 
 | Warstwa | Technologia |
 |---|---|
-| Backend | FastAPI · Python 3.9+ |
+| Backend | FastAPI · Python 3.10+ |
 | Frontend | React 19 · TypeScript · Vite · Tailwind |
 | LLM | OpenAI API (domyślnie `gpt-4o-mini` i `text-embedding-3-small`) |
 | Przechowywanie | Płaskie pliki — Markdown + JSONL |
@@ -87,7 +87,7 @@ krawędzi. Bez bazy danych, bez usługi vector store. Przenośne, czytelne, diff
 
 ### Wymagania
 
-- Python 3.9+
+- Python 3.10+
 - Node.js 18+
 - Klucz API OpenAI
 
