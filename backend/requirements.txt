@@ -10,7 +10,7 @@ tiktoken==0.7.0
 python-frontmatter==1.1.0
 
 # Source parsing / ingest
-pypdf==6.21.4
+pypdf==7.0.1
 python-docx==1.1.2
 trafilatura==1.12.2
 

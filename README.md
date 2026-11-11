@@ -77,7 +77,7 @@ no vector store service. Portable, readable, diffable.
 
 | Layer | Technology |
 |---|---|
-| Backend | FastAPI · Python 3.9+ |
+| Backend | FastAPI · Python 3.10+ |
 | Frontend | React 19 · TypeScript · Vite · Tailwind |
 | LLM | OpenAI API (`gpt-4o-mini` and `text-embedding-3-small` by default) |
 | Storage | Flat files — Markdown + JSONL |
@@ -86,7 +86,7 @@ no vector store service. Portable, readable, diffable.
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - Node.js 18+
 - An OpenAI API key
 

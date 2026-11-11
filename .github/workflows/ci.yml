@@ -7,13 +7,11 @@ on:
 
 jobs:
   backend:
-    # Pinned: ubuntu-latest moved to 26.04, which has no Python 3.9 build, and the
-    # README still promises 3.9+. Drop the pin together with 3.9 support.
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.12"]
+        python: ["3.10", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
