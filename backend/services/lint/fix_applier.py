@@ -3,6 +3,7 @@ import uuid
 from typing import Any, Dict, Optional
 
 from openai import OpenAI
+from services.openai_client import make_client
 
 from models.lint_models import LintIssue, LlmQuestionsResult
 from models.wiki_models import Edge, Span
@@ -14,7 +15,7 @@ class FixError(Exception):
 
 
 def _get_client() -> OpenAI:
-    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return make_client()
 
 
 def _generate_questions(content: str, node_id: str, llm_client) -> list:

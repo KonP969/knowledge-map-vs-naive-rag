@@ -132,16 +132,16 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
           {fixingAll ? (
             <span className="flex items-center gap-1.5 text-xs text-primary">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              Naprawiam {fixAllProgress.current}/{fixAllProgress.total}…
+              Fixing {fixAllProgress.current}/{fixAllProgress.total}…
             </span>
           ) : confirmFixAll ? (
             <span className="flex items-center gap-1.5 text-xs">
               <span className="text-muted-foreground">Fix all {bulkFixable.length}?</span>
               <button onClick={fixAll} className="text-primary hover:underline font-medium px-1">
-                Tak
+                Yes
               </button>
               <button onClick={() => setConfirmFixAll(false)} className="text-muted-foreground hover:text-foreground px-1">
-                Nie
+                No
               </button>
             </span>
           ) : (

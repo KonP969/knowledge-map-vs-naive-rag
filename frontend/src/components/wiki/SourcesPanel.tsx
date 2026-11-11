@@ -9,7 +9,7 @@ type SortDir = "asc" | "desc";
 
 // Folder filter: "all" = show everything, null = sources without a folder, string = a specific folder.
 type FolderFilter = "all" | null | string;
-const NO_FOLDER = "__none__"; // sentinel for the "Bez folderu" chip key
+const NO_FOLDER = "__none__"; // sentinel for the "No folder" chip key
 
 export function SourcesPanel() {
   const [sources, setSources] = useState<WikiSource[]>([]);
@@ -235,7 +235,7 @@ export function SourcesPanel() {
         className={`flex items-center gap-0.5 text-xs transition-colors ${
           active ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
         }`}
-        title={`Sortuj wg ${label.toLowerCase()}`}
+        title={`Sort by ${label.toLowerCase()}`}
       >
         {label}
         {active && (sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
@@ -297,7 +297,7 @@ export function SourcesPanel() {
         {/* URL import section */}
         <details className="border border-border rounded-lg overflow-hidden">
           <summary className="px-3 py-2 text-xs font-medium cursor-pointer hover:bg-muted/50 select-none">
-            Importuj z URL / bloga
+            Import from a URL / blog
           </summary>
           <div className="px-3 pb-3 pt-2 space-y-2 border-t border-border">
             <input
@@ -320,7 +320,7 @@ export function SourcesPanel() {
               <span className="text-xs font-medium w-7 text-right tabular-nums">{crawlMax}</span>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground shrink-0">Folder na wyniki:</label>
+              <label className="text-xs text-muted-foreground shrink-0">Save to folder:</label>
               <input
                 list="crawl-folder-options"
                 value={crawlFolder}
@@ -439,7 +439,7 @@ export function SourcesPanel() {
             {sources.length > 1 && (
               <div className="flex items-center gap-2 border-r border-border pr-3">
                 <span className="text-xs text-muted-foreground">Sort:</span>
-                <SortButton field="date" label="Data" />
+                <SortButton field="date" label="Date" />
                 <SortButton field="title" label="Title" />
               </div>
             )}
@@ -459,13 +459,13 @@ export function SourcesPanel() {
                   disabled={resetting}
                   className="text-xs text-red-500 hover:text-red-700 font-medium px-1"
                 >
-                  Tak
+                  Yes
                 </button>
                 <button
                   onClick={() => setConfirmReset(false)}
                   className="text-xs text-muted-foreground hover:text-foreground px-1"
                 >
-                  Nie
+                  No
                 </button>
               </span>
             ) : (
@@ -508,11 +508,11 @@ export function SourcesPanel() {
               };
               return (
                 <>
-                  {chip("all", "Wszystkie", sources.length, "all")}
+                  {chip("all", "All", sources.length, "all")}
                   {folderNames.map((f) =>
                     chip(`f-${f}`, f, sources.filter((s) => s.folder === f).length, f, true)
                   )}
-                  {noFolderCount > 0 && chip(NO_FOLDER, "Bez folderu", noFolderCount, null)}
+                  {noFolderCount > 0 && chip(NO_FOLDER, "No folder", noFolderCount, null)}
                 </>
               );
             })()}
@@ -522,13 +522,13 @@ export function SourcesPanel() {
         {/* Multi-select action bar */}
         {selectedSlugs.size > 0 && (
           <div className="flex items-center gap-2 mb-3 p-2 rounded-md border border-primary/40 bg-primary/5 flex-wrap">
-            <span className="text-xs font-medium shrink-0">{selectedSlugs.size} zaznaczono</span>
+            <span className="text-xs font-medium shrink-0">{selectedSlugs.size} selected</span>
             <input
               list="folder-suggestions"
               value={folderInput}
               onChange={(e) => setFolderInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && folderInput.trim()) handleAssignFolder(folderInput.trim()); }}
-              placeholder="Nazwa folderu…"
+              placeholder="Folder name…"
               className="flex-1 min-w-[120px] text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
             />
             <datalist id="folder-suggestions">
@@ -553,7 +553,7 @@ export function SourcesPanel() {
             <button
               onClick={clearSelection}
               className="text-muted-foreground hover:text-foreground transition-colors"
-              title="Odznacz wszystko"
+              title="Clear selection"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -583,7 +583,7 @@ export function SourcesPanel() {
                 <button
                   onClick={(e) => { e.stopPropagation(); toggleSelected(src.slug); }}
                   className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors"
-                  title={selectedSlugs.has(src.slug) ? "Odznacz" : "Zaznacz"}
+                  title={selectedSlugs.has(src.slug) ? "Deselect" : "Select"}
                 >
                   {selectedSlugs.has(src.slug)
                     ? <CheckSquare className="w-4 h-4 text-primary" />
@@ -601,13 +601,13 @@ export function SourcesPanel() {
                           disabled={deleting === src.slug}
                           className="text-xs text-red-500 hover:text-red-700 font-medium px-1"
                         >
-                          Tak
+                          Yes
                         </button>
                         <button
                           onClick={() => setConfirmDelete(null)}
                           className="text-xs text-muted-foreground hover:text-foreground px-1"
                         >
-                          Nie
+                          No
                         </button>
                       </span>
                     ) : (

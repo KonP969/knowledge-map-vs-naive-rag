@@ -4,6 +4,7 @@ import time
 from typing import List, Optional
 
 from openai import OpenAI
+from services.openai_client import make_client
 
 from models.retrieval_models import AgentToolCall, AgentTrace, Answer
 from services.wiki_store import WikiStore
@@ -167,7 +168,7 @@ _TOOL_DEFINITIONS = [
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        _client = make_client()
     return _client
 
 

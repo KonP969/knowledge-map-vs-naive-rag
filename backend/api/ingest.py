@@ -1,8 +1,8 @@
 import os
 import tempfile
-import uuid
 from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from services._slug import slugify
 from services.ingest_pipeline import ingest_source
 from services.wiki_store import WikiStore
 from models.ingest_models import IngestResult
@@ -28,23 +28,18 @@ async def ingest_source_endpoint(file: UploadFile = File(...)):
 
     contents = await file.read()
 
-    tmp_path = None
-    named_tmp = None
+    # The filename drives the source slug and is recorded in raw/<slug>/manifest.json,
+    # so keep the user's name (a UUID temp name gave slugs like '6a0f70fa…'). A private
+    # temp dir per request keeps concurrent uploads of the same name apart.
+    filename = Path(file.filename).name
     try:
-        # Use UUID to guarantee unique temp name even under concurrent uploads
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-            tmp.write(contents)
-            tmp_path = Path(tmp.name)
-        named_tmp = tmp_path.parent / unique_name
-        tmp_path.rename(named_tmp)
-        tmp_path = None  # ownership transferred to named_tmp
-        store = _get_store()
-        result = ingest_source(file_path=named_tmp, store=store)
-    finally:
-        for p in (named_tmp, tmp_path):
-            if p is not None and p.exists():
-                p.unlink(missing_ok=True)
+        slugify(Path(filename).stem)
+    except ValueError:
+        filename = f"upload{ext}"
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir) / filename
+        tmp_path.write_bytes(contents)
+        result = ingest_source(file_path=tmp_path, store=_get_store())
 
     if result.status == "error":
         raise HTTPException(status_code=500, detail=result.error)

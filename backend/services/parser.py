@@ -1,18 +1,20 @@
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-import PyPDF2
+import pypdf
 from docx import Document
 
 from services._slug import slugify
 
 
-def parse_source(file_path: Path, store_root: Path) -> Dict[str, Any]:
+def parse_source(file_path: Path, store_root: Path, slug: Optional[str] = None) -> Dict[str, Any]:
     """
     Stage 1 (deterministic). Reads the raw file, extracts text, writes:
       <store_root>/raw/<slug>/parsed.md
       <store_root>/raw/<slug>/manifest.json
+    `slug` defaults to the slugified filename; the ingest pipeline passes one it has
+    already made unique, so a second file with the same name can't overwrite raw/<slug>/.
     Returns {"slug": str, "text": str, "raw_dir": Path}.
     """
     file_path = Path(file_path)
@@ -27,7 +29,7 @@ def parse_source(file_path: Path, store_root: Path) -> Dict[str, Any]:
     else:
         raise ValueError(f"Unsupported file type: {ext!r}. Allowed: .txt, .md, .pdf, .docx")
 
-    slug = slugify(file_path.stem)
+    slug = slug or slugify(file_path.stem)
     raw_dir = Path(store_root) / "raw" / slug
     raw_dir.mkdir(parents=True, exist_ok=True)
 
@@ -56,7 +58,7 @@ def _parse_txt(path: Path) -> str:
 def _parse_pdf(path: Path) -> str:
     parts = []
     with path.open("rb") as f:
-        reader = PyPDF2.PdfReader(f)
+        reader = pypdf.PdfReader(f)
         for page in reader.pages:
             extracted = page.extract_text()
             if extracted:

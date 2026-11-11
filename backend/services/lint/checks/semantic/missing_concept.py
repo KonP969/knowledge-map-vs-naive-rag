@@ -3,6 +3,7 @@ from collections import defaultdict
 from typing import List
 
 from openai import OpenAI
+from services.openai_client import make_client
 
 from models.lint_models import LintIssue, MissingConceptJudgement
 from services.wiki_store import WikiStore
@@ -12,7 +13,7 @@ _CLAIM_THRESHOLD = 5
 
 
 def _get_client() -> OpenAI:
-    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return make_client()
 
 
 def check_missing_concept(

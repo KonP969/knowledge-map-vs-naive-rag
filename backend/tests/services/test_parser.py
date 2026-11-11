@@ -18,9 +18,8 @@ def txt_file(tmp_path):
 
 @pytest.fixture
 def pdf_file(tmp_path):
-    """Create a minimal PDF using PyPDF2 internals — no dependency on external tools."""
-    import PyPDF2
-    from PyPDF2 import PdfWriter
+    """Create a minimal PDF using pypdf internals — no dependency on external tools."""
+    from pypdf import PdfWriter
     writer = PdfWriter()
     page = writer.add_blank_page(width=200, height=200)
     out = tmp_path / "article.pdf"

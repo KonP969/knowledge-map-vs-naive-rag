@@ -2,6 +2,7 @@ import os
 import time
 from dataclasses import dataclass
 from openai import OpenAI
+from services.openai_client import make_client
 from models.retrieval_models import Answer
 
 _client: OpenAI = None
@@ -44,7 +45,7 @@ class AnswerWithUsage:
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        _client = make_client()
     return _client
 
 
