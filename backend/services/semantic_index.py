@@ -54,3 +54,26 @@ def remove_claims_from_index(store: WikiStore, claim_ids) -> VectorStore:
     if vs.remove(list(claim_ids)) > 0:
         vs.save(claim_index_path(store))
     return vs
+
+
+def semantic_neighbors(store: WikiStore, claims, *, top_k: int = 3, min_score: float = 0.6,
+                       embed_fn: Optional[EmbedFn] = None):
+    """For each new claim, ids of the most similar claims ALREADY in the index.
+
+    Feeds conflict detection: the same fact is often stated about differently named
+    nodes, so subject matching alone misses it. Returns {claim_id: [existing_id, ...]};
+    empty when there is no index yet or nothing to compare.
+    """
+    vs = load_claim_index(store)
+    claims = list(claims)
+    if vs is None or not vs.ids or not claims:
+        return {}
+    own = {c.id for c in claims}
+    vectors = embed_texts([c.text for c in claims], embed_fn=embed_fn)
+    out = {}
+    for claim, vec in zip(claims, vectors):
+        hits = [cid for cid, score in vs.search(vec, top_k + len(own))
+                if cid not in own and score >= min_score][:top_k]
+        if hits:
+            out[claim.id] = hits
+    return out

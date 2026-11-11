@@ -105,6 +105,7 @@ def classify_source(text: str, model: str = None) -> SourceClassification:
         model=model,
         messages=_build_messages(text),
         response_format=SourceClassification,
+        temperature=0,  # extraction defines the graph: same document -> same facts
     )
     result = response.choices[0].message.parsed
     if result is None:

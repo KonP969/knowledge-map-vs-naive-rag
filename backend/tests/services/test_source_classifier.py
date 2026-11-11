@@ -208,3 +208,16 @@ def test_messages_for_polish_document_name_polish():
     messages = _build_messages(_PL_TEXT)
     joined = " ".join(m["content"] for m in messages)
     assert "Polish" in joined
+
+
+def test_classify_source_is_deterministic():
+    # Extraction decides which facts exist in the graph; at the API default (1.0)
+    # every rebuild sampled a different set of claims.
+    from services.source_classifier import classify_source
+
+    with patch("services.source_classifier._get_client") as mock_get_client:
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = _make_mock_response(FIXED_CLASSIFICATION)
+        mock_get_client.return_value = mock_client
+        classify_source("some text")
+        assert mock_client.beta.chat.completions.parse.call_args.kwargs.get("temperature") == 0

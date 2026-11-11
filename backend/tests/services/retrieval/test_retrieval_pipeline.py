@@ -284,3 +284,13 @@ def test_pipeline_fallback_answer_supersedes_weak_answer(store):
         result = run_retrieval("Q", store)
     assert result.answer.final_answer == "The fallback found the real answer."
     assert result.answer.confidence == 0.88
+
+
+def test_claim_budget_is_wider_for_list_and_comparison_questions():
+    from types import SimpleNamespace
+    from services.retrieval.retrieval_pipeline import claim_budget
+    narrow = SimpleNamespace(intent_type="fact_lookup", expected_answer_form="short")
+    listy = SimpleNamespace(intent_type="fact_lookup", expected_answer_form="list")
+    compare = SimpleNamespace(intent_type="comparison", expected_answer_form="analysis")
+    assert claim_budget(narrow) == 8
+    assert claim_budget(listy) > 8 and claim_budget(compare) > 8

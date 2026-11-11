@@ -12,6 +12,17 @@ from services.retrieval.answer_generator import generate_answer
 from services.retrieval.agent_fallback import run_agent_fallback
 from services.llm_service import record_query
 
+# Questions that gather or weigh facts across documents need more of each node's claims.
+_WIDE_FORMS = {"list", "table"}
+_WIDE_INTENTS = {"comparison", "synthesis"}
+
+
+def claim_budget(intent) -> int:
+    """Claims per selected node passed to the answer model."""
+    if intent.expected_answer_form in _WIDE_FORMS or intent.intent_type in _WIDE_INTENTS:
+        return 25
+    return 8
+
 
 def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
     """
@@ -92,7 +103,9 @@ def run_retrieval(question: str, store: WikiStore) -> QueryTrace:
 
     # Stage 4
     t = time.time()
-    context, context_chars = assemble_context(question, selection, candidates, store)
+    context, context_chars = assemble_context(
+        question, selection, candidates, store, max_claims=claim_budget(intent),
+    )
     stages.append(StageTrace(
         stage=4, name="Context Assembly",
         duration_ms=(time.time() - t) * 1000, llm_called=False,

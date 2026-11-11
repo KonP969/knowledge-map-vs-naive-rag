@@ -137,3 +137,84 @@ def test_assemble_context_leads_with_semantic_claim_ids(store):
     assert "cl_001" in context and "neutral colors" in context
     # the verbatim claim leads; the generic node description is demoted below it
     assert context.index("neutral colors") < context.index("A Scandinavian bedroom")
+
+
+# ── context the answer model can actually use (source titles, whole node) ─────
+
+def _entity_selection():
+    cand = Candidate(
+        artifact_id="entity:e_001", artifact_type="entity", slug="sypialnia",
+        title="Place: sypialnia", score=10, score_breakdown={"semantic": 10},
+        questions=[], tags=[], description_preview="A Scandinavian bedroom.",
+        claim_ids=["cl_001"],
+    )
+    sel = Selection(
+        selected=[SelectedArtifact(artifact_id="entity:e_001", relevance_score=0.9, reasoning="x")],
+        confidence=0.9, reasoning="x",
+    )
+    return sel, [cand]
+
+
+def _add_claims(store, n, start=2):
+    for i in range(start, start + n):
+        store.append_claim(Claim(
+            id=f"cl_{i:03d}", text=f"Bedroom fact number {i}.",
+            subject_id="entity:e_001", source_id="src_001",
+            span=Span(start=0, end=5, text="x"), confidence=0.8, polarity="asserts",
+        ))
+
+
+def test_claim_line_names_its_source_article(store):
+    from services.retrieval.context_assembly import assemble_context
+    sel, cands = _entity_selection()
+    context, _ = assemble_context("colors?", sel, cands, store)
+    claim_line = next(l for l in context.splitlines() if "cl_001" in l)
+    assert "Scandinavian Bedroom" in claim_line
+
+
+def test_node_claims_beyond_semantic_hits_are_included(store):
+    from services.retrieval.context_assembly import assemble_context
+    _add_claims(store, 3)
+    sel, cands = _entity_selection()
+    context, _ = assemble_context("colors?", sel, cands, store)
+    assert "cl_001" in context and "cl_004" in context
+    assert context.index("cl_001") < context.index("cl_002")  # semantic hit still leads
+
+
+def test_claim_cap_is_configurable_for_list_questions(store):
+    from services.retrieval.context_assembly import assemble_context
+    _add_claims(store, 15)
+    sel, cands = _entity_selection()
+    short, _ = assemble_context("colors?", sel, cands, store)
+    wide, _ = assemble_context("colors?", sel, cands, store, max_claims=25)
+    assert "cl_016" not in short
+    assert "cl_016" in wide
+
+
+def test_relations_show_readable_names_not_only_ids(store):
+    from services.retrieval.context_assembly import assemble_context
+    sel, cands = _entity_selection()
+    context, _ = assemble_context("colors?", sel, cands, store)
+    relations = context.split("### Relations:")[1]
+    assert "Scandinavian Bedroom" in relations
+
+
+def test_contradicting_claim_is_pulled_in_with_a_warning(store):
+    from services.retrieval.context_assembly import assemble_context
+    # cl_050 lives on another node and another source: selection would never see it.
+    store.append_claim(Claim(
+        id="cl_050", text="Bedroom must avoid neutral colors.",
+        subject_id="concept:c_099", source_id="src_002",
+        span=Span(start=0, end=5, text="x"), confidence=0.8, polarity="asserts",
+    ))
+    store.append_edge(Edge(
+        id="ed_050", **{"from": "claim:cl_050"}, to="claim:cl_001",
+        relation="contradicts", source_id="src_002",
+        span=Span(start=0, end=5, text="x"), confidence=1.0,
+    ))
+    sel, cands = _entity_selection()
+    context, _ = assemble_context("colors?", sel, cands, store)
+    assert "cl_050" in context and "avoid neutral colors" in context
+    warning_line = next(l for l in context.splitlines() if "cl_050" in l)
+    assert "CONTRADICT" in warning_line.upper()
+    assert "cl_001" in warning_line

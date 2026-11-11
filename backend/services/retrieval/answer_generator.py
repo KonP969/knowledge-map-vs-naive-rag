@@ -21,6 +21,13 @@ GROUNDING RULES:
   context — state every relevant fact you can cite, and connect them for the reader.
 - Never explain, define or elaborate on a term the context does not explain itself,
   even when you know what it means and the answer would read better with it.
+- Each claim names the article it comes from. For "which / where / list all"
+  questions, go through every claim and name each distinct article or setting it
+  applies to — do not stop at the first few.
+- CONTRADICTIONS: if claims disagree (different numbers, opposite statements, two
+  different answers to the same question), do NOT pick one silently. State both
+  versions, cite each one, say explicitly that the sources contradict each other,
+  and lower confidence.
 - If the context is thin, say what it does and does not cover, and lower confidence
   accordingly. If it holds NO relevant information, say so clearly and set confidence
   below 0.4.

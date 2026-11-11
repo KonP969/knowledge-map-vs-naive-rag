@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from models.ingest_models import IngestResult
-from models.wiki_models import Source
+from models.wiki_models import Edge, Source
 from services._slug import slugify, ensure_unique
 from services.parser import parse_source
 from services.source_classifier import classify_source_chunked
@@ -15,7 +15,33 @@ from services.conflict_detector import detect_conflicts
 from services.wiki_store import WikiStore
 from services.wiki_index import regenerate_index
 from services.wiki_log import append_log_entry
-from services.semantic_index import add_claims_to_index
+from services.semantic_index import add_claims_to_index, semantic_neighbors
+from services.resolver import _max_id_number
+
+
+def _contradiction_edges(conflicts, new_claims, source_id, store: WikiStore, pending_edges=()):
+    """One `contradicts` edge (new claim -> existing claim) per detected conflict, so the
+    contradiction lives in the graph and retrieval can surface both sides."""
+    if not conflicts:
+        return []
+    spans = {c.id: c.span for c in new_claims}
+    # number after both stored edges and this source's not-yet-appended resolver edges
+    n = max(_max_id_number(store.read_all_edges(), "ed_"), _max_id_number(list(pending_edges), "ed_"))
+    edges = []
+    for i, cf in enumerate(conflicts, 1):
+        span = spans.get(cf.new_claim_id)
+        if span is None:
+            continue
+        edges.append(Edge(
+            id=f"ed_{n + i:03d}",
+            **{"from": f"claim:{cf.new_claim_id}"},
+            to=f"claim:{cf.existing_claim_id}",
+            relation="contradicts",
+            source_id=source_id,
+            span=span,
+            confidence=1.0,
+        ))
+    return edges
 
 
 def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
@@ -63,7 +89,12 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
 
         # Stage 4: Conflict Detection (conditional LLM)
         existing_claims = store.read_all_claims()
-        conflicts = detect_conflicts(resolved["claims"], existing_claims)
+        try:
+            neighbors = semantic_neighbors(store, resolved["claims"])
+        except Exception as exc:  # no embeddings -> subject-only candidates
+            logging.getLogger(__name__).warning("conflict neighbour lookup failed: %s", exc)
+            neighbors = {}
+        conflicts = detect_conflicts(resolved["claims"], existing_claims, neighbors=neighbors)
         # NOTE: increments llm_calls only when conflicts are returned. If the LLM runs
         # but finds no genuine contradictions, that call is not counted here. This is a
         # known limitation — an accurate cost counter would require detect_conflicts to
@@ -93,7 +124,8 @@ def ingest_source(file_path: Path, store: WikiStore) -> IngestResult:
                 claims_added += 1
 
         edges_added = 0
-        for edge in resolved["edges"]:
+        for edge in resolved["edges"] + _contradiction_edges(
+            conflicts, resolved["claims"], source_id, store, resolved["edges"]):
             if store.append_edge(edge):
                 edges_added += 1
 

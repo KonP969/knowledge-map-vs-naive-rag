@@ -114,3 +114,9 @@ def test_generate_answer_uses_temperature_zero():
         generate_answer("Q", "context")
         call_kwargs = mock_client.beta.chat.completions.parse.call_args
         assert call_kwargs.kwargs.get("temperature") == 0
+
+
+def test_system_prompt_requires_surfacing_contradictions():
+    from services.retrieval.answer_generator import _SYSTEM_PROMPT
+    prompt = _SYSTEM_PROMPT.lower()
+    assert "contradict" in prompt and "both" in prompt

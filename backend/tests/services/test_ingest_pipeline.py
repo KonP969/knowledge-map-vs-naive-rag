@@ -13,6 +13,9 @@ from models.wiki_models import Span
 def _no_embed(monkeypatch):
     # ingest now updates the semantic index; keep these unit tests offline/fast.
     monkeypatch.setattr("services.ingest_pipeline.add_claims_to_index", lambda *a, **k: None)
+    # ...and finds conflict candidates via the claim index + an LLM: offline by default.
+    monkeypatch.setattr("services.ingest_pipeline.semantic_neighbors", lambda *a, **k: {})
+    monkeypatch.setattr("services.ingest_pipeline.detect_conflicts", lambda *a, **k: [])
 
 
 @pytest.fixture
@@ -215,3 +218,33 @@ def test_same_filename_twice_does_not_overwrite_first_raw_copy(txt_file, store, 
     assert (first.slug, second.slug) == ("designarticle", "designarticle-2")
     assert "Scandinavian" in (store.root / "raw" / "designarticle" / "parsed.md").read_text()
     assert "different" in (store.root / "raw" / "designarticle-2" / "parsed.md").read_text()
+
+
+def test_detected_conflict_is_stored_as_contradicts_edge(store, txt_file, monkeypatch):
+    from services.ingest_pipeline import ingest_source
+    from models.ingest_models import ConflictReport
+
+    def _one_conflict(new_claims, existing_claims, **kw):
+        return [ConflictReport(new_claim_id=new_claims[0].id,
+                               existing_claim_id="cl_000", description="70 vs 80 cm")]
+
+    monkeypatch.setattr("services.ingest_pipeline.detect_conflicts", _one_conflict)
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
+        result = ingest_source(txt_file, store)
+    assert len(result.conflicts) == 1
+    contradicts = [e for e in store.read_all_edges() if e.relation == "contradicts"]
+    assert len(contradicts) == 1
+    assert contradicts[0].from_ == f"claim:{result.conflicts[0].new_claim_id}"
+    assert contradicts[0].to == "claim:cl_000"
+
+
+def test_neighbor_lookup_failure_does_not_break_ingest(store, txt_file, monkeypatch):
+    from services.ingest_pipeline import ingest_source
+
+    def _boom(*a, **k):
+        raise RuntimeError("embedding API down")
+
+    monkeypatch.setattr("services.ingest_pipeline.semantic_neighbors", _boom)
+    with patch("services.ingest_pipeline.classify_source_chunked", side_effect=_mock_classify):
+        result = ingest_source(txt_file, store)
+    assert result.status == "ok"
