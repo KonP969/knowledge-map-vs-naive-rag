@@ -44,3 +44,7 @@ _rid.txt
 # ── OS / editor noise ─────────────────────────────────────────────────
 .DS_Store
 *.stackdump
+
+# ── private working notes (not for the public repo) ───────────────────
+docs/superpowers/
+docs/history/
