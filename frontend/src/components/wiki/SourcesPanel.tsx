@@ -244,9 +244,9 @@ export function SourcesPanel() {
   };
 
   return (
-    <div className="p-6 h-full flex gap-6">
+    <div className="p-4 md:p-6 h-full flex flex-col gap-6 md:flex-row">
       {/* Left panel: upload zone + result */}
-      <div className="w-80 shrink-0 space-y-4">
+      <div className="w-full md:w-80 shrink-0 space-y-4">
         <h2 className="font-semibold text-sm">Ingest New Source</h2>
 
         {/* Drop zone */}

@@ -69,7 +69,7 @@ export function MetricsPanel() {
             <table className="w-full text-xs">
               <thead className="bg-muted/60">
                 <tr>
-                  {["Query", "Embed ms", "Retrieval ms", "LLM ms", "Tokens", "Cost"].map((h) => (
+                  {["Query", "Retrieval ms", "LLM ms", "Tokens", "Cost"].map((h) => (
                     <th key={h} className="text-left px-3 py-2 text-muted-foreground font-medium">
                       {h}
                     </th>
@@ -80,7 +80,6 @@ export function MetricsPanel() {
                 {metrics.queries.map((q) => (
                   <tr key={q.query_id} className="border-t border-border hover:bg-muted/30 transition-colors">
                     <td className="px-3 py-2 max-w-[180px] truncate text-foreground">{q.query}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{q.embedding_ms.toFixed(0)}</td>
                     <td className="px-3 py-2 text-muted-foreground">{q.retrieval_ms.toFixed(0)}</td>
                     <td className="px-3 py-2 text-muted-foreground">{q.llm_ms.toFixed(0)}</td>
                     <td className="px-3 py-2 text-muted-foreground">{q.total_tokens}</td>

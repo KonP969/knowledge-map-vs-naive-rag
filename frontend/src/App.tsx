@@ -41,7 +41,7 @@ export default function App() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <Header metrics={metrics} onStartTour={() => startTour(setActivePanel)} />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         <Sidebar active={activePanel} onChange={setActivePanel} />
         <main className="flex-1 overflow-auto bg-background">
           {activePanel === "metrics" && <MetricsPanel />}

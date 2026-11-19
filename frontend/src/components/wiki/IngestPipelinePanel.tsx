@@ -35,7 +35,7 @@ const INITIAL_STAGES: Stage[] = [
   },
   {
     id: 4, name: "Conflicts", icon: Shield,
-    description: "Conditional LLM: check denying claims vs existing assertions.",
+    description: "LLM: compare new claims with related claims from other sources; store contradictions.",
     status: "idle",
   },
   {
@@ -49,7 +49,7 @@ function StageRow({ stage }: { stage: Stage }) {
   const Icon = stage.icon;
   const colors: Record<StageStatus, string> = {
     idle: "text-muted-foreground",
-    running: "text-blue-500 animate-pulse",
+    running: "text-primary animate-pulse",
     done: "text-green-500",
     error: "text-red-500",
     skipped: "text-muted-foreground opacity-50",
@@ -64,7 +64,7 @@ function StageRow({ stage }: { stage: Stage }) {
 
   return (
     <div className={`flex items-start gap-3 p-3 rounded-md border ${
-      stage.status === "running" ? "border-blue-500/30 bg-blue-500/5" :
+      stage.status === "running" ? "border-primary/40 bg-primary/5" :
       stage.status === "done" ? "border-green-500/30 bg-green-500/5" :
       stage.status === "error" ? "border-red-500/30 bg-red-500/5" :
       "border-border"
@@ -152,10 +152,10 @@ export function IngestPipelinePanel() {
   }
 
   return (
-    <div className="p-6 h-full flex gap-6">
+    <div className="p-4 md:p-6 h-full flex flex-col gap-6 md:flex-row">
       {/* Left: file selector + trigger */}
-      <div className="w-72 shrink-0 space-y-4">
-        <div className="text-xs text-muted-foreground bg-muted/40 rounded-md p-2.5 border-l-2 border-primary/50 mb-4">
+      <div className="w-full md:w-72 shrink-0 space-y-4">
+        <div className="text-xs text-muted-foreground bg-muted/40 rounded-md p-2.5 border border-border mb-4">
           This panel is for watching the pipeline run, one stage at a time. To
           actually add files to your wiki, use{" "}
           <span className="font-medium text-primary">Sources</span>.

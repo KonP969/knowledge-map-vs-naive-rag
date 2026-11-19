@@ -47,11 +47,11 @@ export function SectionIntro() {
           </thead>
           <tbody>
             {[
-              ["Source tracking", "None — a chunk could be from anywhere", "Every claim carries provenance (source_id, section)"],
-              ["Contradictions", "Invisible — both chunks land in the prompt", "Detected at ingest, flagged in the wiki"],
-              ["Temporal queries", "Weak — chunks have no date structure", "Claims have date_start / date_end fields"],
-              ["Relationships", "None — every chunk is isolated", "A graph of edges: X –[CEO_OF]→ Y"],
-              ["Scaling", "More vectors → quality degrades", "A bigger wiki → every entity enriches the graph"],
+              ["Source tracking", "Per chunk: the whole passage", "Per claim: its source and the exact span of text"],
+              ["Contradictions", "Invisible: both chunks land in the prompt, unmarked", "Detected at ingest, stored as edges, shown with the answer"],
+              ["Facts spread over many documents", "Only what the top-k chunks happen to cover", "One node gathers the claims from every document"],
+              ["Relationships", "None: every chunk is isolated", "Entities, concepts and claims linked by edges"],
+              ["Cost per question", "1 LLM call, ~2 s", "3 LLM calls, ~13–17 s, plus extraction at ingest"],
             ].map(([feature, naive, km]) => (
               <tr key={feature} className="border-b border-border odd:bg-card even:bg-muted/20">
                 <td className="border border-border px-3 py-2 font-medium">{feature}</td>

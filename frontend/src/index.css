@@ -30,6 +30,19 @@ body {
   font-feature-settings: "ss01", "cv05";
 }
 
+::selection {
+  background: hsl(var(--primary) / 0.32);
+  color: hsl(var(--foreground));
+}
+input,
+textarea {
+  caret-color: hsl(var(--primary));
+}
+:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

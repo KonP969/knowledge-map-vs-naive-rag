@@ -97,8 +97,13 @@ interface FilterState {
   showEntities: boolean;
   showConcepts: boolean;
   showSources: boolean;
+  /** null = decide by graph size (hide only in large graphs) */
+  showMinorConcepts: boolean | null;
   entityTypes: Set<string>;
 }
+
+const SELECT_COLOR = "#FF7A2F"; // the UI accent: selection is a live state
+const LARGE_GRAPH = 150; // nodes; above this, minor concepts start hidden
 
 function GraphAutoFocus({ selectedNodeId, nodes }: { selectedNodeId: string | null | undefined; nodes: Node[] }) {
   const { setCenter } = useReactFlow();
@@ -128,6 +133,7 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
     showEntities: true,
     showConcepts: true,
     showSources: true,
+    showMinorConcepts: null,
     entityTypes: new Set(ENTITY_TYPES),
   });
   const [graphSearch, setGraphSearch] = useState("");
@@ -150,6 +156,28 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
       .finally(() => setLoading(false));
   }, []);
 
+  // A concept wired to a single node or source is detail, not structure. With the
+  // resolver creating a node for every claim subject these outnumber everything
+  // else, so they start hidden.
+  const minorConceptIds = useMemo(() => {
+    const degree = new Map<string, number>();
+    wikiEdges.forEach((e) => {
+      degree.set(e.from, (degree.get(e.from) ?? 0) + 1);
+      degree.set(e.to, (degree.get(e.to) ?? 0) + 1);
+    });
+    return new Set(
+      concepts.map((c) => `concept:${c.id}`).filter((id) => (degree.get(id) ?? 0) <= 1),
+    );
+  }, [concepts, wikiEdges]);
+  // Small graphs stay complete; the cut only pays off once the map gets crowded.
+  const showMinor =
+    filters.showMinorConcepts ?? entities.length + concepts.length + sources.length <= LARGE_GRAPH;
+  // A hidden node that something asks to focus (search, lint, a citation) is shown anyway.
+  const forcedNodeId =
+    selectedNodeId && minorConceptIds.has(selectedNodeId) && !showMinor
+      ? selectedNodeId
+      : null;
+
   useEffect(() => {
     if (loading) return;
 
@@ -169,7 +197,10 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
     }
 
     if (filters.showConcepts) {
-      concepts.forEach((c) => {
+      concepts
+        .filter((c) => showMinor || !minorConceptIds.has(`concept:${c.id}`)
+          || `concept:${c.id}` === forcedNodeId)
+        .forEach((c) => {
         rawNodes.push({
           id: `concept:${c.id}`,
           data: { label: c.slug },
@@ -208,7 +239,7 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
 
     setRfNodes(forceLayout(rawNodes, rawEdges));
     setRfEdges(rawEdges);
-  }, [entities, concepts, sources, wikiEdges, filters, loading]);
+  }, [entities, concepts, sources, wikiEdges, filters, loading, minorConceptIds, forcedNodeId, showMinor]);
 
   // Derived nodes/edges with selection highlighting
   const displayNodes = useMemo(() => {
@@ -237,9 +268,9 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
         ? {
             ...e,
             label: (e.data as { relation?: string })?.relation,
-            labelStyle: { fontSize: 9, fill: "#3b82f6" },
+            labelStyle: { fontSize: 9, fill: SELECT_COLOR },
             labelBgStyle: { fill: "#0b0e14", fillOpacity: 0.85 },
-            style: { stroke: "#3b82f6", strokeWidth: 2, opacity: 1 },
+            style: { stroke: SELECT_COLOR, strokeWidth: 2, opacity: 1 },
           }
         : { ...e, style: { stroke: "#94a3b8", strokeWidth: 1, opacity: 0.08 } };
     });
@@ -262,6 +293,7 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
       showEntities: true,
       showConcepts: true,
       showSources: true,
+      showMinorConcepts: true,
       entityTypes: new Set(ENTITY_TYPES),
     });
   }
@@ -326,17 +358,35 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
             <button
               key={t}
               onClick={() => toggleEntityType(t)}
-              className={`px-2 py-0.5 rounded text-xs transition-colors ${
+              aria-pressed={on}
+              className={`px-2 py-0.5 rounded border text-xs transition-colors ${
                 on
-                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                  : "bg-muted text-muted-foreground"
+                  ? "border-primary/50 text-foreground"
+                  : "border-transparent bg-muted text-muted-foreground"
               }`}
             >
               {t}
             </button>
           );
         })}
-        <span className="ml-auto text-xs text-muted-foreground">
+        {minorConceptIds.size > 0 && filters.showConcepts && (
+          <>
+            <span className="text-muted-foreground text-xs">|</span>
+            <button
+              onClick={() => setFilters((f) => ({ ...f, showMinorConcepts: !showMinor }))}
+              aria-pressed={showMinor}
+              title="Concepts linked to a single node or source. Hidden by default to keep the map readable."
+              className={`px-2 py-0.5 rounded border text-xs transition-colors ${
+                showMinor
+                  ? "border-primary/50 text-foreground"
+                  : "border-transparent bg-muted text-muted-foreground"
+              }`}
+            >
+              {showMinor ? "Hide" : "Show"} {minorConceptIds.size} minor concepts
+            </button>
+          </>
+        )}
+        <span className="ml-auto text-xs tabular-nums text-muted-foreground">
           {rfNodes.length} nodes · {rfEdges.length} edges
         </span>
         {/* Legend */}
@@ -415,14 +465,15 @@ export function GraphView({ onNodeClick, selectedNodeId }: GraphViewProps) {
             onEdgesChange={onEdgesChange}
             onNodeClick={handleNodeClick}
             fitView
+            colorMode="dark"
             minZoom={0.1}
             maxZoom={3}
             proOptions={{ hideAttribution: true }}
           >
             <GraphAutoFocus selectedNodeId={selectedNodeId} nodes={rfNodes} />
-            <Background color="#e2e8f0" gap={20} />
+            <Background color="#33343A" gap={20} />
             <Controls />
-            <MiniMap nodeStrokeWidth={3} pannable zoomable />
+            <MiniMap nodeStrokeWidth={3} pannable zoomable bgColor="#202227" maskColor="rgba(23,24,28,0.7)" />
           </ReactFlow>
         </div>
       )}

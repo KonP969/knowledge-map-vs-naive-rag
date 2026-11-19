@@ -174,14 +174,14 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
           <span className="text-xs text-muted-foreground">
             Report{" "}
             <span className="font-mono text-foreground">{report.id}</span> ·{" "}
-            <span className="text-red-600">{sev.error} errors</span> ·{" "}
-            <span className="text-yellow-600">{sev.warning} warnings</span> ·{" "}
-            <span className="text-blue-500">{sev.info ?? 0} info</span> ·{" "}
+            <span className="text-error">{sev.error} errors</span> ·{" "}
+            <span className="text-warning">{sev.warning} warnings</span> ·{" "}
+            <span className="text-foreground/80">{sev.info ?? 0} info</span> ·{" "}
             {issues.length} total
           </span>
         ) : (
           <span className="text-xs text-muted-foreground">
-            No lint reports yet. Click <span className="font-medium">Run Now</span>.
+            No report yet.
           </span>
         )}
         <div className="flex gap-1 ml-auto">
@@ -226,13 +226,34 @@ export function LintPanel({ onLocationClick }: LintPanelProps = {}) {
       </div>
 
       {error && (
-        <div className="px-4 py-2 text-xs text-red-600 bg-red-100/40 border-b border-red-200">
+        <div className="px-4 py-2 text-xs text-error bg-error/10 border-b border-error/30">
           {error}
         </div>
       )}
 
       {/* Issue list */}
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-2">
+        {!report && !error && (
+          <div className="m-auto max-w-sm py-16 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {running ? "Checking the wiki…" : "No lint report yet"}
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Lint walks every node, claim and edge and lists what needs attention: missing
+              descriptions, orphaned nodes, duplicates and contradictions.
+            </p>
+            {!running && (
+              <button
+                onClick={runNow}
+                disabled={fixingAll}
+                className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                <Play className="h-3.5 w-3.5" />
+                Run the first check
+              </button>
+            )}
+          </div>
+        )}
         {report && filtered.length === 0 && (
           <div className="text-center text-muted-foreground text-sm py-12">
             {issues.length === 0 ? "No issues found." : "No issues match the current filter."}

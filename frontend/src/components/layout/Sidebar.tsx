@@ -18,7 +18,7 @@ interface SidebarProps {
 
 export function Sidebar({ active, onChange }: SidebarProps) {
   return (
-    <nav data-tour="nav" className="flex w-48 shrink-0 flex-col border-r border-border bg-card pt-3">
+    <nav data-tour="nav" className="flex shrink-0 overflow-x-auto border-b border-border bg-card md:w-48 md:flex-col md:overflow-visible md:border-b-0 md:border-r md:pt-3">
       {NAV.map(({ id, label, icon: Icon }) => {
         const on = active === id;
         return (
@@ -26,7 +26,8 @@ export function Sidebar({ active, onChange }: SidebarProps) {
             key={id}
             data-tour={`nav-${id}`}
             onClick={() => onChange(id)}
-            className={`flex items-center gap-3 border-l-2 px-4 py-2.5 text-sm transition-colors ${
+            aria-current={on ? "page" : undefined}
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm transition-colors md:gap-3 md:border-b-0 md:border-l-2 md:px-4 md:py-2.5 ${
               on
                 ? "border-primary bg-primary/10 font-medium text-foreground"
                 : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
