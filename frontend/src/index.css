@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* RAG 2.0 — "instrument" palette. A specific graphite, warm bone ink, and a
+/* Knowledge-Map RAG — "instrument" palette. A specific graphite, warm bone ink, and a
    sodium-lamp orange reserved for the live/interactive state. Not the generic
    blue-black + cyan. */
 @layer base {

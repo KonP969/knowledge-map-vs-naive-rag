@@ -1,4 +1,17 @@
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+// Same rule as dev.ps1 / dev.sh: prefer the project venv (a system Python may be too
+// old for the 3.10+ requirements); CI has no venv and uses `python` on PATH.
+const venvPython = [
+  resolve(here, "../backend/.venv/Scripts/python.exe"),
+  resolve(here, "../backend/.venv/bin/python"),
+].find((p) => existsSync(p));
+const python = venvPython ? `"${venvPython}"` : "python";
 
 // Runs the smoke suite against a live backend + frontend. The backend is pointed
 // at the bundled demo corpus so the tests don't depend on your own wiki_data.
@@ -19,7 +32,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: "python -m uvicorn main:app --port 8000",
+      command: `${python} -m uvicorn main:app --port 8000`,
       cwd: "../backend",
       env: { WIKI_DATA_DIR: "wiki_data/.example" },
       url: "http://localhost:8000/health",

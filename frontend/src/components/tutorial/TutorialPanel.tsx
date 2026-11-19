@@ -23,7 +23,7 @@ export function TutorialPanel() {
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-foreground mb-1">RAG 2.0 — Knowledge Map</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-1">Knowledge-Map RAG</h1>
         <p className="text-muted-foreground text-sm">A guide to answering questions from a structured knowledge graph.</p>
       </div>
 

@@ -10,8 +10,8 @@ export function Header({ metrics, onStartTour }: HeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-6">
       <div className="flex items-baseline gap-2">
-        <span className="text-sm font-semibold tracking-tight">RAG 2.0</span>
-        <span className="text-xs text-muted-foreground">Karpathy Method</span>
+        <span className="text-sm font-semibold tracking-tight">Knowledge-Map RAG</span>
+        <span className="text-xs text-muted-foreground">vs naive RAG</span>
       </div>
       <div className="flex items-center gap-5">
         {metrics && (

@@ -27,7 +27,7 @@ test("every panel renders without console errors", async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto("/");
 
-  await expect(page.getByText("Karpathy Method")).toBeVisible();
+  await expect(page.getByText("vs naive RAG")).toBeVisible();
 
   await goToPanel(page, "Ingest");
   await expect(page.getByRole("heading", { name: "5-Stage Pipeline" })).toBeVisible();

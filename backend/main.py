@@ -12,7 +12,7 @@ from services.openai_client import MissingAPIKeyError
 
 load_dotenv()
 
-app = FastAPI(title="RAG 2.0 Karpathy Method API", version="2.0.0")
+app = FastAPI(title="Knowledge-Map RAG API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,

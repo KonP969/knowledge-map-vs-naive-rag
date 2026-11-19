@@ -1,8 +1,8 @@
-# RAG 2.0 — Karpathy Method
+# Knowledge-Map RAG vs Naive RAG
 
 *[English](README.md) · Polski*
 
-[![CI](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml/badge.svg)](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml)
+[![CI](https://github.com/KonP969/knowledge-map-vs-naive-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/KonP969/knowledge-map-vs-naive-rag/actions/workflows/ci.yml)
 
 Lokalna, edukacyjna aplikacja webowa realizująca **Knowledge-Map RAG** — eksperyment
 zainspirowany krytyką naiwnego RAG autorstwa Andreja Karpathy'ego. Zamiast przeszukiwać
@@ -58,7 +58,7 @@ top-5 po cosinusie, `gpt-4o-mini` z temperaturą 0 i poleceniem przyznania się,
 kontekst nie zawiera odpowiedzi. Odpowiedzi ocenia sędzia LLM (`gpt-4o-mini`) w skali
 0–10. Pomiar z 2026-11-12.
 
-| | Naiwny RAG | RAG 2.0 |
+| | Naiwny RAG | Knowledge-Map RAG |
 |---|---|---|
 | Proste pytania o fakt (15) — poprawność / użyteczność / wierność | **9,4** / **7,1** / **10,0** | 8,6 / 7,0 / 9,5 |
 | Pytania wieloprzeskokowe (10) — te same trzy oceny | 8,2 / 5,9 / **9,6** | **8,3** / **6,9** / 9,3 |
@@ -75,7 +75,7 @@ Co te liczby pokazują, a czego nie:
   wszystkich artykułów, każde z podpisem źródła.
 - **Sprzeczności są wykrywane, ale jeszcze nie tłumaczone.** Ingest znajduje podrzucone
   sprzeczności (5 zapisanych, 0 fałszywych alarmów na czystym korpusie) i zapisuje je
-  jako krawędzie `contradicts`, a RAG 2.0 zwykle nie powtarza fałszywej wersji — ale
+  jako krawędzie `contradicts`, a Knowledge-Map RAG zwykle nie powtarza fałszywej wersji — ale
   odpowiedź rzadko mówi wprost *„źródła się nie zgadzają”* (2 / 4 w jednej
   przebudowie grafu, 0 / 4 w tej).
 - **Proste pytania tracą szczegóły.** Odpowiedź powstaje z wyekstrahowanych twierdzeń,
@@ -91,7 +91,7 @@ Odtworzenie (wymaga klucza OpenAI; pełny przebieg to kilka centów):
 
 ```bash
 cd backend
-python scripts/run_gold_eval.py      --questions porta_multihop   # RAG 2.0
+python scripts/run_gold_eval.py      --questions porta_multihop   # Knowledge-Map RAG
 python scripts/run_naive_baseline.py --questions porta_multihop   # naiwny baseline
 python scripts/build_conflict_vault.py                            # korpus + podrzucone sprzeczności
 python scripts/run_gold_eval.py --vault wiki_data/bench_conflict --questions porta_conflict

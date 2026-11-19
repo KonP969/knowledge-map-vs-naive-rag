@@ -1,8 +1,8 @@
-# RAG 2.0 — Karpathy Method
+# Knowledge-Map RAG vs Naive RAG
 
 *English · [Polski](README.pl.md)*
 
-[![CI](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml/badge.svg)](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml)
+[![CI](https://github.com/KonP969/knowledge-map-vs-naive-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/KonP969/knowledge-map-vs-naive-rag/actions/workflows/ci.yml)
 
 A local, educational web app that implements **Knowledge-Map RAG** — an experiment
 inspired by Andrej Karpathy's critique of naive retrieval-augmented generation.
@@ -57,7 +57,7 @@ models: 800-char chunks with 150 overlap, `text-embedding-3-small`, top-5 cosine
 `gpt-4o-mini` at temperature 0, told to admit when the context lacks the answer.
 Answers are scored 0–10 by an LLM judge (`gpt-4o-mini`). Measured 2026-11-12.
 
-| | Naive RAG | RAG 2.0 |
+| | Naive RAG | Knowledge-Map RAG |
 |---|---|---|
 | Simple fact questions (15) — correctness / helpfulness / faithfulness | **9.4** / **7.1** / **10.0** | 8.6 / 7.0 / 9.5 |
 | Multi-hop questions (10) — same three scores | 8.2 / 5.9 / **9.6** | **8.3** / **6.9** / 9.3 |
@@ -74,7 +74,7 @@ What the numbers do and don't show:
   every article, each labelled with its source.
 - **Contradictions are detected but not yet explained.** Ingest finds the planted
   contradictions (5 recorded, 0 false alarms on the clean corpus) and stores them
-  as `contradicts` edges, and RAG 2.0 mostly avoids parroting the false version —
+  as `contradicts` edges, and Knowledge-Map RAG mostly avoids parroting the false version —
   but the answer rarely says *"the sources disagree"* (2 / 4 in one build, 0 / 4 in
   this one).
 - **Simple lookups lose detail.** Answers come from extracted claims, not the
@@ -90,7 +90,7 @@ Reproduce (needs an OpenAI key; a full run costs a few cents):
 
 ```bash
 cd backend
-python scripts/run_gold_eval.py      --questions porta_multihop   # RAG 2.0
+python scripts/run_gold_eval.py      --questions porta_multihop   # Knowledge-Map RAG
 python scripts/run_naive_baseline.py --questions porta_multihop   # naive baseline
 python scripts/build_conflict_vault.py                            # corpus + planted contradictions
 python scripts/run_gold_eval.py --vault wiki_data/bench_conflict --questions porta_conflict
