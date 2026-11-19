@@ -5,10 +5,10 @@
 [![CI](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml/badge.svg)](https://github.com/KonP969/RAG-2.0-Karpathy-Method/actions/workflows/ci.yml)
 
 Lokalna, edukacyjna aplikacja webowa realizująca **Knowledge-Map RAG** — eksperyment
-zainspirowany krytyką naiwnego RAG autorstwa Andreja Karpathy'ego. Zamiast tłuc
-dokumenty na fragmenty i szukać po wektorach, system przy każdym wgraniu wyciąga ze
-źródła strukturalny graf wiedzy i odpowiada na pytania, rozumując nad tym grafem —
-pokazując każdy krok.
+zainspirowany krytyką naiwnego RAG autorstwa Andreja Karpathy'ego. Zamiast przeszukiwać
+surowe fragmenty tekstu, system przy każdym wgraniu wyciąga ze źródła strukturalny
+graf wiedzy — encje, koncepty i pojedyncze twierdzenia — i odpowiada na pytania,
+przeszukując ten graf i rozumując nad nim, pokazując każdy krok.
 
 To projekt badawczo-poznawczy: chodzi o to, żeby pipeline retrievalu był *czytelny*,
 a nie żeby był produkcyjnym stackiem RAG.
@@ -40,6 +40,65 @@ ma problem z:
 Knowledge-Map RAG wyciąga strukturę przy ingeście — encje, koncepty, twierdzenia
 (każde z proweniencją) i krawędzie — a potem odpowiada przez 5-etapowy pipeline
 rozumowania. Każde zdanie w odpowiedzi da się dociągnąć do konkretnego twierdzenia.
+
+![Naiwny RAG vs Knowledge-Map RAG — co jest zapisywane przy wgrywaniu i co czyta model odpowiadający](docs/naive-vs-knowledge-map.svg)
+
+To są hipotezy. Następna sekcja pokazuje, jak wypadają w pomiarach.
+
+## Czy to jest lepsze od naiwnego RAG? Wyniki pomiarów
+
+Krótko: **nie we wszystkim.** Wyraźnie wygrywa przy zbieraniu faktów rozsianych po
+wielu dokumentach i rzadziej powtarza podrzucone fałszywe twierdzenie; przy prostych
+pytaniach o fakt jest na równi albo nieco gorzej; i jest 7–9× wolniejsze.
+
+**Warunki.** 15 polskich artykułów wnętrzarskich (blog producenta drzwi; nie ma ich
+w tym repo). Punktem odniesienia jest uczciwy naiwny RAG na tym samym tekście i tych
+samych modelach: fragmenty po 800 znaków z zakładką 150, `text-embedding-3-small`,
+top-5 po cosinusie, `gpt-4o-mini` z temperaturą 0 i poleceniem przyznania się, gdy
+kontekst nie zawiera odpowiedzi. Odpowiedzi ocenia sędzia LLM (`gpt-4o-mini`) w skali
+0–10. Pomiar z 2026-11-12.
+
+| | Naiwny RAG | RAG 2.0 |
+|---|---|---|
+| Proste pytania o fakt (15) — poprawność / użyteczność / wierność | **9,4** / **7,1** / **10,0** | 8,6 / 7,0 / 9,5 |
+| Pytania wieloprzeskokowe (10) — te same trzy oceny | 8,2 / 5,9 / **9,6** | **8,3** / **6,9** / 9,3 |
+| Pytania „wymień wszystkie…” (6) — ile oczekiwanych elementów padło | 4 / 29 | **12 / 29** |
+| 4 podrzucone sprzeczności — odpowiedź podaje *tylko* fałszywą wersję | 3 / 4 | **1 / 4** |
+| 4 podrzucone sprzeczności — odpowiedź mówi, że źródła się nie zgadzają | 0 / 4 | 0 / 4 |
+| Czas odpowiedzi | **~1,8 s** | ~13–17 s |
+| Wywołania LLM na pytanie | **1** | 3 (+ ekstrakcja przy wgrywaniu) |
+
+Co te liczby pokazują, a czego nie:
+
+- **Prawdziwa przewaga to zbieranie faktów.** Przy pytaniu „gdzie katalog poleca X?”
+  naiwny RAG widzi 5 fragmentów, a mapa wiedzy zbiera wszystkie twierdzenia o X ze
+  wszystkich artykułów, każde z podpisem źródła.
+- **Sprzeczności są wykrywane, ale jeszcze nie tłumaczone.** Ingest znajduje podrzucone
+  sprzeczności (5 zapisanych, 0 fałszywych alarmów na czystym korpusie) i zapisuje je
+  jako krawędzie `contradicts`, a RAG 2.0 zwykle nie powtarza fałszywej wersji — ale
+  odpowiedź rzadko mówi wprost *„źródła się nie zgadzają”* (2 / 4 w jednej
+  przebudowie grafu, 0 / 4 w tej).
+- **Proste pytania tracą szczegóły.** Odpowiedź powstaje z wyekstrahowanych twierdzeń,
+  nie z oryginalnego tekstu, więc szczegół pominięty przy ekstrakcji przepada.
+- **Przebudowy się różnią.** Ponowna ekstrakcja tego samego korpusu przesuwała wynik
+  prostych pytań między 8,6 a 9,6. Różnice poniżej ~1 punktu traktuj jako szum.
+- **Małe próby, sędzia LLM.** 10–15 pytań na zestaw, oceniane przez model z tej samej
+  rodziny, która odpowiada. Sędzia raz dał 10/10 odpowiedzi powtarzającej tylko
+  fałszywą stronę sprzeczności, dlatego wiersze o pokryciu i sprzecznościach są
+  policzone ręcznie.
+
+Odtworzenie (wymaga klucza OpenAI; pełny przebieg to kilka centów):
+
+```bash
+cd backend
+python scripts/run_gold_eval.py      --questions porta_multihop   # RAG 2.0
+python scripts/run_naive_baseline.py --questions porta_multihop   # naiwny baseline
+python scripts/build_conflict_vault.py                            # korpus + podrzucone sprzeczności
+python scripts/run_gold_eval.py --vault wiki_data/bench_conflict --questions porta_conflict
+```
+
+Zestawy pytań są w `backend/tests/rag_evaluation/gold_questions.py`. Dotyczą korpusu
+PORTA, więc przy własnych źródłach potrzebne są własne pytania.
 
 ## Architektura
 
@@ -202,7 +261,7 @@ wiki_data/<nazwa>/
 ## Testy
 
 ```bash
-cd backend && python -m pytest -q     # ~470 testów jednostkowych + integracyjnych
+cd backend && python -m pytest -q     # ~500 testów jednostkowych + integracyjnych
 
 cd frontend && npm run test:e2e       # smoke suite Playwright — uruchamia (lub reużywa)
                                       # serwery dev, backend na demo-korpusie, bez klucza API
